@@ -79,6 +79,83 @@ const mkStyles = (accent) => ({
   section: {fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:800,color:"#e8e4d8",letterSpacing:"0.02em"},
 });
 
+// ─── SUB-COMPONENTS (defined outside main component to prevent remount issues) ──
+const NavBtn = ({id,label,active,accent,onNav}) => (
+  <button onClick={()=>onNav(id)} style={{background:active?"#1a1a1a":"transparent",border:"none",borderBottom:active?`2px solid ${accent}`:"2px solid transparent",color:active?accent:"#555",padding:"0 12px",height:50,fontSize:10,letterSpacing:"0.12em",textTransform:"uppercase",cursor:"pointer",fontFamily:"'DM Mono',monospace",transition:"all 0.15s",whiteSpace:"nowrap",flexShrink:0}}>{label}</button>
+);
+
+const SubNavComp = ({tabs,active,accent,onSelect}) => (
+  <div style={{display:"flex",borderBottom:"1px solid #1e1e1e",background:"#0d0d0d",padding:"0 24px",overflowX:"auto"}}>
+    {tabs.map(([id,label])=>(
+      <button key={id} onClick={()=>onSelect(id)} style={{background:"transparent",border:"none",borderBottom:active===id?`2px solid ${accent}`:"2px solid transparent",color:active===id?accent:"#444",padding:"11px 14px",fontSize:10,letterSpacing:"0.12em",textTransform:"uppercase",cursor:"pointer",fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap",transition:"all 0.15s"}}>{label}</button>
+    ))}
+  </div>
+);
+
+const StatCard = ({label,value,color,sub,card}) => (
+  <div style={card}>
+    <div style={{fontSize:28,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:color||"#f59e0b",lineHeight:1}}>{value}</div>
+    <div style={{fontSize:9,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginTop:5}}>{label}</div>
+    {sub&&<div style={{fontSize:10,color:"#444",marginTop:3}}>{sub}</div>}
+  </div>
+);
+
+const ExpiryBadgeComp = ({label,days}) => (
+  <div style={{background:days<0?"#1c0505":days<=30?"#1a1005":"#141414",border:`1px solid ${statusColor(days)}33`,borderLeft:`3px solid ${statusColor(days)}`,borderRadius:6,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+    <span style={{fontSize:12,color:"#c8c4bc"}}>{label}</span>
+    <span style={{fontSize:11,color:statusColor(days),fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{statusLabel(days)}</span>
+  </div>
+);
+
+const LoaderComp = ({msg,accent}) => (
+  <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"60px 0",gap:16}}>
+    <div style={{width:36,height:36,border:`2px solid #1e1e1e`,borderTop:`2px solid ${accent}`,borderRadius:"50%",animation:"spin 0.7s linear infinite"}}/>
+    <div style={{fontSize:11,color:"#555"}}>{msg||"Processing..."}</div>
+  </div>
+);
+
+const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,MODAL_CONFIGS}) => {
+  if(!modal) return null;
+  const config = MODAL_CONFIGS[modal.type];
+  if(!config) return null;
+  return (
+    <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:20}} onClick={closeModal}>
+      <div style={{background:"#141414",border:`1px solid ${accent}44`,borderRadius:10,padding:"28px 28px 24px",maxWidth:560,width:"100%",maxHeight:"85vh",overflowY:"auto",animation:"fadeUp 0.2s ease"}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#e8e4d8"}}>{config.title}</div>
+          <button onClick={closeModal} style={{background:"transparent",border:"none",color:"#555",cursor:"pointer",fontSize:18,lineHeight:1}}>✕</button>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+          {config.fields.map(([field,label,type])=>{
+            const isTextarea = type==="textarea";
+            const isSelect = type.startsWith("select:");
+            const options = isSelect ? type.replace("select:","").split("|") : [];
+            const isFullWidth = isTextarea || field==="notes" || field==="name";
+            return (
+              <div key={field} style={{gridColumn:isFullWidth?"1/-1":"auto"}}>
+                <label style={S.label}>{label}</label>
+                {isTextarea ? (
+                  <textarea value={editForm[field]||""} onChange={e=>setEditForm(p=>({...p,[field]:e.target.value}))} style={{...S.input,height:80,resize:"vertical"}}/>
+                ) : isSelect ? (
+                  <select value={editForm[field]||""} onChange={e=>setEditForm(p=>({...p,[field]:e.target.value}))} style={S.input}>
+                    {options.map(o=><option key={o} value={o}>{o||"Select..."}</option>)}
+                  </select>
+                ) : (
+                  <input type={type} value={editForm[field]||""} onChange={e=>setEditForm(p=>({...p,[field]:e.target.value}))} style={S.input}/>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div style={{display:"flex",gap:10}}>
+          <button onClick={saveEdit} style={S.btn}>Save Changes</button>
+          <button onClick={closeModal} style={S.ghost}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ════════════════════════════════════════════════════════════════════════
 export default function ContractorOS() {
   const [segment, setSegment] = useState(() => stor.get(KEYS.segment, null));
@@ -98,9 +175,34 @@ export default function ContractorOS() {
 
   // UI state
   const [subScreen, setSubScreen] = useState(null);
-  const [modal, setModal] = useState(null); // { type, item }
+  const [modal, setModal] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [aiLoading, setAiLoading] = useState(false);
+
+  // Screen-level form state (lifted to avoid useState-in-IIFE bug)
+  const [showAddDriver, setShowAddDriver] = useState(false);
+  const [driverForm, setDriverForm] = useState({name:"",route:"",payType:"per_mile",payRate:"",ytdPay:"",phone:"",hireDate:"",status:"active"});
+  const [showAddIncident, setShowAddIncident] = useState(null);
+  const [incidentForm, setIncidentForm] = useState({driverId:"",date:"",type:"delivery",description:"",severity:"minor"});
+
+  const [showAddMaint, setShowAddMaint] = useState(false);
+  const [maintForm, setMaintForm] = useState({truckName:"",type:"",date:"",mileage:"",cost:"",notes:"",nextDueMiles:""});
+
+  const [showAddContract, setShowAddContract] = useState(false);
+  const [contractForm, setContractForm] = useState({name:"",company:"",startDate:"",renewalDate:"",value:"",status:"active",notes:""});
+
+  const [showAddRevenue, setShowAddRevenue] = useState(false);
+  const [revenueForm, setRevenueForm] = useState({date:"",description:"",amount:"",vehicle:""});
+  const [showAddExpense, setShowAddExpense] = useState(false);
+  const [expenseForm, setExpenseForm] = useState({date:"",category:"fuel",amount:"",description:"",vehicle:""});
+
+  const [routeForm, setRouteForm] = useState({name:"",stops:"",miles:"",rate:"",driverPay:"",otherCosts:"",frequency:"Daily",vehicle:"",notes:""});
+  const [brokerForm, setBrokerForm] = useState({name:"",paySpeed:"",rating:3,notes:"",blacklisted:false});
+
+  const [showAddVehicle, setShowAddVehicle] = useState(false);
+  const [vehicleForm, setVehicleForm] = useState({name:"",year:"",make:"",plate:"",dotInspection:"",ifta:"",irp:"",registration:""});
+  const [showAddCompDriver, setShowAddCompDriver] = useState(false);
+  const [compDriverForm, setCompDriverForm] = useState({name:"",cdlExpiry:"",medCardExpiry:"",mvrDue:"",drugTest:"",annualReview:""});
   const [aiResult, setAiResult] = useState(null);
   const [dotAnswer, setDotAnswer] = useState(null);
   const [dotQ, setDotQ] = useState("");
@@ -320,102 +422,17 @@ export default function ContractorOS() {
   }
 
   // ── SHARED COMPONENTS ──────────────────────────────────────────────
-  const NavBtn = ({id,label,active}) => (
-    <button onClick={()=>{setScreen(id);setSubScreen(null);setAiResult(null);setAnalyzeStep("paste");}} style={{background:active?"#1a1a1a":"transparent",border:"none",borderBottom:active?`2px solid ${accent}`:"2px solid transparent",color:active?accent:"#555",padding:"0 12px",height:50,fontSize:10,letterSpacing:"0.12em",textTransform:"uppercase",cursor:"pointer",fontFamily:"'DM Mono',monospace",transition:"all 0.15s",whiteSpace:"nowrap",flexShrink:0}}>{label}</button>
-  );
-
-  const SubNav = ({tabs,active,onSelect}) => (
-    <div style={{display:"flex",borderBottom:"1px solid #1e1e1e",background:"#0d0d0d",padding:"0 24px",overflowX:"auto"}}>
-      {tabs.map(([id,label])=>(
-        <button key={id} onClick={()=>onSelect(id)} style={{background:"transparent",border:"none",borderBottom:active===id?`2px solid ${accent}`:"2px solid transparent",color:active===id?accent:"#444",padding:"11px 14px",fontSize:10,letterSpacing:"0.12em",textTransform:"uppercase",cursor:"pointer",fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap",transition:"all 0.15s"}}>{label}</button>
-      ))}
-    </div>
-  );
-
-  const Stat = ({label,value,color,sub}) => (
-    <div style={S.card}>
-      <div style={{fontSize:28,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:color||accent,lineHeight:1}}>{value}</div>
-      <div style={{fontSize:9,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginTop:5}}>{label}</div>
-      {sub&&<div style={{fontSize:10,color:"#444",marginTop:3}}>{sub}</div>}
-    </div>
-  );
-
-  const ExpiryBadge = ({label,days}) => (
-    <div style={{background:days<0?"#1c0505":days<=30?"#1a1005":"#141414",border:`1px solid ${statusColor(days)}33`,borderLeft:`3px solid ${statusColor(days)}`,borderRadius:6,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <span style={{fontSize:12,color:"#c8c4bc"}}>{label}</span>
-      <span style={{fontSize:11,color:statusColor(days),fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{statusLabel(days)}</span>
-    </div>
-  );
-
-  const Loader = ({msg}) => (
-    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"60px 0",gap:16}}>
-      <div style={{width:36,height:36,border:`2px solid #1e1e1e`,borderTop:`2px solid ${accent}`,borderRadius:"50%",animation:"spin 0.7s linear infinite"}}/>
-      <div style={{fontSize:11,color:"#555"}}>{msg||"Processing..."}</div>
-    </div>
-  );
-
   const navLabels = {dashboard:"Dashboard",analyze:"Analyze Load",boards:"Load Boards",compliance:"Compliance",brokers:"Brokers",fleet:"Fleet",finance:"Finance",routes:"Routes",drivers:"Drivers",contracts:"Contracts",settings:"Settings"};
-
-  // ── EDIT MODAL COMPONENT ───────────────────────────────────────────
-  const EditModal = () => {
-    if(!modal) return null;
-    const config = MODAL_CONFIGS[modal.type];
-    if(!config) return null;
-    return (
-      <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:20}} onClick={closeModal}>
-        <div style={{background:"#141414",border:`1px solid ${accent}44`,borderRadius:10,padding:"28px 28px 24px",maxWidth:560,width:"100%",maxHeight:"85vh",overflowY:"auto",animation:"fadeUp 0.2s ease"}} onClick={e=>e.stopPropagation()}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#e8e4d8"}}>{config.title}</div>
-            <button onClick={closeModal} style={{background:"transparent",border:"none",color:"#555",cursor:"pointer",fontSize:18,lineHeight:1}}>✕</button>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
-            {config.fields.map(([field,label,type])=>{
-              const isTextarea = type==="textarea";
-              const isSelect = type.startsWith("select:");
-              const options = isSelect ? type.replace("select:","").split("|") : [];
-              const isFullWidth = isTextarea || field==="notes" || field==="name";
-              return (
-                <div key={field} style={{gridColumn:isFullWidth?"1/-1":"auto"}}>
-                  <label style={S.label}>{label}</label>
-                  {isTextarea ? (
-                    <textarea
-                      value={editForm[field]||""}
-                      onChange={e=>setEditForm(p=>({...p,[field]:e.target.value}))}
-                      style={{...S.input,height:80,resize:"vertical"}}
-                    />
-                  ) : isSelect ? (
-                    <select
-                      value={editForm[field]||""}
-                      onChange={e=>setEditForm(p=>({...p,[field]:e.target.value}))}
-                      style={S.input}
-                    >
-                      {options.map(o=><option key={o} value={o}>{o||"Select..."}</option>)}
-                    </select>
-                  ) : (
-                    <input
-                      type={type}
-                      value={editForm[field]||""}
-                      onChange={e=>setEditForm(p=>({...p,[field]:e.target.value}))}
-                      style={S.input}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <div style={{display:"flex",gap:10}}>
-            <button className="hov" onClick={saveEdit} style={S.btn}>Save Changes</button>
-            <button onClick={closeModal} style={S.ghost}>Cancel</button>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const SubNav = ({tabs,active,onSelect}) => <SubNavComp tabs={tabs} active={active} accent={accent} onSelect={onSelect}/>;
+  const Stat = ({label,value,color,sub}) => <StatCard label={label} value={value} color={color||accent} sub={sub} card={S.card}/>;
+  const ExpiryBadge = ({label,days}) => <ExpiryBadgeComp label={label} days={days}/>;
+  const Loader = ({msg}) => <LoaderComp msg={msg} accent={accent}/>;
+  const handleNav = (id) => { setScreen(id); setSubScreen(null); setAiResult(null); setAnalyzeStep("paste"); };
 
   // ── RENDER ─────────────────────────────────────────────────────────
   return (
     <div style={{minHeight:"100vh",background:"#0a0a0a",fontFamily:"'DM Mono','Courier New',monospace",color:"#d4d0c8",display:"flex",flexDirection:"column"}}>
-      <EditModal/>
+      <EditModalComp modal={modal} editForm={editForm} setEditForm={setEditForm} saveEdit={saveEdit} closeModal={closeModal} accent={accent} S={S} MODAL_CONFIGS={MODAL_CONFIGS}/>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Barlow+Condensed:wght@400;600;700;800;900&display=swap');
         *{box-sizing:border-box}
@@ -440,7 +457,7 @@ export default function ContractorOS() {
         </div>
         <div style={{flex:1}}/>
         <button onClick={()=>setSegment(null)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,padding:"5px 12px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em",marginRight:8,flexShrink:0}}>Switch Type</button>
-        {seg.nav.map(id=><NavBtn key={id} id={id} label={urgentItems.length>0&&id==="compliance"?`Compliance 🔴`:navLabels[id]||id} active={screen===id}/>)}
+        {seg.nav.map(id=><NavBtn key={id} id={id} label={urgentItems.length>0&&id==="compliance"?`Compliance 🔴`:navLabels[id]||id} active={screen===id} accent={accent} onNav={handleNav}/>)}
       </div>
 
       {/* ══ DASHBOARD ══════════════════════════════════════════════════ */}
@@ -688,35 +705,30 @@ export default function ContractorOS() {
             {subScreen==="add"&&(
               <div style={{maxWidth:600,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
                 <div style={{...S.section,marginBottom:20}}>ADD ROUTE</div>
-                {(()=>{
-                  const [form,setForm]=useState({name:"",stops:"",miles:"",rate:"",driverPay:"",otherCosts:"",frequency:"Daily",vehicle:"",notes:""});
-                  return (
-                    <div style={S.card}>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                        {[["name","Route Name *","Route A / Zone 3"],["stops",seg.features.stopMetrics?"Number of Stops":"Deliveries","42"],["miles","Miles per Run","87"],["rate","Contracted Rate ($)","485"],["driverPay","Driver Pay ($)","120"],["otherCosts","Other Costs ($)","25"]].map(([f,lbl,ph])=>(
-                          <div key={f}><label style={S.label}>{lbl}</label><input value={form[f]} onChange={e=>setForm(p=>({...p,[f]:e.target.value}))} placeholder={ph} style={S.input}/></div>
-                        ))}
-                        <div><label style={S.label}>Frequency</label>
-                          <select value={form.frequency} onChange={e=>setForm(p=>({...p,frequency:e.target.value}))} style={S.input}>
-                            {["Daily","Mon-Fri","Mon-Sat","Alternate Days","Weekly"].map(o=><option key={o}>{o}</option>)}
-                          </select>
-                        </div>
-                        <div><label style={S.label}>Assigned Vehicle</label>
-                          <select value={form.vehicle} onChange={e=>setForm(p=>({...p,vehicle:e.target.value}))} style={S.input}>
-                            <option value="">Select...</option>
-                            {compliance.trucks.map(t=><option key={t.id} value={t.name}>{t.name}</option>)}
-                            <option value="Unassigned">Unassigned</option>
-                          </select>
-                        </div>
-                        <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} placeholder="Special instructions, access notes, etc." style={S.input}/></div>
-                      </div>
-                      <div style={{display:"flex",gap:12,marginTop:16}}>
-                        <button className="hov" onClick={()=>{ if(!form.name)return; setRoutes(p=>[...p,{...form,id:Date.now()}]); setSubScreen("list"); }} style={S.btn}>Save Route</button>
-                        <button onClick={()=>setSubScreen("list")} style={S.ghost}>Cancel</button>
-                      </div>
+                <div style={S.card}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    {[["name","Route Name *","Route A / Zone 3"],["stops",seg.features.stopMetrics?"Number of Stops":"Deliveries","42"],["miles","Miles per Run","87"],["rate","Contracted Rate ($)","485"],["driverPay","Driver Pay ($)","120"],["otherCosts","Other Costs ($)","25"]].map(([f,lbl,ph])=>(
+                      <div key={f}><label style={S.label}>{lbl}</label><input value={routeForm[f]} onChange={e=>setRouteForm(p=>({...p,[f]:e.target.value}))} placeholder={ph} style={S.input}/></div>
+                    ))}
+                    <div><label style={S.label}>Frequency</label>
+                      <select value={routeForm.frequency} onChange={e=>setRouteForm(p=>({...p,frequency:e.target.value}))} style={S.input}>
+                        {["Daily","Mon-Fri","Mon-Sat","Alternate Days","Weekly"].map(o=><option key={o}>{o}</option>)}
+                      </select>
                     </div>
-                  );
-                })()}
+                    <div><label style={S.label}>Assigned Vehicle</label>
+                      <select value={routeForm.vehicle} onChange={e=>setRouteForm(p=>({...p,vehicle:e.target.value}))} style={S.input}>
+                        <option value="">Select...</option>
+                        {compliance.trucks.map(t=><option key={t.id} value={t.name}>{t.name}</option>)}
+                        <option value="Unassigned">Unassigned</option>
+                      </select>
+                    </div>
+                    <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={routeForm.notes} onChange={e=>setRouteForm(p=>({...p,notes:e.target.value}))} placeholder="Special instructions, access notes, etc." style={S.input}/></div>
+                  </div>
+                  <div style={{display:"flex",gap:12,marginTop:16}}>
+                    <button className="hov" onClick={()=>{ if(!routeForm.name)return; setRoutes(p=>[...p,{...routeForm,id:Date.now()}]); setRouteForm({name:"",stops:"",miles:"",rate:"",driverPay:"",otherCosts:"",frequency:"Daily",vehicle:"",notes:""}); setSubScreen("list"); }} style={S.btn}>Save Route</button>
+                    <button onClick={()=>setSubScreen("list")} style={S.ghost}>Cancel</button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -778,91 +790,83 @@ export default function ContractorOS() {
               </div>
             )}
 
-            {subScreen==="vehicles"&&(()=>{
-              const [showAdd,setShowAdd]=useState(false);
-              const [form,setForm]=useState({name:"",year:"",make:"",plate:"",dotInspection:"",ifta:"",irp:"",registration:""});
-              return (
-                <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-                    <div style={S.section}>VEHICLE FILES</div>
-                    <button className="hov" onClick={()=>setShowAdd(!showAdd)} style={S.btn}>{showAdd?"Cancel":"+ Add Vehicle"}</button>
-                  </div>
-                  {showAdd&&(
-                    <div style={{...S.card,marginBottom:18}}>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                        {[["name","Unit Name / # *","Unit 1"],["year","Year","2019"],["make","Make & Model","International 4300"],["plate","Plate #",""],["dotInspection","DOT Inspection Expiry","date"],["registration","Registration Expiry","date"],["ifta","IFTA Renewal","date"],["irp","IRP Plate Renewal","date"]].map(([f,lbl,ph])=>(
-                          <div key={f}><label style={S.label}>{lbl}</label><input type={ph==="date"?"date":"text"} value={form[f]} onChange={e=>setForm(p=>({...p,[f]:e.target.value}))} placeholder={ph!=="date"?ph:""} style={S.input}/></div>
-                        ))}
-                      </div>
-                      <button className="hov" onClick={()=>{ if(!form.name)return; setCompliance(p=>({...p,trucks:[...p.trucks,{...form,id:Date.now()}]})); setForm({name:"",year:"",make:"",plate:"",dotInspection:"",ifta:"",irp:"",registration:""}); setShowAdd(false); }} style={{...S.btn,marginTop:14}}>Save Vehicle</button>
-                    </div>
-                  )}
-                  {compliance.trucks.length===0&&!showAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No vehicles added yet.</div>}
-                  <div style={{display:"flex",flexDirection:"column",gap:12}}>
-                    {compliance.trucks.map(t=>(
-                      <div key={t.id} style={S.card}>
-                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
-                          <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:17,fontWeight:700,color:"#e8e4d8"}}>{t.name}</div><div style={{fontSize:10,color:"#555"}}>{t.year} {t.make} {t.plate&&`· ${t.plate}`}</div></div>
-                          <div style={{display:"flex",gap:8}}>
-                            <button onClick={()=>openEdit("vehicle",t)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
-                            <button onClick={()=>setCompliance(p=>({...p,trucks:p.trucks.filter(x=>x.id!==t.id)}))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
-                          </div>
-                        </div>
-                        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-                          {[["DOT Inspection",t.dotInspection],["Registration",t.registration],["IFTA",t.ifta],["IRP Plates",t.irp]].map(([lbl,date])=>{
-                            const d=daysUntil(date),c=statusColor(d);
-                            return <div key={lbl} style={{background:"#0f0f0f",border:`1px solid ${c}22`,borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{lbl}</div><div style={{fontSize:12,color:c,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{date?new Date(date).toLocaleDateString():"—"}</div>{d!==null&&<div style={{fontSize:9,color:c,marginTop:2}}>{statusLabel(d)}</div>}</div>;
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+            {subScreen==="vehicles"&&(
+              <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+                  <div style={S.section}>VEHICLE FILES</div>
+                  <button className="hov" onClick={()=>setShowAddVehicle(!showAddVehicle)} style={S.btn}>{showAddVehicle?"Cancel":"+ Add Vehicle"}</button>
                 </div>
-              );
-            })()}
+                {showAddVehicle&&(
+                  <div style={{...S.card,marginBottom:18}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                      {[["name","Unit Name / # *","Unit 1"],["year","Year","2019"],["make","Make & Model","International 4300"],["plate","Plate #",""],["dotInspection","DOT Inspection Expiry","date"],["registration","Registration Expiry","date"],["ifta","IFTA Renewal","date"],["irp","IRP Plate Renewal","date"]].map(([f,lbl,ph])=>(
+                        <div key={f}><label style={S.label}>{lbl}</label><input type={ph==="date"?"date":"text"} value={vehicleForm[f]} onChange={e=>setVehicleForm(p=>({...p,[f]:e.target.value}))} placeholder={ph!=="date"?ph:""} style={S.input}/></div>
+                      ))}
+                    </div>
+                    <button className="hov" onClick={()=>{ if(!vehicleForm.name)return; setCompliance(p=>({...p,trucks:[...p.trucks,{...vehicleForm,id:Date.now()}]})); setVehicleForm({name:"",year:"",make:"",plate:"",dotInspection:"",ifta:"",irp:"",registration:""}); setShowAddVehicle(false); }} style={{...S.btn,marginTop:14}}>Save Vehicle</button>
+                  </div>
+                )}
+                {compliance.trucks.length===0&&!showAddVehicle&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No vehicles added yet.</div>}
+                <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                  {compliance.trucks.map(t=>(
+                    <div key={t.id} style={S.card}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
+                        <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:17,fontWeight:700,color:"#e8e4d8"}}>{t.name}</div><div style={{fontSize:10,color:"#555"}}>{t.year} {t.make} {t.plate&&`· ${t.plate}`}</div></div>
+                        <div style={{display:"flex",gap:8}}>
+                          <button onClick={()=>openEdit("vehicle",t)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
+                          <button onClick={()=>setCompliance(p=>({...p,trucks:p.trucks.filter(x=>x.id!==t.id)}))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                        </div>
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+                        {[["DOT Inspection",t.dotInspection],["Registration",t.registration],["IFTA",t.ifta],["IRP Plates",t.irp]].map(([lbl,date])=>{
+                          const d=daysUntil(date),c=statusColor(d);
+                          return <div key={lbl} style={{background:"#0f0f0f",border:`1px solid ${c}22`,borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{lbl}</div><div style={{fontSize:12,color:c,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{date?new Date(date).toLocaleDateString():"—"}</div>{d!==null&&<div style={{fontSize:9,color:c,marginTop:2}}>{statusLabel(d)}</div>}</div>;
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-            {subScreen==="drivers_comp"&&(()=>{
-              const [showAdd,setShowAdd]=useState(false);
-              const [form,setForm]=useState({name:"",cdlExpiry:"",medCardExpiry:"",mvrDue:"",drugTest:"",annualReview:""});
-              return (
-                <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-                    <div style={S.section}>DRIVER FILES</div>
-                    <button className="hov" onClick={()=>setShowAdd(!showAdd)} style={{...S.btn,background:"#60a5fa"}}>{showAdd?"Cancel":"+ Add Driver"}</button>
-                  </div>
-                  {showAdd&&(
-                    <div style={{...S.card,marginBottom:18}}>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                        {[["name","Driver Name *","text"],["cdlExpiry","CDL Expiry","date"],["medCardExpiry","Medical Card Expiry","date"],["mvrDue","MVR Pull Due","date"],["drugTest","Drug Test Due","date"],["annualReview","Annual Review Due","date"]].map(([f,lbl,t])=>(
-                          <div key={f}><label style={S.label}>{lbl}</label><input type={t} value={form[f]} onChange={e=>setForm(p=>({...p,[f]:e.target.value}))} style={S.input}/></div>
-                        ))}
-                      </div>
-                      <button className="hov" onClick={()=>{ if(!form.name)return; setCompliance(p=>({...p,drivers:[...p.drivers,{...form,id:Date.now()}]})); setForm({name:"",cdlExpiry:"",medCardExpiry:"",mvrDue:"",drugTest:"",annualReview:""}); setShowAdd(false); }} style={{...S.btn,background:"#60a5fa",marginTop:14}}>Save Driver</button>
-                    </div>
-                  )}
-                  {compliance.drivers.length===0&&!showAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No drivers added yet.</div>}
-                  <div style={{display:"flex",flexDirection:"column",gap:12}}>
-                    {compliance.drivers.map(d=>(
-                      <div key={d.id} style={S.card}>
-                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
-                          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:17,fontWeight:700,color:"#e8e4d8"}}>{d.name}</div>
-                          <div style={{display:"flex",gap:8}}>
-                            <button onClick={()=>openEdit("compdriver",d)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
-                            <button onClick={()=>setCompliance(p=>({...p,drivers:p.drivers.filter(x=>x.id!==d.id)}))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
-                          </div>
-                        </div>
-                        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
-                          {[["CDL",d.cdlExpiry],["Med Card",d.medCardExpiry],["MVR Due",d.mvrDue],["Drug Test",d.drugTest],["Annual Review",d.annualReview]].map(([lbl,date])=>{
-                            const dy=daysUntil(date),c=statusColor(dy);
-                            return <div key={lbl} style={{background:"#0f0f0f",border:`1px solid ${c}22`,borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{lbl}</div><div style={{fontSize:12,color:c,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{date?new Date(date).toLocaleDateString():"—"}</div>{dy!==null&&<div style={{fontSize:9,color:c,marginTop:2}}>{statusLabel(dy)}</div>}</div>;
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+            {subScreen==="drivers_comp"&&(
+              <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+                  <div style={S.section}>DRIVER FILES</div>
+                  <button className="hov" onClick={()=>setShowAddCompDriver(!showAddCompDriver)} style={{...S.btn,background:"#60a5fa"}}>{showAddCompDriver?"Cancel":"+ Add Driver"}</button>
                 </div>
-              );
-            })()}
+                {showAddCompDriver&&(
+                  <div style={{...S.card,marginBottom:18}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                      {[["name","Driver Name *","text"],["cdlExpiry","CDL Expiry","date"],["medCardExpiry","Medical Card Expiry","date"],["mvrDue","MVR Pull Due","date"],["drugTest","Drug Test Due","date"],["annualReview","Annual Review Due","date"]].map(([f,lbl,t])=>(
+                        <div key={f}><label style={S.label}>{lbl}</label><input type={t} value={compDriverForm[f]} onChange={e=>setCompDriverForm(p=>({...p,[f]:e.target.value}))} style={S.input}/></div>
+                      ))}
+                    </div>
+                    <button className="hov" onClick={()=>{ if(!compDriverForm.name)return; setCompliance(p=>({...p,drivers:[...p.drivers,{...compDriverForm,id:Date.now()}]})); setCompDriverForm({name:"",cdlExpiry:"",medCardExpiry:"",mvrDue:"",drugTest:"",annualReview:""}); setShowAddCompDriver(false); }} style={{...S.btn,background:"#60a5fa",marginTop:14}}>Save Driver</button>
+                  </div>
+                )}
+                {compliance.drivers.length===0&&!showAddCompDriver&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No drivers added yet.</div>}
+                <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                  {compliance.drivers.map(d=>(
+                    <div key={d.id} style={S.card}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:17,fontWeight:700,color:"#e8e4d8"}}>{d.name}</div>
+                        <div style={{display:"flex",gap:8}}>
+                          <button onClick={()=>openEdit("compdriver",d)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
+                          <button onClick={()=>setCompliance(p=>({...p,drivers:p.drivers.filter(x=>x.id!==d.id)}))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                        </div>
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+                        {[["CDL",d.cdlExpiry],["Med Card",d.medCardExpiry],["MVR Due",d.mvrDue],["Drug Test",d.drugTest],["Annual Review",d.annualReview]].map(([lbl,date])=>{
+                          const dy=daysUntil(date),c=statusColor(dy);
+                          return <div key={lbl} style={{background:"#0f0f0f",border:`1px solid ${c}22`,borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{lbl}</div><div style={{fontSize:12,color:c,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{date?new Date(date).toLocaleDateString():"—"}</div>{dy!==null&&<div style={{fontSize:9,color:c,marginTop:2}}>{statusLabel(dy)}</div>}</div>;
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {subScreen==="docs"&&(
               <div style={{maxWidth:820,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -911,276 +915,255 @@ export default function ContractorOS() {
       )}
 
       {/* ══ DRIVERS ════════════════════════════════════════════════════ */}
-      {screen==="drivers"&&(()=>{
-        const [showAdd,setShowAdd]=useState(false);
-        const [form,setForm]=useState({name:"",route:"",payType:"per_mile",payRate:"",ytdPay:"",phone:"",hireDate:"",status:"active"});
-        return (
-          <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-            <SubNav tabs={[["list","All Drivers"],["scorecards","Scorecards"],["incidents","Incidents"]]} active={subScreen||"list"} onSelect={setSubScreen}/>
-            <div style={{flex:1,overflowY:"auto",padding:24}}>
-              {(!subScreen||subScreen==="list")&&(
-                <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-                    <div style={S.section}>DRIVER MANAGEMENT</div>
-                    <button className="hov" onClick={()=>setShowAdd(!showAdd)} style={{...S.btn,background:"#60a5fa"}}>{showAdd?"Cancel":"+ Add Driver"}</button>
+      {screen==="drivers"&&(
+        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          <SubNav tabs={[["list","All Drivers"],["scorecards","Scorecards"],["incidents","Incidents"]]} active={subScreen||"list"} onSelect={setSubScreen}/>
+          <div style={{flex:1,overflowY:"auto",padding:24}}>
+            {(!subScreen||subScreen==="list")&&(
+              <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+                  <div style={S.section}>DRIVER MANAGEMENT</div>
+                  <button className="hov" onClick={()=>setShowAddDriver(!showAddDriver)} style={{...S.btn,background:"#60a5fa"}}>{showAddDriver?"Cancel":"+ Add Driver"}</button>
+                </div>
+                {showAddDriver&&(
+                  <div style={{...S.card,marginBottom:18}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                      {[["name","Full Name *","text",""],["phone","Phone","text",""],["hireDate","Hire Date","date",""],["route","Assigned Route","text","Route A"]].map(([f,lbl,t,ph])=>(
+                        <div key={f}><label style={S.label}>{lbl}</label><input type={t} value={driverForm[f]} onChange={e=>setDriverForm(p=>({...p,[f]:e.target.value}))} placeholder={ph} style={S.input}/></div>
+                      ))}
+                      <div><label style={S.label}>Pay Type</label>
+                        <select value={driverForm.payType} onChange={e=>setDriverForm(p=>({...p,payType:e.target.value}))} style={S.input}>
+                          <option value="per_mile">Per Mile</option><option value="per_stop">Per Stop</option><option value="percentage">% of Route</option><option value="hourly">Hourly</option><option value="salary">Salary</option>
+                        </select>
+                      </div>
+                      <div><label style={S.label}>Pay Rate</label><input value={driverForm.payRate} onChange={e=>setDriverForm(p=>({...p,payRate:e.target.value}))} placeholder="0.00" style={S.input}/></div>
+                      <div><label style={S.label}>YTD Earnings ($)</label><input type="number" value={driverForm.ytdPay} onChange={e=>setDriverForm(p=>({...p,ytdPay:e.target.value}))} placeholder="0.00" style={S.input}/></div>
+                      <div><label style={S.label}>Status</label>
+                        <select value={driverForm.status} onChange={e=>setDriverForm(p=>({...p,status:e.target.value}))} style={S.input}>
+                          <option value="active">Active</option><option value="on_leave">On Leave</option><option value="terminated">Terminated</option>
+                        </select>
+                      </div>
+                    </div>
+                    <button className="hov" onClick={()=>{ if(!driverForm.name)return; setDrivers(p=>[...p,{...driverForm,id:Date.now(),incidents:[],scores:[]}]); setDriverForm({name:"",route:"",payType:"per_mile",payRate:"",ytdPay:"",phone:"",hireDate:"",status:"active"}); setShowAddDriver(false); }} style={{...S.btn,background:"#60a5fa",marginTop:14}}>Save Driver</button>
                   </div>
-                  {showAdd&&(
-                    <div style={{...S.card,marginBottom:18}}>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                        {[["name","Full Name *","text",""],["phone","Phone","text",""],["hireDate","Hire Date","date",""],["route","Assigned Route","text","Route A"]].map(([f,lbl,t,ph])=>(
-                          <div key={f}><label style={S.label}>{lbl}</label><input type={t} value={form[f]} onChange={e=>setForm(p=>({...p,[f]:e.target.value}))} placeholder={ph} style={S.input}/></div>
+                )}
+                {drivers.length===0&&!showAddDriver&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No drivers added yet.</div>}
+                <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                  {drivers.map(d=>(
+                    <div key={d.id} style={{...S.card,display:"flex",alignItems:"center",gap:16}}>
+                      <div style={{width:36,height:36,background:d.status==="active"?"#22c55e22":"#ef444422",border:`1px solid ${d.status==="active"?"#22c55e44":"#ef444444"}`,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:d.status==="active"?"#22c55e":"#ef4444",flexShrink:0}}>{d.name.charAt(0)}</div>
+                      <div style={{flex:1}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{d.name}</div><div style={{fontSize:10,color:"#555"}}>{d.route||"No route"} · {d.payType==="per_mile"?`$${d.payRate}/mi`:d.payType==="per_stop"?`$${d.payRate}/stop`:d.payType==="percentage"?`${d.payRate}% of route`:d.payType==="hourly"?`$${d.payRate}/hr`:`$${d.payRate}/yr`}</div></div>
+                      <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>YTD Pay</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e"}}>{fmt$(parseFloat(d.ytdPay||0))}</div></div>
+                      <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Incidents</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:(d.incidents||[]).length>0?"#ef4444":"#22c55e"}}>{(d.incidents||[]).length}</div></div>
+                      <button onClick={()=>openEdit("driver",d)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
+                      <button onClick={()=>setDrivers(p=>p.filter(x=>x.id!==d.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {subScreen==="scorecards"&&(
+              <div style={{maxWidth:760,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{...S.section,marginBottom:20}}>DRIVER SCORECARDS</div>
+                {drivers.length===0?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No drivers added yet.</div>:
+                <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                  {drivers.map(d=>(
+                    <div key={d.id} style={S.card}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:14}}>{d.name} — {d.route||"Unassigned"}</div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:12}}>
+                        {[["On-Time %","—"],["Package Care","—"],["Customer Rating","—"],["Incidents",(d.incidents||[]).length.toString()],["Tenure",d.hireDate?`${Math.floor((new Date()-new Date(d.hireDate))/86400000/30)}mo`:"—"]].map(([lbl,val])=>(
+                          <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px",textAlign:"center"}}><div style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}}>{lbl}</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:val==="0"?"#22c55e":lbl==="Incidents"&&val!=="0"?"#ef4444":accent}}>{val}</div></div>
                         ))}
-                        <div><label style={S.label}>Pay Type</label>
-                          <select value={form.payType} onChange={e=>setForm(p=>({...p,payType:e.target.value}))} style={S.input}>
-                            <option value="per_mile">Per Mile</option><option value="per_stop">Per Stop</option><option value="percentage">% of Route</option><option value="hourly">Hourly</option><option value="salary">Salary</option>
-                          </select>
-                        </div>
-                        <div><label style={S.label}>Pay Rate</label><input value={form.payRate} onChange={e=>setForm(p=>({...p,payRate:e.target.value}))} placeholder="0.00" style={S.input}/></div>
-                        <div><label style={S.label}>YTD Earnings ($)</label><input type="number" value={form.ytdPay} onChange={e=>setForm(p=>({...p,ytdPay:e.target.value}))} placeholder="0.00" style={S.input}/></div>
-                        <div><label style={S.label}>Status</label>
-                          <select value={form.status} onChange={e=>setForm(p=>({...p,status:e.target.value}))} style={S.input}>
-                            <option value="active">Active</option><option value="on_leave">On Leave</option><option value="terminated">Terminated</option>
-                          </select>
-                        </div>
                       </div>
-                      <button className="hov" onClick={()=>{ if(!form.name)return; setDrivers(p=>[...p,{...form,id:Date.now(),incidents:[],scores:[]}]); setForm({name:"",route:"",payType:"per_mile",payRate:"",ytdPay:"",phone:"",hireDate:"",status:"active"}); setShowAdd(false); }} style={{...S.btn,background:"#60a5fa",marginTop:14}}>Save Driver</button>
+                      <div style={{fontSize:10,color:"#444",fontStyle:"italic"}}>Connect telematics data (e.g. Amazon Mentor, FedEx GPS) to populate real-time scores.</div>
                     </div>
-                  )}
-                  {drivers.length===0&&!showAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No drivers added yet.</div>}
-                  <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                    {drivers.map(d=>(
-                      <div key={d.id} style={{...S.card,display:"flex",alignItems:"center",gap:16}}>
-                        <div style={{width:36,height:36,background:d.status==="active"?"#22c55e22":"#ef444422",border:`1px solid ${d.status==="active"?"#22c55e44":"#ef444444"}`,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:d.status==="active"?"#22c55e":"#ef4444",flexShrink:0}}>{d.name.charAt(0)}</div>
-                        <div style={{flex:1}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{d.name}</div><div style={{fontSize:10,color:"#555"}}>{d.route||"No route"} · {d.payType==="per_mile"?`$${d.payRate}/mi`:d.payType==="per_stop"?`$${d.payRate}/stop`:d.payType==="percentage"?`${d.payRate}% of route`:d.payType==="hourly"?`$${d.payRate}/hr`:`$${d.payRate}/yr`}</div></div>
-                        <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>YTD Pay</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e"}}>{fmt$(parseFloat(d.ytdPay||0))}</div></div>
-                        <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Incidents</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:(d.incidents||[]).length>0?"#ef4444":"#22c55e"}}>{(d.incidents||[]).length}</div></div>
-                        <button onClick={()=>openEdit("driver",d)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
-                        <button onClick={()=>setDrivers(p=>p.filter(x=>x.id!==d.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
-                      </div>
-                    ))}
-                  </div>
+                  ))}
+                </div>}
+              </div>
+            )}
+            {subScreen==="incidents"&&(
+              <div style={{maxWidth:760,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+                  <div style={S.section}>INCIDENT LOG</div>
+                  <button className="hov" onClick={()=>setShowAddIncident(showAddIncident?"hide":"show")} style={S.danger}>{showAddIncident?"Cancel":"+ Log Incident"}</button>
                 </div>
-              )}
-
-              {subScreen==="scorecards"&&(
-                <div style={{maxWidth:760,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                  <div style={{...S.section,marginBottom:20}}>DRIVER SCORECARDS</div>
-                  {drivers.length===0?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No drivers added yet.</div>:
-                  <div style={{display:"flex",flexDirection:"column",gap:12}}>
-                    {drivers.map(d=>(
-                      <div key={d.id} style={S.card}>
-                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:14}}>{d.name} — {d.route||"Unassigned"}</div>
-                        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:12}}>
-                          {[["On-Time %","—"],["Package Care","—"],["Customer Rating","—"],["Incidents",(d.incidents||[]).length.toString()],["Tenure",d.hireDate?`${Math.floor((new Date()-new Date(d.hireDate))/86400000/30)}mo`:"—"]].map(([lbl,val])=>(
-                            <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px",textAlign:"center"}}><div style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}}>{lbl}</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:val==="0"?"#22c55e":lbl==="Incidents"&&val!=="0"?"#ef4444":accent}}>{val}</div></div>
-                          ))}
-                        </div>
-                        <div style={{fontSize:10,color:"#444",fontStyle:"italic"}}>Connect telematics data (e.g. Amazon Mentor, FedEx GPS) to populate real-time scores.</div>
+                {showAddIncident&&showAddIncident!=="hide"&&(
+                  <div style={{...S.card,marginBottom:18}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                      <div><label style={S.label}>Driver</label>
+                        <select value={incidentForm.driverId} onChange={e=>setIncidentForm(p=>({...p,driverId:e.target.value}))} style={S.input}>
+                          <option value="">Select driver...</option>
+                          {drivers.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}
+                        </select>
                       </div>
-                    ))}
-                  </div>}
-                </div>
-              )}
-
-              {subScreen==="incidents"&&(()=>{
-                const [showAdd,setShowAdd]=useState(false);
-                const [form,setForm]=useState({driverId:"",date:"",type:"delivery",description:"",severity:"minor"});
-                const allIncidents=[...incidents,...drivers.flatMap(d=>(d.incidents||[]).map(i=>({...i,driverName:d.name})))].sort((a,b)=>new Date(b.date)-new Date(a.date));
-                return (
-                  <div style={{maxWidth:760,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-                      <div style={S.section}>INCIDENT LOG</div>
-                      <button className="hov" onClick={()=>setShowAdd(!showAdd)} style={S.danger}>{showAdd?"Cancel":"+ Log Incident"}</button>
-                    </div>
-                    {showAdd&&(
-                      <div style={{...S.card,marginBottom:18}}>
-                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                          <div><label style={S.label}>Driver</label>
-                            <select value={form.driverId} onChange={e=>setForm(p=>({...p,driverId:e.target.value}))} style={S.input}>
-                              <option value="">Select driver...</option>
-                              {drivers.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}
-                            </select>
-                          </div>
-                          <div><label style={S.label}>Date</label><input type="date" value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
-                          <div><label style={S.label}>Type</label>
-                            <select value={form.type} onChange={e=>setForm(p=>({...p,type:e.target.value}))} style={S.input}>
-                              <option value="delivery">Delivery Issue</option><option value="vehicle">Vehicle Damage</option><option value="accident">Accident</option><option value="customer">Customer Complaint</option><option value="safety">Safety Violation</option><option value="other">Other</option>
-                            </select>
-                          </div>
-                          <div><label style={S.label}>Severity</label>
-                            <select value={form.severity} onChange={e=>setForm(p=>({...p,severity:e.target.value}))} style={S.input}>
-                              <option value="minor">Minor</option><option value="moderate">Moderate</option><option value="major">Major</option><option value="critical">Critical</option>
-                            </select>
-                          </div>
-                          <div style={{gridColumn:"1/-1"}}><label style={S.label}>Description *</label><input value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} placeholder="What happened?" style={S.input}/></div>
-                        </div>
-                        <button className="hov" onClick={()=>{ if(!form.description)return; const driver=drivers.find(d=>d.id===form.driverId); const inc={...form,id:Date.now(),driverName:driver?.name||"Unknown"}; setIncidents(p=>[inc,...p]); setForm({driverId:"",date:"",type:"delivery",description:"",severity:"minor"}); setShowAdd(false); }} style={{...S.danger,marginTop:14}}>Save Incident</button>
+                      <div><label style={S.label}>Date</label><input type="date" value={incidentForm.date} onChange={e=>setIncidentForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
+                      <div><label style={S.label}>Type</label>
+                        <select value={incidentForm.type} onChange={e=>setIncidentForm(p=>({...p,type:e.target.value}))} style={S.input}>
+                          <option value="delivery">Delivery Issue</option><option value="vehicle">Vehicle Damage</option><option value="accident">Accident</option><option value="customer">Customer Complaint</option><option value="safety">Safety Violation</option><option value="other">Other</option>
+                        </select>
                       </div>
-                    )}
-                    {allIncidents.length===0&&!showAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No incidents logged. Good work!</div>}
-                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                      {allIncidents.map(inc=>{
-                        const sc={minor:"#555",moderate:"#f59e0b",major:"#f87171",critical:"#ef4444"}[inc.severity]||"#555";
-                        return <div key={inc.id} style={{...S.card,borderLeft:`3px solid ${sc}`,display:"flex",alignItems:"center",gap:14}}>
-                          <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{inc.description}</div><div style={{fontSize:10,color:"#555"}}>{inc.driverName||"Unknown"} · {inc.type} · {inc.date}</div></div>
-                          <span style={{fontSize:9,color:sc,textTransform:"uppercase",letterSpacing:"0.1em",flexShrink:0,border:`1px solid ${sc}33`,padding:"2px 7px",borderRadius:3}}>{inc.severity}</span>
-                        </div>;
-                      })}
+                      <div><label style={S.label}>Severity</label>
+                        <select value={incidentForm.severity} onChange={e=>setIncidentForm(p=>({...p,severity:e.target.value}))} style={S.input}>
+                          <option value="minor">Minor</option><option value="moderate">Moderate</option><option value="major">Major</option><option value="critical">Critical</option>
+                        </select>
+                      </div>
+                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Description *</label><input value={incidentForm.description} onChange={e=>setIncidentForm(p=>({...p,description:e.target.value}))} placeholder="What happened?" style={S.input}/></div>
                     </div>
+                    <button className="hov" onClick={()=>{ if(!incidentForm.description)return; const driver=drivers.find(d=>d.id===incidentForm.driverId); const inc={...incidentForm,id:Date.now(),driverName:driver?.name||"Unknown"}; setIncidents(p=>[inc,...p]); setIncidentForm({driverId:"",date:"",type:"delivery",description:"",severity:"minor"}); setShowAddIncident(null); }} style={{...S.danger,marginTop:14}}>Save Incident</button>
                   </div>
-                );
-              })()}
-            </div>
+                )}
+                {incidents.length===0&&!showAddIncident&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No incidents logged. Good work!</div>}
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {[...incidents,...drivers.flatMap(d=>(d.incidents||[]).map(i=>({...i,driverName:d.name})))].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(inc=>{
+                    const sc={minor:"#555",moderate:"#f59e0b",major:"#f87171",critical:"#ef4444"}[inc.severity]||"#555";
+                    return <div key={inc.id} style={{...S.card,borderLeft:`3px solid ${sc}`,display:"flex",alignItems:"center",gap:14}}>
+                      <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{inc.description}</div><div style={{fontSize:10,color:"#555"}}>{inc.driverName||"Unknown"} · {inc.type} · {inc.date}</div></div>
+                      <span style={{fontSize:9,color:sc,textTransform:"uppercase",letterSpacing:"0.1em",flexShrink:0,border:`1px solid ${sc}33`,padding:"2px 7px",borderRadius:3}}>{inc.severity}</span>
+                    </div>;
+                  })}
+                </div>
+              </div>
+            )}
           </div>
-        );
-      })()}
+        </div>
+      )}
 
       {/* ══ FLEET / MAINTENANCE ════════════════════════════════════════ */}
-      {screen==="fleet"&&(()=>{
-        const [showAdd,setShowAdd]=useState(false);
-        const [form,setForm]=useState({truckName:"",type:"",date:"",mileage:"",cost:"",notes:"",nextDueMiles:""});
-        return (
-          <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-            <SubNav tabs={[["log","Maintenance Log"],["schedule","Upcoming Service"]]} active={subScreen||"log"} onSelect={setSubScreen}/>
-            <div style={{flex:1,overflowY:"auto",padding:24}}>
-              {(!subScreen||subScreen==="log")&&(
-                <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-                    <div style={S.section}>MAINTENANCE LOG</div>
-                    <button className="hov" onClick={()=>setShowAdd(!showAdd)} style={S.btn}>{showAdd?"Cancel":"+ Log Service"}</button>
-                  </div>
-                  {showAdd&&(
-                    <div style={{...S.card,marginBottom:18}}>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                        <div><label style={S.label}>Vehicle *</label>
-                          <select value={form.truckName} onChange={e=>setForm(p=>({...p,truckName:e.target.value}))} style={S.input}>
-                            <option value="">Select...</option>
-                            {compliance.trucks.map(t=><option key={t.id} value={t.name}>{t.name}</option>)}
-                            <option value="Other">Other</option>
-                          </select>
-                        </div>
-                        <div><label style={S.label}>Service Type *</label>
-                          <select value={form.type} onChange={e=>setForm(p=>({...p,type:e.target.value}))} style={S.input}>
-                            <option value="">Select...</option>
-                            {["Oil Change","Tire Rotation","Tire Replacement","Brake Service","Brake Replacement","Air Filter","Transmission Service","Battery","Alternator","Suspension","Annual DOT Inspection","PM Service","Roadside Repair","Body Repair","Other"].map(t=><option key={t}>{t}</option>)}
-                          </select>
-                        </div>
-                        <div><label style={S.label}>Date</label><input type="date" value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
-                        <div><label style={S.label}>Mileage</label><input type="number" value={form.mileage} onChange={e=>setForm(p=>({...p,mileage:e.target.value}))} placeholder="142500" style={S.input}/></div>
-                        <div><label style={S.label}>Cost ($)</label><input type="number" value={form.cost} onChange={e=>setForm(p=>({...p,cost:e.target.value}))} placeholder="0.00" style={S.input}/></div>
-                        <div><label style={S.label}>Next Due (miles)</label><input type="number" value={form.nextDueMiles} onChange={e=>setForm(p=>({...p,nextDueMiles:e.target.value}))} placeholder="147500" style={S.input}/></div>
-                        <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} placeholder="Shop name, parts, etc." style={S.input}/></div>
+      {screen==="fleet"&&(
+        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          <SubNav tabs={[["log","Maintenance Log"],["schedule","Upcoming Service"]]} active={subScreen||"log"} onSelect={setSubScreen}/>
+          <div style={{flex:1,overflowY:"auto",padding:24}}>
+            {(!subScreen||subScreen==="log")&&(
+              <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+                  <div style={S.section}>MAINTENANCE LOG</div>
+                  <button className="hov" onClick={()=>setShowAddMaint(!showAddMaint)} style={S.btn}>{showAddMaint?"Cancel":"+ Log Service"}</button>
+                </div>
+                {showAddMaint&&(
+                  <div style={{...S.card,marginBottom:18}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                      <div><label style={S.label}>Vehicle *</label>
+                        <select value={maintForm.truckName} onChange={e=>setMaintForm(p=>({...p,truckName:e.target.value}))} style={S.input}>
+                          <option value="">Select...</option>
+                          {compliance.trucks.map(t=><option key={t.id} value={t.name}>{t.name}</option>)}
+                          <option value="Other">Other</option>
+                        </select>
                       </div>
-                      <button className="hov" onClick={()=>{ if(!form.truckName||!form.type)return; setMaintenance(p=>[{...form,id:Date.now()},...p]); setForm({truckName:"",type:"",date:"",mileage:"",cost:"",notes:"",nextDueMiles:""}); setShowAdd(false); }} style={{...S.btn,marginTop:14}}>Save Record</button>
+                      <div><label style={S.label}>Service Type *</label>
+                        <select value={maintForm.type} onChange={e=>setMaintForm(p=>({...p,type:e.target.value}))} style={S.input}>
+                          <option value="">Select...</option>
+                          {["Oil Change","Tire Rotation","Tire Replacement","Brake Service","Brake Replacement","Air Filter","Transmission Service","Battery","Alternator","Suspension","Annual DOT Inspection","PM Service","Roadside Repair","Body Repair","Other"].map(t=><option key={t}>{t}</option>)}
+                        </select>
+                      </div>
+                      <div><label style={S.label}>Date</label><input type="date" value={maintForm.date} onChange={e=>setMaintForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
+                      <div><label style={S.label}>Mileage</label><input type="number" value={maintForm.mileage} onChange={e=>setMaintForm(p=>({...p,mileage:e.target.value}))} placeholder="142500" style={S.input}/></div>
+                      <div><label style={S.label}>Cost ($)</label><input type="number" value={maintForm.cost} onChange={e=>setMaintForm(p=>({...p,cost:e.target.value}))} placeholder="0.00" style={S.input}/></div>
+                      <div><label style={S.label}>Next Due (miles)</label><input type="number" value={maintForm.nextDueMiles} onChange={e=>setMaintForm(p=>({...p,nextDueMiles:e.target.value}))} placeholder="147500" style={S.input}/></div>
+                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={maintForm.notes} onChange={e=>setMaintForm(p=>({...p,notes:e.target.value}))} placeholder="Shop name, parts, etc." style={S.input}/></div>
                     </div>
-                  )}
-                  {maintenance.length===0&&!showAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No maintenance records yet.</div>}
-                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                    {maintenance.map(m=>(
-                      <div key={m.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
-                        <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{m.truckName} — {m.type}</div><div style={{fontSize:10,color:"#555"}}>{m.date} {m.mileage?`· ${parseInt(m.mileage).toLocaleString()} mi`:""} {m.notes?`· ${m.notes}`:""}</div></div>
-                        {m.cost&&<div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ef4444",flexShrink:0}}>{fmt$(parseFloat(m.cost))}</div>}
-                        {m.nextDueMiles&&<div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:9,color:"#555"}}>Next</div><div style={{fontSize:12,color:"#f59e0b"}}>{parseInt(m.nextDueMiles).toLocaleString()} mi</div></div>}
-                        <button onClick={()=>openEdit("maintenance",m)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace",flexShrink:0}}>Edit</button>
-                        <button onClick={()=>setMaintenance(p=>p.filter(x=>x.id!==m.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
-                      </div>
-                    ))}
+                    <button className="hov" onClick={()=>{ if(!maintForm.truckName||!maintForm.type)return; setMaintenance(p=>[{...maintForm,id:Date.now()},...p]); setMaintForm({truckName:"",type:"",date:"",mileage:"",cost:"",notes:"",nextDueMiles:""}); setShowAddMaint(false); }} style={{...S.btn,marginTop:14}}>Save Record</button>
                   </div>
+                )}
+                {maintenance.length===0&&!showAddMaint&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No maintenance records yet.</div>}
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {maintenance.map(m=>(
+                    <div key={m.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
+                      <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{m.truckName} — {m.type}</div><div style={{fontSize:10,color:"#555"}}>{m.date} {m.mileage?`· ${parseInt(m.mileage).toLocaleString()} mi`:""} {m.notes?`· ${m.notes}`:""}</div></div>
+                      {m.cost&&<div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ef4444",flexShrink:0}}>{fmt$(parseFloat(m.cost))}</div>}
+                      {m.nextDueMiles&&<div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:9,color:"#555"}}>Next</div><div style={{fontSize:12,color:"#f59e0b"}}>{parseInt(m.nextDueMiles).toLocaleString()} mi</div></div>}
+                      <button onClick={()=>openEdit("maintenance",m)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace",flexShrink:0}}>Edit</button>
+                      <button onClick={()=>setMaintenance(p=>p.filter(x=>x.id!==m.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
+                    </div>
+                  ))}
                 </div>
-              )}
-              {subScreen==="schedule"&&(
-                <div style={{maxWidth:700,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                  <div style={{...S.section,marginBottom:20}}>UPCOMING SERVICE</div>
-                  {maintenance.filter(m=>m.nextDueMiles).length===0?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No upcoming service items set.</div>:
-                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                    {maintenance.filter(m=>m.nextDueMiles).sort((a,b)=>parseInt(a.nextDueMiles)-parseInt(b.nextDueMiles)).map(m=>(
-                      <div key={m.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
-                        <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{m.type} — {m.truckName}</div><div style={{fontSize:10,color:"#555"}}>Last: {m.date||"Unknown"} {m.mileage?`at ${parseInt(m.mileage).toLocaleString()} mi`:""}</div></div>
-                        <div style={{textAlign:"right"}}><div style={{fontSize:9,color:"#555"}}>Next Due</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#f59e0b"}}>{parseInt(m.nextDueMiles).toLocaleString()} mi</div></div>
-                      </div>
-                    ))}
-                  </div>}
-                </div>
-              )}
-            </div>
+              </div>
+            )}
+            {subScreen==="schedule"&&(
+              <div style={{maxWidth:700,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{...S.section,marginBottom:20}}>UPCOMING SERVICE</div>
+                {maintenance.filter(m=>m.nextDueMiles).length===0?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No upcoming service items set.</div>:
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {maintenance.filter(m=>m.nextDueMiles).sort((a,b)=>parseInt(a.nextDueMiles)-parseInt(b.nextDueMiles)).map(m=>(
+                    <div key={m.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
+                      <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{m.type} — {m.truckName}</div><div style={{fontSize:10,color:"#555"}}>Last: {m.date||"Unknown"} {m.mileage?`at ${parseInt(m.mileage).toLocaleString()} mi`:""}</div></div>
+                      <div style={{textAlign:"right"}}><div style={{fontSize:9,color:"#555"}}>Next Due</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#f59e0b"}}>{parseInt(m.nextDueMiles).toLocaleString()} mi</div></div>
+                    </div>
+                  ))}
+                </div>}
+              </div>
+            )}
           </div>
-        );
-      })()}
+        </div>
+      )}
 
       {/* ══ CONTRACTS ══════════════════════════════════════════════════ */}
-      {screen==="contracts"&&(()=>{
-        const [showAdd,setShowAdd]=useState(false);
-        const [form,setForm]=useState({name:"",company:"",startDate:"",renewalDate:"",value:"",type:"route",status:"active",notes:""});
-        const contractTypeLabels={fedex:"FedEx ISP Agreement",amazon:"DSP Operating Agreement",lastmile:"Delivery Service Agreement",usps:"HCR Contract",otr:"Freight Contract"};
-        return (
-          <div style={{flex:1,overflowY:"auto",padding:24,animation:"fadeUp 0.3s ease"}}>
-            <div style={{maxWidth:800,margin:"0 auto"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-                <div>
-                  <div style={S.section}>CONTRACT TRACKER</div>
-                  <div style={{fontSize:11,color:"#555",marginTop:4}}>Track renewal dates, performance requirements, and contract value.</div>
-                </div>
-                <button className="hov" onClick={()=>setShowAdd(!showAdd)} style={{...S.btn,background:"#8888cc"}}>{showAdd?"Cancel":"+ Add Contract"}</button>
+      {screen==="contracts"&&(
+        <div style={{flex:1,overflowY:"auto",padding:24,animation:"fadeUp 0.3s ease"}}>
+          <div style={{maxWidth:800,margin:"0 auto"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <div>
+                <div style={S.section}>CONTRACT TRACKER</div>
+                <div style={{fontSize:11,color:"#555",marginTop:4}}>Track renewal dates, performance requirements, and contract value.</div>
               </div>
-              {showAdd&&(
-                <div style={{...S.card,marginBottom:18}}>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                    <div><label style={S.label}>Contract Name *</label><input value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder={contractTypeLabels[seg.id]||"Contract name"} style={S.input}/></div>
-                    <div><label style={S.label}>Company / Client</label><input value={form.company} onChange={e=>setForm(p=>({...p,company:e.target.value}))} placeholder="FedEx Ground, Amazon, etc." style={S.input}/></div>
-                    <div><label style={S.label}>Start Date</label><input type="date" value={form.startDate} onChange={e=>setForm(p=>({...p,startDate:e.target.value}))} style={S.input}/></div>
-                    <div><label style={S.label}>Renewal / Expiry Date</label><input type="date" value={form.renewalDate} onChange={e=>setForm(p=>({...p,renewalDate:e.target.value}))} style={S.input}/></div>
-                    <div><label style={S.label}>Annual Contract Value ($)</label><input type="number" value={form.value} onChange={e=>setForm(p=>({...p,value:e.target.value}))} placeholder="500000" style={S.input}/></div>
-                    <div><label style={S.label}>Status</label>
-                      <select value={form.status} onChange={e=>setForm(p=>({...p,status:e.target.value}))} style={S.input}>
-                        <option value="active">Active</option><option value="up_for_renewal">Up for Renewal</option><option value="in_negotiation">In Negotiation</option><option value="expired">Expired</option>
-                      </select>
-                    </div>
-                    <div style={{gridColumn:"1/-1"}}><label style={S.label}>Key Notes / Performance Requirements</label><textarea value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} placeholder="Performance metrics, compliance requirements, escalation contacts..." style={{...S.input,height:80,resize:"vertical"}}/></div>
+              <button className="hov" onClick={()=>setShowAddContract(!showAddContract)} style={{...S.btn,background:"#8888cc"}}>{showAddContract?"Cancel":"+ Add Contract"}</button>
+            </div>
+            {showAddContract&&(
+              <div style={{...S.card,marginBottom:18}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                  <div><label style={S.label}>Contract Name *</label><input value={contractForm.name} onChange={e=>setContractForm(p=>({...p,name:e.target.value}))} placeholder={seg.id==="fedex"?"FedEx ISP Agreement":seg.id==="amazon"?"DSP Operating Agreement":seg.id==="usps"?"HCR Contract":"Contract name"} style={S.input}/></div>
+                  <div><label style={S.label}>Company / Client</label><input value={contractForm.company} onChange={e=>setContractForm(p=>({...p,company:e.target.value}))} placeholder="FedEx Ground, Amazon, etc." style={S.input}/></div>
+                  <div><label style={S.label}>Start Date</label><input type="date" value={contractForm.startDate} onChange={e=>setContractForm(p=>({...p,startDate:e.target.value}))} style={S.input}/></div>
+                  <div><label style={S.label}>Renewal / Expiry Date</label><input type="date" value={contractForm.renewalDate} onChange={e=>setContractForm(p=>({...p,renewalDate:e.target.value}))} style={S.input}/></div>
+                  <div><label style={S.label}>Annual Contract Value ($)</label><input type="number" value={contractForm.value} onChange={e=>setContractForm(p=>({...p,value:e.target.value}))} placeholder="500000" style={S.input}/></div>
+                  <div><label style={S.label}>Status</label>
+                    <select value={contractForm.status} onChange={e=>setContractForm(p=>({...p,status:e.target.value}))} style={S.input}>
+                      <option value="active">Active</option><option value="up_for_renewal">Up for Renewal</option><option value="in_negotiation">In Negotiation</option><option value="expired">Expired</option>
+                    </select>
                   </div>
-                  <button className="hov" onClick={()=>{ if(!form.name)return; setContracts(p=>[...p,{...form,id:Date.now()}]); setForm({name:"",company:"",startDate:"",renewalDate:"",value:"",type:"route",status:"active",notes:""}); setShowAdd(false); }} style={{...S.btn,background:"#8888cc",marginTop:14}}>Save Contract</button>
+                  <div style={{gridColumn:"1/-1"}}><label style={S.label}>Key Notes / Performance Requirements</label><textarea value={contractForm.notes} onChange={e=>setContractForm(p=>({...p,notes:e.target.value}))} placeholder="Performance metrics, compliance requirements, escalation contacts..." style={{...S.input,height:80,resize:"vertical"}}/></div>
                 </div>
-              )}
-              {contracts.length===0&&!showAdd&&(
-                <div style={{...S.card,textAlign:"center",padding:40}}>
-                  <div style={{fontSize:13,color:"#555",marginBottom:8}}>No contracts tracked yet.</div>
-                  <div style={{fontSize:11,color:"#444",lineHeight:1.7}}>
-                    {seg.id==="fedex"?"Your FedEx ISP agreement is your most valuable asset. Add it here to track renewal dates and performance requirements.":seg.id==="amazon"?"Your DSP operating agreement governs everything. Track its renewal date and compliance requirements here.":"Add your contracts to track renewal dates and protect your business."}
-                  </div>
-                </div>
-              )}
-              <div style={{display:"flex",flexDirection:"column",gap:12}}>
-                {contracts.map(c=>{
-                  const d=daysUntil(c.renewalDate),col=statusColor(d);
-                  const statusBg={active:"#051a05",up_for_renewal:"#1a1005",in_negotiation:"#05051a",expired:"#1a0505"}[c.status]||"#111";
-                  const statusC={active:"#22c55e",up_for_renewal:"#f59e0b",in_negotiation:"#8888cc",expired:"#ef4444"}[c.status]||"#555";
-                  return (
-                    <div key={c.id} style={{...S.card,background:statusBg,borderLeft:`3px solid ${statusC}`}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
-                        <div>
-                          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8"}}>{c.name}</div>
-                          <div style={{fontSize:10,color:"#555"}}>{c.company} {c.startDate?`· Started ${c.startDate}`:""}</div>
-                        </div>
-                        <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                          <span style={{fontSize:9,color:statusC,border:`1px solid ${statusC}33`,padding:"2px 8px",borderRadius:3,textTransform:"uppercase",letterSpacing:"0.1em"}}>{c.status.replace(/_/g," ")}</span>
-                          <button onClick={()=>openEdit("contract",c)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
-                          <button onClick={()=>setContracts(p=>p.filter(x=>x.id!==c.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
-                        </div>
-                      </div>
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:c.notes?12:0}}>
-                        <div style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>Annual Value</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e"}}>{c.value?fmt$(parseFloat(c.value)):"—"}</div></div>
-                        <div style={{background:"#0f0f0f",border:`1px solid ${col}22`,borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>Renewal Date</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{c.renewalDate?new Date(c.renewalDate).toLocaleDateString():"Not set"}</div>{d!==null&&<div style={{fontSize:9,color:col,marginTop:2}}>{statusLabel(d)}</div>}</div>
-                        <div style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>Monthly Value</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#8888cc"}}>{c.value?fmt$(parseFloat(c.value)/12):"—"}</div></div>
-                      </div>
-                      {c.notes&&<div style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"10px 14px",fontSize:11,color:"#888",lineHeight:1.7}}>{c.notes}</div>}
-                    </div>
-                  );
-                })}
+                <button className="hov" onClick={()=>{ if(!contractForm.name)return; setContracts(p=>[...p,{...contractForm,id:Date.now()}]); setContractForm({name:"",company:"",startDate:"",renewalDate:"",value:"",status:"active",notes:""}); setShowAddContract(false); }} style={{...S.btn,background:"#8888cc",marginTop:14}}>Save Contract</button>
               </div>
+            )}
+            {contracts.length===0&&!showAddContract&&(
+              <div style={{...S.card,textAlign:"center",padding:40}}>
+                <div style={{fontSize:13,color:"#555",marginBottom:8}}>No contracts tracked yet.</div>
+                <div style={{fontSize:11,color:"#444",lineHeight:1.7}}>
+                  {seg.id==="fedex"?"Your FedEx ISP agreement is your most valuable asset. Add it here to track renewal dates and performance requirements.":seg.id==="amazon"?"Your DSP operating agreement governs everything. Track its renewal date and compliance requirements here.":"Add your contracts to track renewal dates and protect your business."}
+                </div>
+              </div>
+            )}
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              {contracts.map(c=>{
+                const d=daysUntil(c.renewalDate),col=statusColor(d);
+                const statusBg={active:"#051a05",up_for_renewal:"#1a1005",in_negotiation:"#05051a",expired:"#1a0505"}[c.status]||"#111";
+                const statusC={active:"#22c55e",up_for_renewal:"#f59e0b",in_negotiation:"#8888cc",expired:"#ef4444"}[c.status]||"#555";
+                return (
+                  <div key={c.id} style={{...S.card,background:statusBg,borderLeft:`3px solid ${statusC}`}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+                      <div>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8"}}>{c.name}</div>
+                        <div style={{fontSize:10,color:"#555"}}>{c.company} {c.startDate?`· Started ${c.startDate}`:""}</div>
+                      </div>
+                      <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                        <span style={{fontSize:9,color:statusC,border:`1px solid ${statusC}33`,padding:"2px 8px",borderRadius:3,textTransform:"uppercase",letterSpacing:"0.1em"}}>{c.status.replace(/_/g," ")}</span>
+                        <button onClick={()=>openEdit("contract",c)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
+                        <button onClick={()=>setContracts(p=>p.filter(x=>x.id!==c.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                      </div>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:c.notes?12:0}}>
+                      <div style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>Annual Value</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e"}}>{c.value?fmt$(parseFloat(c.value)):"—"}</div></div>
+                      <div style={{background:"#0f0f0f",border:`1px solid ${col}22`,borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>Renewal Date</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{c.renewalDate?new Date(c.renewalDate).toLocaleDateString():"Not set"}</div>{d!==null&&<div style={{fontSize:9,color:col,marginTop:2}}>{statusLabel(d)}</div>}</div>
+                      <div style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>Monthly Value</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#8888cc"}}>{c.value?fmt$(parseFloat(c.value)/12):"—"}</div></div>
+                    </div>
+                    {c.notes&&<div style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"10px 14px",fontSize:11,color:"#888",lineHeight:1.7}}>{c.notes}</div>}
+                  </div>
+                );
+              })}
             </div>
           </div>
-        );
-      })()}
-
+        </div>
+      )}
       {/* ══ FINANCE ════════════════════════════════════════════════════ */}
       {screen==="finance"&&(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
@@ -1224,115 +1207,96 @@ export default function ContractorOS() {
               </div>
             )}
 
-            {subScreen==="revenue"&&(()=>{
-              const [showAdd,setShowAdd]=useState(false);
-              const [form,setForm]=useState({date:"",description:"",amount:"",source:"",vehicle:""});
-              return (
-                <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-                    <div style={S.section}>REVENUE</div>
-                    <button className="hov" onClick={()=>setShowAdd(!showAdd)} style={S.btn}>{showAdd?"Cancel":"+ Add Revenue"}</button>
-                  </div>
-                  {showAdd&&(
-                    <div style={{...S.card,marginBottom:18}}>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                        <div><label style={S.label}>Date</label><input type="date" value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
-                        <div><label style={S.label}>Amount ($) *</label><input type="number" value={form.amount} onChange={e=>setForm(p=>({...p,amount:e.target.value}))} placeholder="0.00" style={S.input}/></div>
-                        <div><label style={S.label}>Source / Description</label><input value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} placeholder={seg.id==="otr"?"Broker/Load":"Route payment / settlement"} style={S.input}/></div>
-                        <div><label style={S.label}>Vehicle</label>
-                          <select value={form.vehicle} onChange={e=>setForm(p=>({...p,vehicle:e.target.value}))} style={S.input}>
-                            <option value="">All / General</option>
-                            {compliance.trucks.map(t=><option key={t.id} value={t.name}>{t.name}</option>)}
-                          </select>
-                        </div>
-                      </div>
-                      <button className="hov" onClick={()=>{ if(!form.amount)return; setRevenue(p=>[{...form,id:Date.now()},...p]); setForm({date:"",description:"",amount:"",source:"",vehicle:""}); setShowAdd(false); }} style={{...S.btn,marginTop:14}}>Save Revenue</button>
-                    </div>
-                  )}
-                  {revenue.length===0&&!showAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No revenue logged yet.</div>}
-                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                    {revenue.map(r=>(
-                      <div key={r.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
-                        <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{r.description||"Revenue"}</div><div style={{fontSize:10,color:"#555"}}>{r.date} {r.vehicle?`· ${r.vehicle}`:""}</div></div>
-                        <div style={{fontSize:15,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e",flexShrink:0}}>{fmt$(parseFloat(r.amount||0))}</div>
-                        <button onClick={()=>openEdit("revenue",r)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace",flexShrink:0}}>Edit</button>
-                        <button onClick={()=>setRevenue(p=>p.filter(x=>x.id!==r.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
-                      </div>
-                    ))}
-                  </div>
+            {subScreen==="revenue"&&(
+              <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+                  <div style={S.section}>REVENUE</div>
+                  <button className="hov" onClick={()=>setShowAddRevenue(!showAddRevenue)} style={S.btn}>{showAddRevenue?"Cancel":"+ Add Revenue"}</button>
                 </div>
-              );
-            })()}
+                {showAddRevenue&&(
+                  <div style={{...S.card,marginBottom:18}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                      <div><label style={S.label}>Date</label><input type="date" value={revenueForm.date} onChange={e=>setRevenueForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
+                      <div><label style={S.label}>Amount ($) *</label><input type="number" value={revenueForm.amount} onChange={e=>setRevenueForm(p=>({...p,amount:e.target.value}))} placeholder="0.00" style={S.input}/></div>
+                      <div><label style={S.label}>Source / Description</label><input value={revenueForm.description} onChange={e=>setRevenueForm(p=>({...p,description:e.target.value}))} placeholder={seg.id==="otr"?"Broker/Load":"Route payment / settlement"} style={S.input}/></div>
+                      <div><label style={S.label}>Vehicle</label>
+                        <select value={revenueForm.vehicle} onChange={e=>setRevenueForm(p=>({...p,vehicle:e.target.value}))} style={S.input}>
+                          <option value="">All / General</option>
+                          {compliance.trucks.map(t=><option key={t.id} value={t.name}>{t.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <button className="hov" onClick={()=>{ if(!revenueForm.amount)return; setRevenue(p=>[{...revenueForm,id:Date.now()},...p]); setRevenueForm({date:"",description:"",amount:"",vehicle:""}); setShowAddRevenue(false); }} style={{...S.btn,marginTop:14}}>Save Revenue</button>
+                  </div>
+                )}
+                {revenue.length===0&&!showAddRevenue&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No revenue logged yet.</div>}
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {revenue.map(r=>(
+                    <div key={r.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
+                      <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{r.description||"Revenue"}</div><div style={{fontSize:10,color:"#555"}}>{r.date} {r.vehicle?`· ${r.vehicle}`:""}</div></div>
+                      <div style={{fontSize:15,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e",flexShrink:0}}>{fmt$(parseFloat(r.amount||0))}</div>
+                      <button onClick={()=>openEdit("revenue",r)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace",flexShrink:0}}>Edit</button>
+                      <button onClick={()=>setRevenue(p=>p.filter(x=>x.id!==r.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-            {subScreen==="expenses"&&(()=>{
-              const [showAdd,setShowAdd]=useState(false);
-              const [form,setForm]=useState({date:"",category:"fuel",amount:"",description:"",vehicle:""});
-              return (
-                <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-                    <div style={S.section}>EXPENSES</div>
-                    <button className="hov" onClick={()=>setShowAdd(!showAdd)} style={{...S.btn,background:"#ef4444"}}>{showAdd?"Cancel":"+ Add Expense"}</button>
-                  </div>
-                  {showAdd&&(
-                    <div style={{...S.card,marginBottom:18}}>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                        <div><label style={S.label}>Date</label><input type="date" value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
-                        <div><label style={S.label}>Category</label>
-                          <select value={form.category} onChange={e=>setForm(p=>({...p,category:e.target.value}))} style={S.input}>
-                            {["fuel","maintenance","insurance","tires","repairs","driver_pay","tolls","permits","registration","ifta","ucr","eld","uniforms","equipment","phone","other"].map(c=><option key={c} value={c}>{c.replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase())}</option>)}
-                          </select>
-                        </div>
-                        <div><label style={S.label}>Amount ($) *</label><input type="number" value={form.amount} onChange={e=>setForm(p=>({...p,amount:e.target.value}))} placeholder="0.00" style={S.input}/></div>
-                        <div><label style={S.label}>Vehicle</label>
-                          <select value={form.vehicle} onChange={e=>setForm(p=>({...p,vehicle:e.target.value}))} style={S.input}>
-                            <option value="">All / General</option>
-                            {compliance.trucks.map(t=><option key={t.id} value={t.name}>{t.name}</option>)}
-                          </select>
-                        </div>
-                        <div style={{gridColumn:"1/-1"}}><label style={S.label}>Description</label><input value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} placeholder="Optional notes" style={S.input}/></div>
-                      </div>
-                      <button className="hov" onClick={()=>{ if(!form.amount)return; setExpenses(p=>[{...form,id:Date.now()},...p]); setForm({date:"",category:"fuel",amount:"",description:"",vehicle:""}); setShowAdd(false); }} style={{...S.btn,background:"#ef4444",marginTop:14}}>Save Expense</button>
-                    </div>
-                  )}
-                  {expenses.length===0&&!showAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No expenses logged yet.</div>}
-                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                    {expenses.map(e=>(
-                      <div key={e.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
-                        <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{e.category.replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase())} {e.description?`— ${e.description}`:""}</div><div style={{fontSize:10,color:"#555"}}>{e.date} {e.vehicle?`· ${e.vehicle}`:""}</div></div>
-                        <div style={{fontSize:15,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ef4444",flexShrink:0}}>{fmt$(parseFloat(e.amount||0))}</div>
-                        <button onClick={()=>openEdit("expense",e)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace",flexShrink:0}}>Edit</button>
-                        <button onClick={()=>setExpenses(p=>p.filter(x=>x.id!==e.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
-                      </div>
-                    ))}
-                  </div>
+            {subScreen==="expenses"&&(
+              <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+                  <div style={S.section}>EXPENSES</div>
+                  <button className="hov" onClick={()=>setShowAddExpense(!showAddExpense)} style={{...S.btn,background:"#ef4444"}}>{showAddExpense?"Cancel":"+ Add Expense"}</button>
                 </div>
-              );
-            })()}
+                {showAddExpense&&(
+                  <div style={{...S.card,marginBottom:18}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                      <div><label style={S.label}>Date</label><input type="date" value={expenseForm.date} onChange={e=>setExpenseForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
+                      <div><label style={S.label}>Category</label>
+                        <select value={expenseForm.category} onChange={e=>setExpenseForm(p=>({...p,category:e.target.value}))} style={S.input}>
+                          {["fuel","maintenance","insurance","tires","repairs","driver_pay","tolls","permits","registration","ifta","ucr","eld","uniforms","equipment","phone","other"].map(c=><option key={c} value={c}>{c.replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase())}</option>)}
+                        </select>
+                      </div>
+                      <div><label style={S.label}>Amount ($) *</label><input type="number" value={expenseForm.amount} onChange={e=>setExpenseForm(p=>({...p,amount:e.target.value}))} placeholder="0.00" style={S.input}/></div>
+                      <div><label style={S.label}>Vehicle</label>
+                        <select value={expenseForm.vehicle} onChange={e=>setExpenseForm(p=>({...p,vehicle:e.target.value}))} style={S.input}>
+                          <option value="">All / General</option>
+                          {compliance.trucks.map(t=><option key={t.id} value={t.name}>{t.name}</option>)}
+                        </select>
+                      </div>
+                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Description</label><input value={expenseForm.description} onChange={e=>setExpenseForm(p=>({...p,description:e.target.value}))} placeholder="Optional notes" style={S.input}/></div>
+                    </div>
+                    <button className="hov" onClick={()=>{ if(!expenseForm.amount)return; setExpenses(p=>[{...expenseForm,id:Date.now()},...p]); setExpenseForm({date:"",category:"fuel",amount:"",description:"",vehicle:""}); setShowAddExpense(false); }} style={{...S.btn,background:"#ef4444",marginTop:14}}>Save Expense</button>
+                  </div>
+                )}
+                {expenses.length===0&&!showAddExpense&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No expenses logged yet.</div>}
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {expenses.map(e=>(
+                    <div key={e.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
+                      <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{e.category.replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase())} {e.description?`— ${e.description}`:""}</div><div style={{fontSize:10,color:"#555"}}>{e.date} {e.vehicle?`· ${e.vehicle}`:""}</div></div>
+                      <div style={{fontSize:15,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ef4444",flexShrink:0}}>{fmt$(parseFloat(e.amount||0))}</div>
+                      <button onClick={()=>openEdit("expense",e)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace",flexShrink:0}}>Edit</button>
+                      <button onClick={()=>setExpenses(p=>p.filter(x=>x.id!==e.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {/* ══ BROKERS (OTR only) ══════════════════════════════════════════ */}
-      {/* Fallback for any screen that doesn't match — prevents black screen */}
-      {!["dashboard","analyze","boards","routes","compliance","drivers","fleet","contracts","finance","brokers","settings"].includes(screen)&&(
-        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
-          <div style={{fontSize:32}}>🔍</div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,color:"#555"}}>Page not found</div>
-          <button onClick={()=>setScreen("dashboard")} style={{...S.btn,marginTop:8}}>← Back to Dashboard</button>
+      {screen==="brokers"&&!seg.features.brokerScorecard&&(
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16,padding:32}}>
+          <div style={{fontSize:32}}>🚫</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,color:"#555"}}>Broker tools are for OTR operators</div>
+          <div style={{fontSize:12,color:"#444",textAlign:"center",maxWidth:400,lineHeight:1.7}}>Switch to OTR / Owner Operator mode in Settings to access broker scorecards and lane intelligence.</div>
+          <button onClick={()=>setScreen("settings")} style={S.btn}>Go to Settings →</button>
         </div>
       )}
-
-      {screen==="brokers"&&(()=>{
-        if(!seg.features.brokerScorecard) return (
-          <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16,padding:32}}>
-            <div style={{fontSize:32}}>🚫</div>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,color:"#555"}}>Broker tools are for OTR operators</div>
-            <div style={{fontSize:12,color:"#444",textAlign:"center",maxWidth:400,lineHeight:1.7}}>Switch to OTR / Owner Operator mode in Settings to access broker scorecards and lane intelligence.</div>
-            <button onClick={()=>setScreen("settings")} style={S.btn}>Go to Settings →</button>
-          </div>
-        );
-        const [showAdd,setShowAdd]=useState(false);
-        const [form,setForm]=useState({name:"",paySpeed:"",rating:3,notes:"",blacklisted:false});
+      {screen==="brokers"&&seg.features.brokerScorecard&&(()=>{
         const laneStats=()=>{
           const lanes={};
           loads.forEach(l=>{ if(!l.load?.origin||!l.load?.destination)return; const k=`${l.load.origin} → ${l.load.destination}`; if(!lanes[k])lanes[k]={count:0,total:0}; lanes[k].count++; lanes[k].total+=l.result?.netRPM||0; });
@@ -1399,25 +1363,25 @@ export default function ContractorOS() {
                   <div style={{...S.section,marginBottom:20}}>ADD BROKER</div>
                   <div style={S.card}>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                      <div><label style={S.label}>Broker Name *</label><input value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} style={S.input}/></div>
+                      <div><label style={S.label}>Broker Name *</label><input value={brokerForm.name} onChange={e=>setBrokerForm(p=>({...p,name:e.target.value}))} style={S.input}/></div>
                       <div><label style={S.label}>Pay Speed</label>
-                        <select value={form.paySpeed} onChange={e=>setForm(p=>({...p,paySpeed:e.target.value}))} style={S.input}>
+                        <select value={brokerForm.paySpeed} onChange={e=>setBrokerForm(p=>({...p,paySpeed:e.target.value}))} style={S.input}>
                           <option value="">Select...</option>
                           {["Quick Pay (1-3d)","Net 7","Net 14","Net 21","Net 30","Net 45+","Slow / Problems"].map(o=><option key={o}>{o}</option>)}
                         </select>
                       </div>
                       <div><label style={S.label}>Rating (1–5)</label>
-                        <select value={form.rating} onChange={e=>setForm(p=>({...p,rating:parseInt(e.target.value)}))} style={S.input}>
+                        <select value={brokerForm.rating} onChange={e=>setBrokerForm(p=>({...p,rating:parseInt(e.target.value)}))} style={S.input}>
                           {[5,4,3,2,1].map(n=><option key={n} value={n}>{"★".repeat(n)} {n}/5</option>)}
                         </select>
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:10,paddingTop:18}}>
-                        <input type="checkbox" checked={form.blacklisted} onChange={e=>setForm(p=>({...p,blacklisted:e.target.checked}))} style={{accentColor:"#ef4444",width:14,height:14}}/>
+                        <input type="checkbox" checked={brokerForm.blacklisted} onChange={e=>setBrokerForm(p=>({...p,blacklisted:e.target.checked}))} style={{accentColor:"#ef4444",width:14,height:14}}/>
                         <label style={{fontSize:11,color:"#ef4444",cursor:"pointer"}}>Add to Blacklist</label>
                       </div>
-                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><textarea value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} placeholder="Pay issues, good loads, contacts..." style={{...S.input,height:70,resize:"vertical"}}/></div>
+                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><textarea value={brokerForm.notes} onChange={e=>setBrokerForm(p=>({...p,notes:e.target.value}))} placeholder="Pay issues, good loads, contacts..." style={{...S.input,height:70,resize:"vertical"}}/></div>
                     </div>
-                    <button className="hov" onClick={()=>{ if(!form.name)return; setBrokers(p=>[...p,{...form,id:Date.now()}]); setForm({name:"",paySpeed:"",rating:3,notes:"",blacklisted:false}); setSubScreen("scores"); }} style={{...S.btn,marginTop:14}}>Save Broker</button>
+                    <button className="hov" onClick={()=>{ if(!brokerForm.name)return; setBrokers(p=>[...p,{...brokerForm,id:Date.now()}]); setBrokerForm({name:"",paySpeed:"",rating:3,notes:"",blacklisted:false}); setSubScreen("scores"); }} style={{...S.btn,marginTop:14}}>Save Broker</button>
                   </div>
                 </div>
               )}
