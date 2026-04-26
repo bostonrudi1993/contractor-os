@@ -98,7 +98,8 @@ export default function ContractorOS() {
 
   // UI state
   const [subScreen, setSubScreen] = useState(null);
-  const [modal, setModal] = useState(null);
+  const [modal, setModal] = useState(null); // { type, item }
+  const [editForm, setEditForm] = useState({});
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState(null);
   const [dotAnswer, setDotAnswer] = useState(null);
@@ -169,6 +170,106 @@ export default function ContractorOS() {
     setAiLoading(true); setDotAnswer(null);
     const ans = await callAI(COMPLIANCE_PROMPT, dotQ, false);
     setDotAnswer(ans); setAiLoading(false);
+  };
+
+  // ── EDIT MODAL HELPERS ─────────────────────────────────────────────
+  const openEdit = (type, item) => { setModal({type, item}); setEditForm({...item}); };
+  const closeModal = () => { setModal(null); setEditForm({}); };
+
+  const saveEdit = () => {
+    if(!modal) return;
+    const {type} = modal;
+    if(type==="vehicle") setCompliance(p=>({...p,trucks:p.trucks.map(t=>t.id===editForm.id?{...editForm}:t)}));
+    if(type==="compdriver") setCompliance(p=>({...p,drivers:p.drivers.map(d=>d.id===editForm.id?{...editForm}:d)}));
+    if(type==="route") setRoutes(p=>p.map(r=>r.id===editForm.id?{...editForm}:r));
+    if(type==="contract") setContracts(p=>p.map(c=>c.id===editForm.id?{...editForm}:c));
+    if(type==="driver") setDrivers(p=>p.map(d=>d.id===editForm.id?{...editForm}:d));
+    if(type==="maintenance") setMaintenance(p=>p.map(m=>m.id===editForm.id?{...editForm}:m));
+    if(type==="revenue") setRevenue(p=>p.map(r=>r.id===editForm.id?{...editForm}:r));
+    if(type==="expense") setExpenses(p=>p.map(e=>e.id===editForm.id?{...editForm}:e));
+    if(type==="broker") setBrokers(p=>p.map(b=>b.id===editForm.id?{...editForm}:b));
+    closeModal();
+  };
+
+  // Modal field configs per type
+  const MODAL_CONFIGS = {
+    vehicle: {
+      title: "Edit Vehicle",
+      fields: [
+        ["name","Unit Name / #","text"],["year","Year","text"],["make","Make & Model","text"],
+        ["plate","Plate #","text"],["dotInspection","DOT Inspection Expiry","date"],
+        ["registration","Registration Expiry","date"],["ifta","IFTA Renewal","date"],["irp","IRP Plate Renewal","date"],
+      ]
+    },
+    compdriver: {
+      title: "Edit Driver File",
+      fields: [
+        ["name","Driver Name","text"],["cdlExpiry","CDL Expiry","date"],
+        ["medCardExpiry","Medical Card Expiry","date"],["mvrDue","MVR Pull Due","date"],
+        ["drugTest","Drug Test Due","date"],["annualReview","Annual Review Due","date"],
+      ]
+    },
+    route: {
+      title: "Edit Route",
+      fields: [
+        ["name","Route Name","text"],["stops","Number of Stops","text"],["miles","Miles per Run","text"],
+        ["rate","Contracted Rate ($)","text"],["driverPay","Driver Pay ($)","text"],
+        ["otherCosts","Other Costs ($)","text"],["frequency","Frequency","text"],["notes","Notes","textarea"],
+      ]
+    },
+    contract: {
+      title: "Edit Contract",
+      fields: [
+        ["name","Contract Name","text"],["company","Company / Client","text"],
+        ["startDate","Start Date","date"],["renewalDate","Renewal / Expiry Date","date"],
+        ["value","Annual Value ($)","text"],
+        ["status","Status","select:active|up_for_renewal|in_negotiation|expired"],
+        ["notes","Notes / Performance Requirements","textarea"],
+      ]
+    },
+    driver: {
+      title: "Edit Driver",
+      fields: [
+        ["name","Full Name","text"],["phone","Phone","text"],["hireDate","Hire Date","date"],
+        ["route","Assigned Route","text"],
+        ["payType","Pay Type","select:per_mile|per_stop|percentage|hourly|salary"],
+        ["payRate","Pay Rate","text"],["ytdPay","YTD Earnings ($)","text"],
+        ["status","Status","select:active|on_leave|terminated"],
+      ]
+    },
+    maintenance: {
+      title: "Edit Service Record",
+      fields: [
+        ["truckName","Vehicle","text"],["type","Service Type","text"],
+        ["date","Date","date"],["mileage","Mileage","text"],
+        ["cost","Cost ($)","text"],["nextDueMiles","Next Due (miles)","text"],
+        ["notes","Notes","text"],
+      ]
+    },
+    revenue: {
+      title: "Edit Revenue Entry",
+      fields: [
+        ["date","Date","date"],["description","Description","text"],
+        ["amount","Amount ($)","text"],["vehicle","Vehicle","text"],
+      ]
+    },
+    expense: {
+      title: "Edit Expense",
+      fields: [
+        ["date","Date","date"],
+        ["category","Category","select:fuel|maintenance|insurance|tires|repairs|driver_pay|tolls|permits|registration|ifta|ucr|eld|uniforms|equipment|phone|other"],
+        ["amount","Amount ($)","text"],["description","Description","text"],["vehicle","Vehicle","text"],
+      ]
+    },
+    broker: {
+      title: "Edit Broker",
+      fields: [
+        ["name","Broker Name","text"],
+        ["paySpeed","Pay Speed","select:|Quick Pay (1-3d)|Net 7|Net 14|Net 21|Net 30|Net 45+|Slow / Problems"],
+        ["rating","Rating (1-5)","select:5|4|3|2|1"],
+        ["notes","Notes","textarea"],
+      ]
+    },
   };
 
   // ── COMPUTED ───────────────────────────────────────────────────────
@@ -255,9 +356,66 @@ export default function ContractorOS() {
 
   const navLabels = {dashboard:"Dashboard",analyze:"Analyze Load",boards:"Load Boards",compliance:"Compliance",brokers:"Brokers",fleet:"Fleet",finance:"Finance",routes:"Routes",drivers:"Drivers",contracts:"Contracts",settings:"Settings"};
 
+  // ── EDIT MODAL COMPONENT ───────────────────────────────────────────
+  const EditModal = () => {
+    if(!modal) return null;
+    const config = MODAL_CONFIGS[modal.type];
+    if(!config) return null;
+    return (
+      <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:20}} onClick={closeModal}>
+        <div style={{background:"#141414",border:`1px solid ${accent}44`,borderRadius:10,padding:"28px 28px 24px",maxWidth:560,width:"100%",maxHeight:"85vh",overflowY:"auto",animation:"fadeUp 0.2s ease"}} onClick={e=>e.stopPropagation()}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#e8e4d8"}}>{config.title}</div>
+            <button onClick={closeModal} style={{background:"transparent",border:"none",color:"#555",cursor:"pointer",fontSize:18,lineHeight:1}}>✕</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+            {config.fields.map(([field,label,type])=>{
+              const isTextarea = type==="textarea";
+              const isSelect = type.startsWith("select:");
+              const options = isSelect ? type.replace("select:","").split("|") : [];
+              const isFullWidth = isTextarea || field==="notes" || field==="name";
+              return (
+                <div key={field} style={{gridColumn:isFullWidth?"1/-1":"auto"}}>
+                  <label style={S.label}>{label}</label>
+                  {isTextarea ? (
+                    <textarea
+                      value={editForm[field]||""}
+                      onChange={e=>setEditForm(p=>({...p,[field]:e.target.value}))}
+                      style={{...S.input,height:80,resize:"vertical"}}
+                    />
+                  ) : isSelect ? (
+                    <select
+                      value={editForm[field]||""}
+                      onChange={e=>setEditForm(p=>({...p,[field]:e.target.value}))}
+                      style={S.input}
+                    >
+                      {options.map(o=><option key={o} value={o}>{o||"Select..."}</option>)}
+                    </select>
+                  ) : (
+                    <input
+                      type={type}
+                      value={editForm[field]||""}
+                      onChange={e=>setEditForm(p=>({...p,[field]:e.target.value}))}
+                      style={S.input}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div style={{display:"flex",gap:10}}>
+            <button className="hov" onClick={saveEdit} style={S.btn}>Save Changes</button>
+            <button onClick={closeModal} style={S.ghost}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // ── RENDER ─────────────────────────────────────────────────────────
   return (
     <div style={{minHeight:"100vh",background:"#0a0a0a",fontFamily:"'DM Mono','Courier New',monospace",color:"#d4d0c8",display:"flex",flexDirection:"column"}}>
+      <EditModal/>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Barlow+Condensed:wght@400;600;700;800;900&display=swap');
         *{box-sizing:border-box}
@@ -281,6 +439,7 @@ export default function ContractorOS() {
           </div>
         </div>
         <div style={{flex:1}}/>
+        <button onClick={()=>setSegment(null)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,padding:"5px 12px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em",marginRight:8,flexShrink:0}}>Switch Type</button>
         {seg.nav.map(id=><NavBtn key={id} id={id} label={urgentItems.length>0&&id==="compliance"?`Compliance 🔴`:navLabels[id]||id} active={screen===id}/>)}
       </div>
 
@@ -494,13 +653,14 @@ export default function ContractorOS() {
                 <div style={{display:"flex",flexDirection:"column",gap:12}}>
                   {routes.map(r=>(
                     <div key={r.id} style={S.card}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
                         <div>
                           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8"}}>{r.name}</div>
                           <div style={{fontSize:10,color:"#555"}}>{r.stops} stops · {r.miles} mi · {r.frequency||"Daily"}</div>
                         </div>
                         <div style={{display:"flex",gap:8,alignItems:"center"}}>
                           {r.analysis&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:gradeColor(r.analysis.profitabilityScore)}}>{r.analysis.verdict}</div>}
+                          <button onClick={()=>openEdit("route",r)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
                           <button className="hov" onClick={()=>analyzeRoute(r)} style={{...S.btn,padding:"6px 14px",fontSize:11}}>Analyze</button>
                           <button onClick={()=>setRoutes(p=>p.filter(x=>x.id!==r.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
                         </div>
@@ -643,7 +803,10 @@ export default function ContractorOS() {
                       <div key={t.id} style={S.card}>
                         <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
                           <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:17,fontWeight:700,color:"#e8e4d8"}}>{t.name}</div><div style={{fontSize:10,color:"#555"}}>{t.year} {t.make} {t.plate&&`· ${t.plate}`}</div></div>
-                          <button onClick={()=>setCompliance(p=>({...p,trucks:p.trucks.filter(x=>x.id!==t.id)}))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                          <div style={{display:"flex",gap:8}}>
+                            <button onClick={()=>openEdit("vehicle",t)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
+                            <button onClick={()=>setCompliance(p=>({...p,trucks:p.trucks.filter(x=>x.id!==t.id)}))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                          </div>
                         </div>
                         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
                           {[["DOT Inspection",t.dotInspection],["Registration",t.registration],["IFTA",t.ifta],["IRP Plates",t.irp]].map(([lbl,date])=>{
@@ -683,7 +846,10 @@ export default function ContractorOS() {
                       <div key={d.id} style={S.card}>
                         <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
                           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:17,fontWeight:700,color:"#e8e4d8"}}>{d.name}</div>
-                          <button onClick={()=>setCompliance(p=>({...p,drivers:p.drivers.filter(x=>x.id!==d.id)}))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                          <div style={{display:"flex",gap:8}}>
+                            <button onClick={()=>openEdit("compdriver",d)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
+                            <button onClick={()=>setCompliance(p=>({...p,drivers:p.drivers.filter(x=>x.id!==d.id)}))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                          </div>
                         </div>
                         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
                           {[["CDL",d.cdlExpiry],["Med Card",d.medCardExpiry],["MVR Due",d.mvrDue],["Drug Test",d.drugTest],["Annual Review",d.annualReview]].map(([lbl,date])=>{
@@ -788,6 +954,7 @@ export default function ContractorOS() {
                         <div style={{flex:1}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{d.name}</div><div style={{fontSize:10,color:"#555"}}>{d.route||"No route"} · {d.payType==="per_mile"?`$${d.payRate}/mi`:d.payType==="per_stop"?`$${d.payRate}/stop`:d.payType==="percentage"?`${d.payRate}% of route`:d.payType==="hourly"?`$${d.payRate}/hr`:`$${d.payRate}/yr`}</div></div>
                         <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>YTD Pay</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e"}}>{fmt$(parseFloat(d.ytdPay||0))}</div></div>
                         <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Incidents</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:(d.incidents||[]).length>0?"#ef4444":"#22c55e"}}>{(d.incidents||[]).length}</div></div>
+                        <button onClick={()=>openEdit("driver",d)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
                         <button onClick={()=>setDrivers(p=>p.filter(x=>x.id!==d.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
                       </div>
                     ))}
@@ -914,6 +1081,7 @@ export default function ContractorOS() {
                         <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{m.truckName} — {m.type}</div><div style={{fontSize:10,color:"#555"}}>{m.date} {m.mileage?`· ${parseInt(m.mileage).toLocaleString()} mi`:""} {m.notes?`· ${m.notes}`:""}</div></div>
                         {m.cost&&<div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ef4444",flexShrink:0}}>{fmt$(parseFloat(m.cost))}</div>}
                         {m.nextDueMiles&&<div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:9,color:"#555"}}>Next</div><div style={{fontSize:12,color:"#f59e0b"}}>{parseInt(m.nextDueMiles).toLocaleString()} mi</div></div>}
+                        <button onClick={()=>openEdit("maintenance",m)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace",flexShrink:0}}>Edit</button>
                         <button onClick={()=>setMaintenance(p=>p.filter(x=>x.id!==m.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
                       </div>
                     ))}
@@ -994,6 +1162,7 @@ export default function ContractorOS() {
                         </div>
                         <div style={{display:"flex",gap:10,alignItems:"center"}}>
                           <span style={{fontSize:9,color:statusC,border:`1px solid ${statusC}33`,padding:"2px 8px",borderRadius:3,textTransform:"uppercase",letterSpacing:"0.1em"}}>{c.status.replace(/_/g," ")}</span>
+                          <button onClick={()=>openEdit("contract",c)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
                           <button onClick={()=>setContracts(p=>p.filter(x=>x.id!==c.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
                         </div>
                       </div>
@@ -1086,6 +1255,7 @@ export default function ContractorOS() {
                       <div key={r.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
                         <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{r.description||"Revenue"}</div><div style={{fontSize:10,color:"#555"}}>{r.date} {r.vehicle?`· ${r.vehicle}`:""}</div></div>
                         <div style={{fontSize:15,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e",flexShrink:0}}>{fmt$(parseFloat(r.amount||0))}</div>
+                        <button onClick={()=>openEdit("revenue",r)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace",flexShrink:0}}>Edit</button>
                         <button onClick={()=>setRevenue(p=>p.filter(x=>x.id!==r.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
                       </div>
                     ))}
@@ -1130,6 +1300,7 @@ export default function ContractorOS() {
                       <div key={e.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
                         <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{e.category.replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase())} {e.description?`— ${e.description}`:""}</div><div style={{fontSize:10,color:"#555"}}>{e.date} {e.vehicle?`· ${e.vehicle}`:""}</div></div>
                         <div style={{fontSize:15,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ef4444",flexShrink:0}}>{fmt$(parseFloat(e.amount||0))}</div>
+                        <button onClick={()=>openEdit("expense",e)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace",flexShrink:0}}>Edit</button>
                         <button onClick={()=>setExpenses(p=>p.filter(x=>x.id!==e.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
                       </div>
                     ))}
@@ -1142,7 +1313,24 @@ export default function ContractorOS() {
       )}
 
       {/* ══ BROKERS (OTR only) ══════════════════════════════════════════ */}
-      {screen==="brokers"&&seg.features.brokerScorecard&&(()=>{
+      {/* Fallback for any screen that doesn't match — prevents black screen */}
+      {!["dashboard","analyze","boards","routes","compliance","drivers","fleet","contracts","finance","brokers","settings"].includes(screen)&&(
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
+          <div style={{fontSize:32}}>🔍</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,color:"#555"}}>Page not found</div>
+          <button onClick={()=>setScreen("dashboard")} style={{...S.btn,marginTop:8}}>← Back to Dashboard</button>
+        </div>
+      )}
+
+      {screen==="brokers"&&(()=>{
+        if(!seg.features.brokerScorecard) return (
+          <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16,padding:32}}>
+            <div style={{fontSize:32}}>🚫</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,color:"#555"}}>Broker tools are for OTR operators</div>
+            <div style={{fontSize:12,color:"#444",textAlign:"center",maxWidth:400,lineHeight:1.7}}>Switch to OTR / Owner Operator mode in Settings to access broker scorecards and lane intelligence.</div>
+            <button onClick={()=>setScreen("settings")} style={S.btn}>Go to Settings →</button>
+          </div>
+        );
         const [showAdd,setShowAdd]=useState(false);
         const [form,setForm]=useState({name:"",paySpeed:"",rating:3,notes:"",blacklisted:false});
         const laneStats=()=>{
