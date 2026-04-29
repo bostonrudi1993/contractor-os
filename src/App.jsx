@@ -6,7 +6,8 @@ const KEYS = {
   drivers: "cos_drivers", vehicles: "cos_vehicles", maintenance: "cos_maintenance",
   expenses: "cos_expenses", revenue: "cos_revenue", routes: "cos_routes",
   contracts: "cos_contracts", incidents: "cos_incidents", brokers: "cos_brokers",
-  loads: "cos_loads",
+  loads: "cos_loads", users: "cos_users", currentUser: "cos_current_user",
+  notifications: "cos_notifications",
 };
 const stor = { get: (k,fb) => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):fb; } catch { return fb; } }, set: (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch {} } };
 
@@ -16,35 +17,35 @@ const SEGMENTS = {
     id: "otr", label: "OTR / Owner Operator", icon: "🚛",
     tagline: "Load board hauling with your own authority",
     color: "#f59e0b", darkColor: "#92400e",
-    nav: ["dashboard","analyze","boards","compliance","brokers","fleet","finance","settings"],
+    nav: ["dashboard","analyze","boards","compliance","brokers","fleet","finance","reports","trends","users","settings"],
     features: { loadAnalysis:true, brokerScorecard:true, loadBoards:true, routeProfit:false, contractTracker:false, dspMetrics:false, stopMetrics:false },
   },
   fedex: {
     id: "fedex", label: "FedEx Ground / HD Contractor", icon: "📦",
     tagline: "ISP route management & compliance",
     color: "#6366f1", darkColor: "#3730a3",
-    nav: ["dashboard","routes","compliance","drivers","fleet","finance","contracts","settings"],
+    nav: ["dashboard","routes","compliance","drivers","fleet","finance","contracts","reports","trends","users","settings"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:false, stopMetrics:true },
   },
   amazon: {
     id: "amazon", label: "Amazon DSP", icon: "📬",
     tagline: "Delivery Service Partner operations",
     color: "#f97316", darkColor: "#9a3412",
-    nav: ["dashboard","routes","compliance","drivers","fleet","finance","contracts","settings"],
+    nav: ["dashboard","routes","compliance","drivers","fleet","finance","contracts","reports","trends","users","settings"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:true, stopMetrics:true },
   },
   lastmile: {
     id: "lastmile", label: "Last Mile (Lowe's / Home Depot)", icon: "🏠",
     tagline: "Home delivery contractor management",
     color: "#22c55e", darkColor: "#14532d",
-    nav: ["dashboard","routes","compliance","drivers","fleet","finance","contracts","settings"],
+    nav: ["dashboard","routes","compliance","drivers","fleet","finance","contracts","reports","trends","users","settings"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:false, stopMetrics:true },
   },
   usps: {
     id: "usps", label: "USPS HCR Contractor", icon: "📮",
     tagline: "Highway Contract Route operations",
     color: "#3b82f6", darkColor: "#1e3a8a",
-    nav: ["dashboard","routes","compliance","drivers","fleet","finance","contracts","settings"],
+    nav: ["dashboard","routes","compliance","drivers","fleet","finance","contracts","reports","trends","users","settings"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:false, stopMetrics:false },
   },
 };
@@ -184,6 +185,8 @@ export default function ContractorOS() {
   const [driverForm, setDriverForm] = useState({name:"",route:"",payType:"per_mile",payRate:"",ytdPay:"",phone:"",hireDate:"",status:"active"});
   const [showAddIncident, setShowAddIncident] = useState(null);
   const [incidentForm, setIncidentForm] = useState({driverId:"",date:"",type:"delivery",description:"",severity:"minor"});
+  const [editIncidentId, setEditIncidentId] = useState(null);
+  const [editIncidentForm, setEditIncidentForm] = useState({});
 
   const [showAddMaint, setShowAddMaint] = useState(false);
   const [maintForm, setMaintForm] = useState({truckName:"",type:"",date:"",mileage:"",cost:"",notes:"",nextDueMiles:""});
@@ -195,6 +198,24 @@ export default function ContractorOS() {
   const [revenueForm, setRevenueForm] = useState({date:"",description:"",amount:"",vehicle:""});
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [expenseForm, setExpenseForm] = useState({date:"",category:"fuel",amount:"",description:"",vehicle:""});
+  const [excelImporting, setExcelImporting] = useState(false);
+  const [excelResult, setExcelResult] = useState(null);
+
+  // Phase 2 — Notifications
+  const [notifications, setNotifications] = useState(() => stor.get(KEYS.notifications, []));
+  const [notifPermission, setNotifPermission] = useState("default");
+
+  // Phase 3 — Users / Roles
+  const [users, setUsers] = useState(() => stor.get(KEYS.users, []));
+  const [currentUser, setCurrentUser] = useState(() => stor.get(KEYS.currentUser, {id:"owner",name:"Owner",role:"owner",pin:""}));
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [userForm, setUserForm] = useState({name:"",role:"driver",pin:"",driverId:""});
+  const [pinEntry, setPinEntry] = useState(null); // {userId, enteredPin}
+  const [switchingUser, setSwitchingUser] = useState(false);
+
+  // Phase 4 — Trends
+  const [trendsView, setTrendsView] = useState("monthly"); // monthly | weekly
+  const [selectedRoute, setSelectedRoute] = useState("all");
 
   const [routeForm, setRouteForm] = useState({name:"",stops:"",miles:"",rate:"",stopRate:"",ratePerMile:"",driverPay:"",otherCosts:"",frequency:"Daily",vehicle:"",notes:""});
   const [brokerForm, setBrokerForm] = useState({name:"",paySpeed:"",rating:3,notes:"",blacklisted:false});
@@ -225,6 +246,9 @@ export default function ContractorOS() {
   useEffect(()=>{stor.set(KEYS.incidents,incidents);},[incidents]);
   useEffect(()=>{stor.set(KEYS.brokers,brokers);},[brokers]);
   useEffect(()=>{stor.set(KEYS.loads,loads);},[loads]);
+  useEffect(()=>{stor.set(KEYS.users,users);},[users]);
+  useEffect(()=>{stor.set(KEYS.currentUser,currentUser);},[currentUser]);
+  useEffect(()=>{stor.set(KEYS.notifications,notifications);},[notifications]);
 
   const seg = segment ? SEGMENTS[segment] : null;
   const S = seg ? mkStyles(seg.color) : mkStyles("#f59e0b");
@@ -272,6 +296,236 @@ export default function ContractorOS() {
     setAiLoading(true); setDotAnswer(null);
     const ans = await callAI(COMPLIANCE_PROMPT, dotQ, false);
     setDotAnswer(ans); setAiLoading(false);
+  };
+
+  const importExcelPL = async (file) => {
+    setExcelImporting(true); setExcelResult(null);
+    try {
+      const text = await file.text();
+      const result = await callAI(
+        `You are a financial data extractor. Parse this CSV/text data from a QuickBooks or Excel P&L export and extract all line items. Respond ONLY with JSON (no markdown):
+{"revenue":[{"description":"...","amount":0,"date":"YYYY-MM-DD","category":"revenue"}],
+"expenses":[{"description":"...","amount":0,"date":"YYYY-MM-DD","category":"fuel|maintenance|insurance|driver_pay|other"}],
+"summary":{"totalRevenue":0,"totalExpenses":0,"netProfit":0,"period":"..."}}`,
+        `File name: ${file.name}\n\nContent:\n${text.slice(0,8000)}`
+      );
+      if(result) {
+        setExcelResult(result);
+      }
+    } catch(e) {
+      setExcelResult({error:"Could not parse file. Make sure it's a CSV or text export from QuickBooks or Excel."});
+    }
+    setExcelImporting(false);
+  };
+
+  const confirmExcelImport = () => {
+    if(!excelResult||excelResult.error) return;
+    const today = new Date().toISOString().slice(0,10);
+    if(excelResult.revenue) setRevenue(p=>[...excelResult.revenue.map(r=>({...r,id:Date.now()+Math.random(),date:r.date||today})),...p]);
+    if(excelResult.expenses) setExpenses(p=>[...excelResult.expenses.map(e=>({...e,id:Date.now()+Math.random(),date:e.date||today})),...p]);
+    setExcelResult(null);
+  };
+
+  // ── PHASE 2: NOTIFICATIONS ────────────────────────────────────────
+  const generateNotifications = () => {
+    const notifs = [];
+    const now = Date.now();
+    // Compliance expiry alerts
+    compliance.trucks.forEach(t => {
+      [["dotInspection","DOT Inspection",t.name],["ifta","IFTA Renewal",t.name],["irp","IRP Plates",t.name],["registration","Registration",t.name]].forEach(([f,label,name])=>{
+        const d = daysUntil(t[f]);
+        if(d!==null && d<=90) notifs.push({id:`${t.id}-${f}`,type:"compliance",severity:d<=30?"urgent":d<=60?"warning":"info",title:`${label} Expiring`,body:`${name} — ${statusLabel(d)}`,days:d,date:t[f],ts:now});
+      });
+    });
+    compliance.drivers.forEach(d => {
+      [["cdlExpiry","CDL",d.name],["medCardExpiry","Med Card",d.name],["mvrDue","MVR Pull",d.name],["drugTest","Drug Test",d.name]].forEach(([f,label,name])=>{
+        const dy = daysUntil(d[f]);
+        if(dy!==null && dy<=90) notifs.push({id:`${d.id}-${f}`,type:"driver",severity:dy<=30?"urgent":dy<=60?"warning":"info",title:`${label} Due`,body:`${name} — ${statusLabel(dy)}`,days:dy,date:d[f],ts:now});
+      });
+    });
+    // Contract renewals
+    contracts.forEach(c => {
+      const d = daysUntil(c.renewalDate);
+      if(d!==null && d<=90) notifs.push({id:`contract-${c.id}`,type:"contract",severity:d<=30?"urgent":"warning",title:"Contract Renewal",body:`${c.name} — ${statusLabel(d)}`,days:d,date:c.renewalDate,ts:now});
+    });
+    return notifs.sort((a,b)=>a.days-b.days);
+  };
+
+  const requestPushPermission = async () => {
+    if(!("Notification" in window)) return;
+    const perm = await Notification.requestPermission();
+    setNotifPermission(perm);
+    if(perm==="granted") {
+      new Notification("ContractorOS Alerts Enabled", {body:"You'll receive compliance and contract renewal reminders.",icon:"/icons/icon-192.png"});
+    }
+  };
+
+  const sendTestNotif = () => {
+    if(Notification.permission==="granted") {
+      new Notification("🔴 Compliance Alert", {body:"DOT Inspection expiring in 14 days — Unit 1",icon:"/icons/icon-192.png"});
+    }
+  };
+
+  // ── PHASE 3: ROLE HELPERS ─────────────────────────────────────────
+  const canEdit = () => currentUser.role==="owner" || currentUser.role==="manager";
+  const isOwner = () => currentUser.role==="owner";
+  const getDriverForUser = () => drivers.find(d=>d.id===currentUser.driverId);
+
+  const switchUser = (user) => {
+    if(!user.pin) { setCurrentUser(user); setSwitchingUser(false); return; }
+    setPinEntry({userId:user.id, enteredPin:"", user});
+  };
+
+  const confirmPin = () => {
+    if(!pinEntry) return;
+    if(pinEntry.enteredPin===pinEntry.user.pin) {
+      setCurrentUser(pinEntry.user);
+      setPinEntry(null);
+      setSwitchingUser(false);
+    } else {
+      setPinEntry(p=>({...p,enteredPin:"",error:true}));
+    }
+  };
+
+  // ── PHASE 1: PDF GENERATION ───────────────────────────────────────
+  const generatePDF = (type) => {
+    const win = window.open("","_blank");
+    const styles = `
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; color: #1a1a1a; background: white; padding: 40px; }
+        .header { border-bottom: 3px solid #f59e0b; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .logo { font-size: 28px; font-weight: 900; letter-spacing: -0.02em; }
+        .logo span { color: #f59e0b; }
+        .meta { font-size: 12px; color: #666; text-align: right; }
+        h2 { font-size: 20px; font-weight: 700; margin: 24px 0 12px; color: #1a1a1a; border-left: 4px solid #f59e0b; padding-left: 12px; }
+        h3 { font-size: 15px; font-weight: 700; margin: 16px 0 8px; color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
+        th { background: #f5f5f5; padding: 8px 12px; text-align: left; font-weight: 700; border-bottom: 2px solid #ddd; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+        td { padding: 8px 12px; border-bottom: 1px solid #eee; vertical-align: top; }
+        tr:hover td { background: #fafafa; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+        .badge-red { background: #fee2e2; color: #dc2626; }
+        .badge-yellow { background: #fef9c3; color: #ca8a04; }
+        .badge-green { background: #dcfce7; color: #16a34a; }
+        .badge-blue { background: #dbeafe; color: #2563eb; }
+        .stat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 24px; }
+        .stat-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; }
+        .stat-value { font-size: 28px; font-weight: 800; color: #f59e0b; }
+        .stat-label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+        .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #eee; font-size: 10px; color: #999; display: flex; justify-content: space-between; }
+        .urgent { color: #dc2626; font-weight: 700; }
+        .warning { color: #d97706; font-weight: 700; }
+        .ok { color: #16a34a; }
+        @media print { body { padding: 20px; } }
+      </style>
+    `;
+    const now = new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});
+    const company = settings.companyName || "My Fleet";
+
+    let body = "";
+
+    if(type==="compliance") {
+      const urgent = generateNotifications().filter(n=>n.severity==="urgent");
+      const warning = generateNotifications().filter(n=>n.severity==="warning");
+      body = `
+        <div class="header">
+          <div><div class="logo">CONTRACTOR<span>OS</span></div><div style="font-size:14px;color:#666;margin-top:4px;">Compliance Report</div></div>
+          <div class="meta"><strong>${company}</strong><br/>${now}<br/>Generated by ContractorOS</div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-value">${compliance.trucks.length}</div><div class="stat-label">Vehicles on File</div></div>
+          <div class="stat-card"><div class="stat-value">${compliance.drivers.length}</div><div class="stat-label">Drivers on File</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:${urgent.length>0?"#dc2626":"#16a34a"}">${urgent.length}</div><div class="stat-label">Urgent Items</div></div>
+        </div>
+        ${urgent.length>0?`<h2>🔴 Urgent — Action Required</h2><table><thead><tr><th>Item</th><th>Status</th><th>Date</th></tr></thead><tbody>${urgent.map(n=>`<tr><td>${n.title} — ${n.body.split("—")[0].trim()}</td><td class="urgent">${n.body.split("—")[1]||""}</td><td>${n.date||""}</td></tr>`).join("")}</tbody></table>`:""}
+        ${warning.length>0?`<h2>⚠ Coming Up — 31–90 Days</h2><table><thead><tr><th>Item</th><th>Status</th><th>Date</th></tr></thead><tbody>${warning.map(n=>`<tr><td>${n.title} — ${n.body.split("—")[0].trim()}</td><td class="warning">${n.body.split("—")[1]||""}</td><td>${n.date||""}</td></tr>`).join("")}</tbody></table>`:""}
+        <h2>Vehicle Files</h2><table><thead><tr><th>Unit</th><th>Year/Make</th><th>DOT Inspection</th><th>Registration</th><th>IFTA</th><th>IRP</th></tr></thead><tbody>
+          ${compliance.trucks.map(t=>{
+            const di=daysUntil(t.dotInspection),reg=daysUntil(t.registration),ifta=daysUntil(t.ifta),irp=daysUntil(t.irp);
+            const cls=d=>d===null?"":d<=30?"urgent":d<=60?"warning":"ok";
+            return `<tr><td><strong>${t.name}</strong></td><td>${t.year||""} ${t.make||""}</td><td class="${cls(di)}">${t.dotInspection||"—"}</td><td class="${cls(reg)}">${t.registration||"—"}</td><td class="${cls(ifta)}">${t.ifta||"—"}</td><td class="${cls(irp)}">${t.irp||"—"}</td></tr>`;
+          }).join("")}
+        </tbody></table>
+        <h2>Driver Files</h2><table><thead><tr><th>Driver</th><th>CDL Expiry</th><th>Med Card</th><th>MVR Due</th><th>Drug Test</th><th>Annual Review</th></tr></thead><tbody>
+          ${compliance.drivers.map(d=>{
+            const cdl=daysUntil(d.cdlExpiry),med=daysUntil(d.medCardExpiry),mvr=daysUntil(d.mvrDue),drug=daysUntil(d.drugTest);
+            const cls=dy=>dy===null?"":dy<=30?"urgent":dy<=60?"warning":"ok";
+            return `<tr><td><strong>${d.name}</strong></td><td class="${cls(cdl)}">${d.cdlExpiry||"—"}</td><td class="${cls(med)}">${d.medCardExpiry||"—"}</td><td class="${cls(mvr)}">${d.mvrDue||"—"}</td><td class="${cls(drug)}">${d.drugTest||"—"}</td><td>${d.annualReview||"—"}</td></tr>`;
+          }).join("")}
+        </tbody></table>
+        <h2>Federal Recurring Deadlines</h2><table><thead><tr><th>Filing</th><th>Due Date</th><th>Notes</th></tr></thead><tbody>
+          ${[["IFTA Q1","Jan 31","Fuel tax Oct–Dec"],["IFTA Q2","Apr 30","Fuel tax Jan–Mar"],["IFTA Q3","Jul 31","Fuel tax Apr–Jun"],["IFTA Q4","Oct 31","Fuel tax Jul–Sep"],["UCR Registration","Dec 31","Opens Oct 1"],["MCS-150 Update","Every 2 years","Per USDOT# anniversary"],["Drug Clearinghouse","Annual per driver","Required employer query"]].map(([f,d,n])=>`<tr><td>${f}</td><td>${d}</td><td>${n}</td></tr>`).join("")}
+        </tbody></table>
+      `;
+    }
+
+    if(type==="drivers") {
+      body = `
+        <div class="header">
+          <div><div class="logo">CONTRACTOR<span>OS</span></div><div style="font-size:14px;color:#666;margin-top:4px;">Driver File Summary</div></div>
+          <div class="meta"><strong>${company}</strong><br/>${now}<br/>Generated by ContractorOS</div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-value">${drivers.length}</div><div class="stat-label">Total Drivers</div></div>
+          <div class="stat-card"><div class="stat-value">${drivers.filter(d=>d.status==="active").length}</div><div class="stat-label">Active</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:${incidents.length>0?"#dc2626":"#16a34a"}">${incidents.length}</div><div class="stat-label">Total Incidents</div></div>
+        </div>
+        ${drivers.map(d=>{
+          const driverIncs = incidents.filter(i=>i.driverId===d.id||i.driverName===d.name);
+          const cdl=daysUntil(d.cdlExpiry),med=daysUntil(d.medCardExpiry);
+          const cls=dy=>dy===null?"":dy<=30?"urgent":dy<=60?"warning":"ok";
+          return `
+            <h2>${d.name}</h2>
+            <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
+              <tr><td>Status</td><td><span class="badge ${d.status==="active"?"badge-green":"badge-red"}">${d.status}</span></td></tr>
+              <tr><td>Route / Assignment</td><td>${d.route||"Unassigned"}</td></tr>
+              <tr><td>Hire Date</td><td>${d.hireDate||"—"}</td></tr>
+              <tr><td>Pay Type</td><td>${d.payType?.replace("_"," ")||"—"} @ ${d.payRate||"—"}</td></tr>
+              <tr><td>YTD Earnings</td><td>${d.ytdPay?fmt$(parseFloat(d.ytdPay)):"—"}</td></tr>
+              <tr><td>CDL Expiry</td><td class="${cls(cdl)}">${d.cdlExpiry||"Not set"}</td></tr>
+              <tr><td>Medical Card</td><td class="${cls(med)}">${d.medCardExpiry||"Not set"}</td></tr>
+              <tr><td>Total Incidents</td><td style="color:${driverIncs.length>0?"#dc2626":"#16a34a"};font-weight:700">${driverIncs.length}</td></tr>
+            </tbody></table>
+            ${driverIncs.length>0?`<table style="margin-top:8px"><thead><tr><th>Date</th><th>Type</th><th>Severity</th><th>Description</th></tr></thead><tbody>${driverIncs.map(i=>`<tr><td>${i.date||"—"}</td><td>${i.type}</td><td class="${i.severity==="critical"||i.severity==="major"?"urgent":"warning"}">${i.severity}</td><td>${i.description}</td></tr>`).join("")}</tbody></table>`:"<p style='font-size:12px;color:#16a34a;margin:8px 0 16px'>✓ No incidents on record</p>"}
+          `;
+        }).join("")}
+      `;
+    }
+
+    if(type==="pl") {
+      const totalRev = revenue.reduce((s,r)=>s+parseFloat(r.amount||0),0);
+      const totalExp = expenses.reduce((s,e)=>s+parseFloat(e.amount||0),0);
+      const net = totalRev-totalExp;
+      const expByCat = {};
+      expenses.forEach(e=>{ expByCat[e.category]=(expByCat[e.category]||0)+parseFloat(e.amount||0); });
+      body = `
+        <div class="header">
+          <div><div class="logo">CONTRACTOR<span>OS</span></div><div style="font-size:14px;color:#666;margin-top:4px;">Profit & Loss Report</div></div>
+          <div class="meta"><strong>${company}</strong><br/>${now}<br/>Generated by ContractorOS</div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-value" style="color:#16a34a">${fmt$(totalRev)}</div><div class="stat-label">Total Revenue</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:#dc2626">${fmt$(totalExp)}</div><div class="stat-label">Total Expenses</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:${net>=0?"#16a34a":"#dc2626"}">${fmt$(net)}</div><div class="stat-label">Net Profit</div></div>
+        </div>
+        <h2>Revenue</h2><table><thead><tr><th>Date</th><th>Description</th><th>Vehicle</th><th style="text-align:right">Amount</th></tr></thead><tbody>
+          ${revenue.map(r=>`<tr><td>${r.date||"—"}</td><td>${r.description||"Revenue"}</td><td>${r.vehicle||"—"}</td><td style="text-align:right;color:#16a34a;font-weight:700">${fmt$(parseFloat(r.amount||0))}</td></tr>`).join("")}
+          <tr style="background:#f5f5f5"><td colspan="3"><strong>Total Revenue</strong></td><td style="text-align:right;font-weight:700;color:#16a34a">${fmt$(totalRev)}</td></tr>
+        </tbody></table>
+        <h2>Expenses by Category</h2><table><thead><tr><th>Category</th><th style="text-align:right">Total</th><th style="text-align:right">% of Revenue</th></tr></thead><tbody>
+          ${Object.entries(expByCat).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>`<tr><td>${cat.replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase())}</td><td style="text-align:right;color:#dc2626">${fmt$(amt)}</td><td style="text-align:right;color:#666">${totalRev>0?((amt/totalRev)*100).toFixed(1):0}%</td></tr>`).join("")}
+          <tr style="background:#f5f5f5"><td><strong>Total Expenses</strong></td><td style="text-align:right;font-weight:700;color:#dc2626">${fmt$(totalExp)}</td><td></td></tr>
+        </tbody></table>
+        <h2>All Expenses</h2><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Vehicle</th><th style="text-align:right">Amount</th></tr></thead><tbody>
+          ${expenses.map(e=>`<tr><td>${e.date||"—"}</td><td>${(e.category||"").replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase())}</td><td>${e.description||"—"}</td><td>${e.vehicle||"—"}</td><td style="text-align:right;color:#dc2626">${fmt$(parseFloat(e.amount||0))}</td></tr>`).join("")}
+        </tbody></table>
+      `;
+    }
+
+    win.document.write(`<!DOCTYPE html><html><head><title>${company} — ContractorOS Report</title>${styles}</head><body>${body}<div class="footer"><span>ContractorOS — ${company}</span><span>Generated ${now}</span><span>Confidential</span></div></body></html>`);
+    win.document.close();
+    setTimeout(()=>win.print(),500);
   };
 
   // ── EDIT MODAL HELPERS ─────────────────────────────────────────────
@@ -423,7 +677,7 @@ export default function ContractorOS() {
   }
 
   // ── SHARED COMPONENTS ──────────────────────────────────────────────
-  const navLabels = {dashboard:"Dashboard",analyze:"Analyze Load",boards:"Load Boards",compliance:"Compliance",brokers:"Brokers",fleet:"Fleet",finance:"Finance",routes:"Routes",drivers:"Drivers",contracts:"Contracts",settings:"Settings"};
+  const navLabels = {dashboard:"Dashboard",analyze:"Analyze Load",boards:"Load Boards",compliance:"Compliance",brokers:"Brokers",fleet:"Fleet",finance:"Finance",routes:"Routes",drivers:"Drivers",contracts:"Contracts",reports:"Reports",trends:"P&L Trends",users:"Users",settings:"Settings"};
   const SubNav = ({tabs,active,onSelect}) => <SubNavComp tabs={tabs} active={active} accent={accent} onSelect={onSelect}/>;
   const Stat = ({label,value,color,sub}) => <StatCard label={label} value={value} color={color||accent} sub={sub} card={S.card}/>;
   const ExpiryBadge = ({label,days}) => <ExpiryBadgeComp label={label} days={days}/>;
@@ -434,6 +688,34 @@ export default function ContractorOS() {
   return (
     <div style={{minHeight:"100vh",background:"#0a0a0a",fontFamily:"'DM Mono','Courier New',monospace",color:"#d4d0c8",display:"flex",flexDirection:"column"}}>
       <EditModalComp modal={modal} editForm={editForm} setEditForm={setEditForm} saveEdit={saveEdit} closeModal={closeModal} accent={accent} S={S} MODAL_CONFIGS={MODAL_CONFIGS}/>
+
+      {/* ── PIN ENTRY MODAL ── */}
+      {pinEntry&&(
+        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.9)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000,padding:20}}>
+          <div style={{background:"#141414",border:`1px solid ${accent}44`,borderRadius:10,padding:"32px 28px",maxWidth:320,width:"100%",textAlign:"center"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#e8e4d8",marginBottom:4}}>Switch User</div>
+            <div style={{fontSize:12,color:"#555",marginBottom:20}}>Signing in as <span style={{color:accent}}>{pinEntry.user.name}</span></div>
+            <div style={{fontSize:11,color:"#555",marginBottom:10}}>Enter PIN</div>
+            <input type="password" maxLength={6} value={pinEntry.enteredPin} onChange={e=>setPinEntry(p=>({...p,enteredPin:e.target.value,error:false}))} onKeyDown={e=>e.key==="Enter"&&confirmPin()} placeholder="••••" style={{...S.input,textAlign:"center",fontSize:24,letterSpacing:"0.3em",marginBottom:8}} autoFocus/>
+            {pinEntry.error&&<div style={{fontSize:11,color:"#ef4444",marginBottom:8}}>Incorrect PIN — try again</div>}
+            <div style={{display:"flex",gap:10,marginTop:12}}>
+              <button className="hov" onClick={confirmPin} style={S.btn}>Confirm</button>
+              <button onClick={()=>setPinEntry(null)} style={S.ghost}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── USER ROLE BAR ── */}
+      {currentUser.role!=="owner"&&(
+        <div style={{background:currentUser.role==="manager"?"#0d0d1a":"#0a100a",borderBottom:`1px solid ${currentUser.role==="manager"?"#2a2a5a":"#1a3a1a"}`,padding:"6px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+          <div style={{fontSize:10,color:currentUser.role==="manager"?"#8888cc":"#4ade80",letterSpacing:"0.15em",textTransform:"uppercase"}}>
+            {currentUser.role==="manager"?"👔 Manager View":"🚗 Driver View"} — {currentUser.name}
+            {currentUser.role==="driver"&&<span style={{color:"#555",marginLeft:8}}>Read only</span>}
+          </div>
+          <button onClick={()=>setSwitchingUser(true)} style={{background:"transparent",border:"1px solid #2a2a2a",color:"#555",padding:"3px 10px",fontSize:9,cursor:"pointer",borderRadius:3,fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em"}}>Switch User</button>
+        </div>
+      )}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Barlow+Condensed:wght@400;600;700;800;900&display=swap');
         *{box-sizing:border-box}
@@ -996,15 +1278,18 @@ export default function ContractorOS() {
               </div>
             )}
             {subScreen==="incidents"&&(
-              <div style={{maxWidth:760,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+              <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
                   <div style={S.section}>INCIDENT LOG</div>
-                  <button className="hov" onClick={()=>setShowAddIncident(showAddIncident?"hide":"show")} style={S.danger}>{showAddIncident?"Cancel":"+ Log Incident"}</button>
+                  <button className="hov" onClick={()=>{setShowAddIncident(showAddIncident?"hide":"show");setEditIncidentId(null);}} style={S.danger}>{showAddIncident&&showAddIncident!=="hide"?"Cancel":"+ Log Incident"}</button>
                 </div>
+
+                {/* Add form */}
                 {showAddIncident&&showAddIncident!=="hide"&&(
-                  <div style={{...S.card,marginBottom:18}}>
+                  <div style={{...S.card,marginBottom:18,border:"1px solid #ef444433"}}>
+                    <div style={{fontSize:10,color:"#ef4444",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:14}}>New Incident</div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                      <div><label style={S.label}>Driver</label>
+                      <div><label style={S.label}>Driver *</label>
                         <select value={incidentForm.driverId} onChange={e=>setIncidentForm(p=>({...p,driverId:e.target.value}))} style={S.input}>
                           <option value="">Select driver...</option>
                           {drivers.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}
@@ -1021,31 +1306,113 @@ export default function ContractorOS() {
                           <option value="minor">Minor</option><option value="moderate">Moderate</option><option value="major">Major</option><option value="critical">Critical</option>
                         </select>
                       </div>
-                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Description *</label><input value={incidentForm.description} onChange={e=>setIncidentForm(p=>({...p,description:e.target.value}))} placeholder="What happened?" style={S.input}/></div>
+                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Description *</label><input value={incidentForm.description} onChange={e=>setIncidentForm(p=>({...p,description:e.target.value}))} placeholder="What happened? Include location, vehicle, outcome." style={S.input}/></div>
                     </div>
                     <button className="hov" onClick={()=>{
                       if(!incidentForm.description) return;
                       const driver = drivers.find(d=>d.id===incidentForm.driverId);
                       const inc = {...incidentForm, id:Date.now(), driverName:driver?.name||"Unknown"};
-                      // Save to global incidents list
                       setIncidents(p=>[inc,...p]);
-                      // Also save to driver's own incidents array so it shows in All Drivers count
-                      if(driver) {
-                        setDrivers(p=>p.map(d=>d.id===incidentForm.driverId ? {...d, incidents:[...(d.incidents||[]),inc]} : d));
-                      }
+                      if(driver) setDrivers(p=>p.map(d=>d.id===incidentForm.driverId?{...d,incidents:[...(d.incidents||[]),inc]}:d));
                       setIncidentForm({driverId:"",date:"",type:"delivery",description:"",severity:"minor"});
                       setShowAddIncident(null);
                     }} style={{...S.danger,marginTop:14}}>Save Incident</button>
                   </div>
                 )}
-                {incidents.length===0&&!showAddIncident&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No incidents logged. Good work!</div>}
+
+                {/* Driver incident summary strip */}
+                {drivers.length>0&&(
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:8,marginBottom:20}}>
+                    {drivers.map(d=>{
+                      const driverIncs = incidents.filter(i=>i.driverId===d.id||(i.driverName===d.name));
+                      const count = driverIncs.length;
+                      const critical = driverIncs.filter(i=>i.severity==="critical"||i.severity==="major").length;
+                      return (
+                        <div key={d.id} style={{background:count===0?"#0a0f0a":critical>0?"#1a0808":"#120e00",border:`1px solid ${count===0?"#1a2a1a":critical>0?"#3a1010":"#2a1e00"}`,borderRadius:6,padding:"12px 14px",cursor:"pointer"}}
+                          onClick={()=>{/* filter to this driver */}}>
+                          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"#e8e4d8",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</div>
+                          <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                            <div style={{textAlign:"center"}}>
+                              <div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:count===0?"#22c55e":critical>0?"#ef4444":"#f59e0b"}}>{count}</div>
+                              <div style={{fontSize:8,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Total</div>
+                            </div>
+                            {critical>0&&<div style={{textAlign:"center"}}>
+                              <div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#ef4444"}}>{critical}</div>
+                              <div style={{fontSize:8,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Major+</div>
+                            </div>}
+                            {count===0&&<div style={{fontSize:10,color:"#2d4a2d"}}>Clean record</div>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Incident list */}
+                {incidents.length===0&&!showAddIncident&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No incidents logged yet.</div>}
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                  {[...incidents,...drivers.flatMap(d=>(d.incidents||[]).map(i=>({...i,driverName:d.name})))].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(inc=>{
+                  {incidents.sort((a,b)=>new Date(b.date||0)-new Date(a.date||0)).map(inc=>{
                     const sc={minor:"#555",moderate:"#f59e0b",major:"#f87171",critical:"#ef4444"}[inc.severity]||"#555";
-                    return <div key={inc.id} style={{...S.card,borderLeft:`3px solid ${sc}`,display:"flex",alignItems:"center",gap:14}}>
-                      <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{inc.description}</div><div style={{fontSize:10,color:"#555"}}>{inc.driverName||"Unknown"} · {inc.type} · {inc.date}</div></div>
-                      <span style={{fontSize:9,color:sc,textTransform:"uppercase",letterSpacing:"0.1em",flexShrink:0,border:`1px solid ${sc}33`,padding:"2px 7px",borderRadius:3}}>{inc.severity}</span>
-                    </div>;
+                    const isEditing = editIncidentId===inc.id;
+                    return (
+                      <div key={inc.id} style={{...S.card,borderLeft:`3px solid ${sc}`,background:isEditing?"#1a1a0a":"#141414"}}>
+                        {isEditing?(
+                          <div>
+                            <div style={{fontSize:10,color:"#f59e0b",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:12}}>Editing Incident</div>
+                            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+                              <div><label style={S.label}>Driver</label>
+                                <select value={editIncidentForm.driverId||""} onChange={e=>setEditIncidentForm(p=>({...p,driverId:e.target.value,driverName:drivers.find(d=>d.id===e.target.value)?.name||p.driverName}))} style={S.input}>
+                                  <option value="">Unknown</option>
+                                  {drivers.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}
+                                </select>
+                              </div>
+                              <div><label style={S.label}>Date</label><input type="date" value={editIncidentForm.date||""} onChange={e=>setEditIncidentForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
+                              <div><label style={S.label}>Type</label>
+                                <select value={editIncidentForm.type||"delivery"} onChange={e=>setEditIncidentForm(p=>({...p,type:e.target.value}))} style={S.input}>
+                                  <option value="delivery">Delivery Issue</option><option value="vehicle">Vehicle Damage</option><option value="accident">Accident</option><option value="customer">Customer Complaint</option><option value="safety">Safety Violation</option><option value="other">Other</option>
+                                </select>
+                              </div>
+                              <div><label style={S.label}>Severity</label>
+                                <select value={editIncidentForm.severity||"minor"} onChange={e=>setEditIncidentForm(p=>({...p,severity:e.target.value}))} style={S.input}>
+                                  <option value="minor">Minor</option><option value="moderate">Moderate</option><option value="major">Major</option><option value="critical">Critical</option>
+                                </select>
+                              </div>
+                              <div style={{gridColumn:"1/-1"}}><label style={S.label}>Description</label><input value={editIncidentForm.description||""} onChange={e=>setEditIncidentForm(p=>({...p,description:e.target.value}))} style={S.input}/></div>
+                            </div>
+                            <div style={{display:"flex",gap:8}}>
+                              <button onClick={()=>{
+                                const updated = {...inc,...editIncidentForm};
+                                // Update in global incidents
+                                setIncidents(p=>p.map(i=>i.id===inc.id?updated:i));
+                                // Update in driver's incidents array
+                                setDrivers(p=>p.map(d=>({...d,incidents:(d.incidents||[]).map(i=>i.id===inc.id?updated:i)})));
+                                setEditIncidentId(null);
+                              }} style={S.btn}>Save Changes</button>
+                              <button onClick={()=>setEditIncidentId(null)} style={S.ghost}>Cancel</button>
+                            </div>
+                          </div>
+                        ):(
+                          <div style={{display:"flex",alignItems:"flex-start",gap:14}}>
+                            <div style={{flex:1,minWidth:0}}>
+                              {/* Driver name badge */}
+                              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                                <div style={{background:sc+"22",border:`1px solid ${sc}44`,borderRadius:3,padding:"2px 8px",fontSize:10,color:sc,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em"}}>{inc.severity}</div>
+                                <div style={{fontSize:10,color:"#f59e0b",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{inc.driverName||"Unknown Driver"}</div>
+                                <div style={{fontSize:10,color:"#444"}}>· {inc.type?.replace(/_/g," ")} · {inc.date||"No date"}</div>
+                              </div>
+                              <div style={{fontSize:12,color:"#c8c4bc",lineHeight:1.6}}>{inc.description}</div>
+                            </div>
+                            <div style={{display:"flex",gap:6,flexShrink:0}}>
+                              <button onClick={()=>{setEditIncidentId(inc.id);setEditIncidentForm({...inc});}} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
+                              <button onClick={()=>{
+                                setIncidents(p=>p.filter(i=>i.id!==inc.id));
+                                setDrivers(p=>p.map(d=>({...d,incidents:(d.incidents||[]).filter(i=>i.id!==inc.id)})));
+                              }} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
                   })}
                 </div>
               </div>
@@ -1193,7 +1560,7 @@ export default function ContractorOS() {
       {/* ══ FINANCE ════════════════════════════════════════════════════ */}
       {screen==="finance"&&(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["pl","P&L Dashboard"],["revenue","Revenue"],["expenses","Expenses"]]} active={subScreen||"pl"} onSelect={setSubScreen}/>
+          <SubNav tabs={[["pl","P&L Dashboard"],["revenue","Revenue"],["expenses","Expenses"],["import","Import from Excel/QB"]]} active={subScreen||"pl"} onSelect={setSubScreen}/>
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             {(!subScreen||subScreen==="pl")&&(
               <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -1309,11 +1676,115 @@ export default function ContractorOS() {
                 </div>
               </div>
             )}
+
+            {subScreen==="import"&&(
+              <div style={{maxWidth:700,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{...S.section,marginBottom:4}}>IMPORT FROM EXCEL / QUICKBOOKS</div>
+                <p style={{fontSize:11,color:"#555",marginBottom:22,lineHeight:1.8}}>
+                  Export your P&L from QuickBooks Online or Excel as a CSV file, then drop it here. ContractorOS will read it and automatically create your revenue and expense entries.
+                </p>
+
+                {/* How to export guide */}
+                <div style={{background:"#0c0c14",border:"1px solid #1a1a2a",borderRadius:8,padding:"16px 20px",marginBottom:20}}>
+                  <div style={{fontSize:10,color:"#3a3a6a",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>How to Export from QuickBooks</div>
+                  {[
+                    ["1","Go to Reports → Profit and Loss"],
+                    ["2","Set your date range"],
+                    ["3","Click Export / Print → Export to CSV"],
+                    ["4","Save the file and upload it below"],
+                  ].map(([n,step])=>(
+                    <div key={n} style={{display:"flex",gap:12,padding:"6px 0",borderTop:n!=="1"?"1px solid #14141e":"none",alignItems:"center"}}>
+                      <div style={{width:20,height:20,background:"#1a1a2a",border:"1px solid #2a2a4a",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#6060aa",flexShrink:0}}>{n}</div>
+                      <div style={{fontSize:11,color:"#8888cc"}}>{step}</div>
+                    </div>
+                  ))}
+                  <div style={{marginTop:10,fontSize:10,color:"#3a3a5a",fontStyle:"italic"}}>Excel users: Save your spreadsheet as CSV (File → Save As → CSV) before uploading.</div>
+                </div>
+
+                {/* Upload area */}
+                {!excelResult&&!excelImporting&&(
+                  <label style={{display:"block",cursor:"pointer"}}>
+                    <div style={{border:"2px dashed #2a2a4a",borderRadius:8,padding:"40px 24px",textAlign:"center",background:"#0d0d14",transition:"all 0.2s"}}
+                      onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor="#6060aa";}}
+                      onDragLeave={e=>{e.currentTarget.style.borderColor="#2a2a4a";}}
+                      onDrop={e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f)importExcelPL(f);}}>
+                      <div style={{fontSize:32,marginBottom:12}}>📊</div>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8",marginBottom:6}}>Drop your CSV file here</div>
+                      <div style={{fontSize:11,color:"#555",marginBottom:16}}>or click to browse</div>
+                      <div style={{fontSize:10,color:"#3a3a5a"}}>Supports: QuickBooks CSV export, Excel CSV, plain text P&L</div>
+                    </div>
+                    <input type="file" accept=".csv,.txt,.xls,.xlsx" style={{display:"none"}} onChange={e=>{const f=e.target.files[0];if(f)importExcelPL(f);}}/>
+                  </label>
+                )}
+
+                {excelImporting&&(
+                  <div style={{...S.card,textAlign:"center",padding:40}}>
+                    <div style={{width:36,height:36,border:`2px solid #1e1e1e`,borderTop:`2px solid ${accent}`,borderRadius:"50%",animation:"spin 0.7s linear infinite",margin:"0 auto 16px"}}/>
+                    <div style={{fontSize:12,color:"#555"}}>Reading your file and extracting line items...</div>
+                  </div>
+                )}
+
+                {excelResult&&!excelResult.error&&(
+                  <div style={{animation:"fadeUp 0.3s ease"}}>
+                    <div style={{...S.card,marginBottom:14,background:"#051a05",border:"1px solid #0d3a1a"}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#22c55e",marginBottom:10}}>✓ File Parsed Successfully</div>
+                      {excelResult.summary&&(
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
+                          {[["Revenue",fmt$(excelResult.summary.totalRevenue||0),"#22c55e"],["Expenses",fmt$(excelResult.summary.totalExpenses||0),"#ef4444"],["Net Profit",fmt$(excelResult.summary.netProfit||0),(excelResult.summary.netProfit||0)>=0?"#22c55e":"#ef4444"]].map(([lbl,val,col])=>(
+                            <div key={lbl} style={{background:"#0a0f0a",border:"1px solid #1a2a1a",borderRadius:5,padding:"10px 12px"}}>
+                              <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>{lbl}</div>
+                              <div style={{fontSize:18,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{val}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div style={{fontSize:11,color:"#2d5a2d",marginBottom:14}}>
+                        Found {excelResult.revenue?.length||0} revenue items and {excelResult.expenses?.length||0} expense items.
+                        {excelResult.summary?.period&&` Period: ${excelResult.summary.period}`}
+                      </div>
+                      <div style={{display:"flex",gap:10}}>
+                        <button className="hov" onClick={confirmExcelImport} style={S.btn}>Import All Items →</button>
+                        <button onClick={()=>setExcelResult(null)} style={S.ghost}>Cancel</button>
+                      </div>
+                    </div>
+
+                    {/* Preview */}
+                    {excelResult.revenue?.slice(0,3).map((r,i)=>(
+                      <div key={i} style={{...S.card,marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <div><div style={{fontSize:11,color:"#c8c4bc"}}>{r.description}</div><div style={{fontSize:9,color:"#555"}}>Revenue · {r.date}</div></div>
+                        <div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e"}}>{fmt$(r.amount)}</div>
+                      </div>
+                    ))}
+                    {excelResult.expenses?.slice(0,3).map((e,i)=>(
+                      <div key={i} style={{...S.card,marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <div><div style={{fontSize:11,color:"#c8c4bc"}}>{e.description}</div><div style={{fontSize:9,color:"#555"}}>{e.category} · {e.date}</div></div>
+                        <div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ef4444"}}>{fmt$(e.amount)}</div>
+                      </div>
+                    ))}
+                    {((excelResult.revenue?.length||0)+(excelResult.expenses?.length||0))>6&&(
+                      <div style={{fontSize:11,color:"#555",textAlign:"center",padding:"10px 0"}}>...and {((excelResult.revenue?.length||0)+(excelResult.expenses?.length||0))-6} more items</div>
+                    )}
+                  </div>
+                )}
+
+                {excelResult?.error&&(
+                  <div style={{...S.card,background:"#1a0808",border:"1px solid #3a1010"}}>
+                    <div style={{fontSize:13,color:"#ef4444",marginBottom:8}}>⚠ Import Failed</div>
+                    <div style={{fontSize:11,color:"#7a4040",marginBottom:14}}>{excelResult.error}</div>
+                    <button onClick={()=>setExcelResult(null)} style={S.ghost}>Try Again</button>
+                  </div>
+                )}
+
+                {/* QuickBooks API note */}
+                <div style={{marginTop:24,background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:8,padding:"16px 20px"}}>
+                  <div style={{fontSize:10,color:"#444",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:8}}>🔌 QuickBooks Direct Sync — Coming Soon</div>
+                  <div style={{fontSize:11,color:"#444",lineHeight:1.7}}>A direct QuickBooks Online integration will automatically sync your P&L without any manual export. Requires a QB developer account and Intuit app review — on the roadmap for Phase 2.</div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
-
-      {/* ══ BROKERS (OTR only) ══════════════════════════════════════════ */}
       {screen==="brokers"&&!seg.features.brokerScorecard&&(
         <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16,padding:32}}>
           <div style={{fontSize:32}}>🚫</div>
@@ -1415,6 +1886,387 @@ export default function ContractorOS() {
           </div>
         );
       })()}
+
+      {/* ══ PHASE 1: REPORTS ═══════════════════════════════════════════ */}
+      {screen==="reports"&&(
+        <div style={{flex:1,overflowY:"auto",padding:24,animation:"fadeUp 0.3s ease"}}>
+          <div style={{maxWidth:800,margin:"0 auto"}}>
+            <div style={{...S.section,marginBottom:4}}>REPORTS</div>
+            <p style={{fontSize:11,color:"#555",marginBottom:28,lineHeight:1.8}}>Generate professional PDF reports. Opens in a new tab — use your browser's print dialog to save as PDF or print.</p>
+
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:28}}>
+              {[
+                {
+                  icon:"🛡️",title:"Compliance Report",desc:"Full compliance status — vehicle files, driver files, upcoming expirations, federal deadlines. Perfect for DOT audit prep.",color:"#ef4444",
+                  stats:`${compliance.trucks.length} vehicles · ${compliance.drivers.length} drivers · ${generateNotifications().filter(n=>n.severity==="urgent").length} urgent items`,
+                  action:()=>generatePDF("compliance")
+                },
+                {
+                  icon:"👥",title:"Driver File Summary",desc:"Complete driver roster with compliance status, pay info, incident history, and tenure. Useful for HR audits and insurance reviews.",color:"#60a5fa",
+                  stats:`${drivers.length} drivers · ${incidents.length} total incidents`,
+                  action:()=>generatePDF("drivers")
+                },
+                {
+                  icon:"💰",title:"Profit & Loss Report",desc:"Full P&L with revenue detail, expenses by category, and net profit. Ready to hand to your accountant or lender.",color:"#22c55e",
+                  stats:`${fmt$(revenue.reduce((s,r)=>s+parseFloat(r.amount||0),0))} revenue · ${fmt$(expenses.reduce((s,e)=>s+parseFloat(e.amount||0),0))} expenses`,
+                  action:()=>generatePDF("pl")
+                },
+              ].map(r=>(
+                <div key={r.title} style={{...S.card,display:"flex",flexDirection:"column",gap:12}}>
+                  <div style={{fontSize:32}}>{r.icon}</div>
+                  <div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8",marginBottom:4}}>{r.title}</div>
+                    <div style={{fontSize:11,color:"#555",lineHeight:1.7,marginBottom:8}}>{r.desc}</div>
+                    <div style={{fontSize:10,color:r.color,marginBottom:12}}>{r.stats}</div>
+                  </div>
+                  <button className="hov" onClick={r.action} style={{...S.btn,background:r.color,marginTop:"auto"}}>Generate PDF →</button>
+                </div>
+              ))}
+            </div>
+
+            {/* Notifications section */}
+            <div style={{...S.card,marginBottom:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                <div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8",marginBottom:2}}>Push Notifications</div>
+                  <div style={{fontSize:11,color:"#555"}}>Get alerts on your phone before compliance items expire</div>
+                </div>
+                <div style={{display:"flex",gap:8}}>
+                  {notifPermission!=="granted"&&<button className="hov" onClick={requestPushPermission} style={S.btn}>Enable Alerts</button>}
+                  {notifPermission==="granted"&&<button className="hov" onClick={sendTestNotif} style={{...S.btn,background:"#22c55e"}}>Send Test</button>}
+                </div>
+              </div>
+              {notifPermission==="granted"&&<div style={{fontSize:11,color:"#22c55e"}}>✓ Push notifications enabled — you'll receive compliance and contract renewal alerts</div>}
+              {notifPermission==="denied"&&<div style={{fontSize:11,color:"#ef4444"}}>Notifications blocked. Go to browser settings → Site Settings → Notifications to re-enable.</div>}
+              {notifPermission==="default"&&<div style={{fontSize:11,color:"#555"}}>Click "Enable Alerts" to receive push notifications for compliance deadlines, incidents, and contract renewals.</div>}
+            </div>
+
+            {/* Active alerts */}
+            {(()=>{
+              const notifs = generateNotifications();
+              return notifs.length>0?(
+                <div>
+                  <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:10}}>Current Alerts ({notifs.length})</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {notifs.slice(0,10).map(n=>(
+                      <div key={n.id} style={{...S.card,display:"flex",alignItems:"center",gap:14,borderLeft:`3px solid ${n.severity==="urgent"?"#ef4444":"#f59e0b"}`,background:n.severity==="urgent"?"#1a0808":"#120e00"}}>
+                        <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{n.title}</div><div style={{fontSize:10,color:"#555"}}>{n.body}</div></div>
+                        <div style={{fontSize:11,color:n.severity==="urgent"?"#ef4444":"#f59e0b",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,flexShrink:0}}>{n.severity==="urgent"?"🔴 URGENT":"🟡 SOON"}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ):(<div style={{...S.card,textAlign:"center",color:"#22c55e",fontSize:12,padding:24}}>✓ No active compliance alerts — everything looks good!</div>);
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* ══ PHASE 4: P&L TRENDS ════════════════════════════════════════ */}
+      {screen==="trends"&&(()=>{
+        // Build monthly data
+        const monthlyData = (()=>{
+          const months = {};
+          revenue.forEach(r=>{
+            if(!r.date) return;
+            const k = r.date.slice(0,7);
+            if(!months[k]) months[k]={month:k,revenue:0,expenses:0,routes:{}};
+            months[k].revenue += parseFloat(r.amount||0);
+          });
+          expenses.forEach(e=>{
+            if(!e.date) return;
+            const k = e.date.slice(0,7);
+            if(!months[k]) months[k]={month:k,revenue:0,expenses:0,routes:{}};
+            months[k].expenses += parseFloat(e.amount||0);
+          });
+          return Object.values(months).sort((a,b)=>a.month.localeCompare(b.month)).map(m=>({...m,net:m.revenue-m.expenses,margin:m.revenue>0?((m.revenue-m.expenses)/m.revenue*100).toFixed(1):0}));
+        })();
+
+        // Build per-route data with revenue log entries by route name
+        const routeTrends = routes.map(r=>{
+          const routeRevEntries = revenue.filter(rv=>(rv.description||"").toLowerCase().includes(r.name.toLowerCase()));
+          const months={};
+          routeRevEntries.forEach(rv=>{
+            if(!rv.date) return;
+            const k=rv.date.slice(0,7);
+            if(!months[k]) months[k]={month:k,revenue:0};
+            months[k].revenue+=parseFloat(rv.amount||0);
+          });
+          return {...r, monthlyRevenue:Object.values(months).sort((a,b)=>a.month.localeCompare(b.month))};
+        });
+
+        const maxRev = Math.max(...monthlyData.map(m=>m.revenue),1);
+        const maxNet = Math.max(...monthlyData.map(m=>Math.abs(m.net)),1);
+
+        return (
+          <div style={{flex:1,overflowY:"auto",padding:24,animation:"fadeUp 0.3s ease"}}>
+            <div style={{maxWidth:1000,margin:"0 auto"}}>
+              <div style={{...S.section,marginBottom:4}}>P&L TRENDS</div>
+              <p style={{fontSize:11,color:"#555",marginBottom:22,lineHeight:1.8}}>Month over month revenue, expenses, and net profit. Route-level breakdown shows which lanes are improving or declining.</p>
+
+              {/* View toggle */}
+              <div style={{display:"flex",gap:8,marginBottom:22}}>
+                {[["monthly","Monthly"],["weekly","By Route"]].map(([v,l])=>(
+                  <button key={v} onClick={()=>setTrendsView(v)} style={{background:trendsView===v?accent:"transparent",color:trendsView===v?"#0a0a0a":"#555",border:`1px solid ${trendsView===v?accent:"#2a2a2a"}`,padding:"7px 18px",borderRadius:4,fontSize:11,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em"}}>{l}</button>
+                ))}
+              </div>
+
+              {monthlyData.length===0?(
+                <div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No financial data yet. Add revenue and expenses in Finance to see trends.</div>
+              ):(
+                <>
+                {trendsView==="monthly"&&(
+                  <>
+                    {/* Bar chart */}
+                    <div style={{...S.card,marginBottom:20}}>
+                      <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:16}}>Monthly Revenue vs Expenses</div>
+                      <div style={{display:"flex",alignItems:"flex-end",gap:8,height:180,padding:"0 8px"}}>
+                        {monthlyData.map(m=>(
+                          <div key={m.month} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                            <div style={{width:"100%",display:"flex",gap:2,alignItems:"flex-end",height:150}}>
+                              <div style={{flex:1,background:"#22c55e",borderRadius:"3px 3px 0 0",height:`${(m.revenue/maxRev)*140}px`,minHeight:2,transition:"height 0.5s ease"}} title={`Revenue: ${fmt$(m.revenue)}`}/>
+                              <div style={{flex:1,background:"#ef4444",borderRadius:"3px 3px 0 0",height:`${(m.expenses/maxRev)*140}px`,minHeight:2,transition:"height 0.5s ease"}} title={`Expenses: ${fmt$(m.expenses)}`}/>
+                            </div>
+                            <div style={{fontSize:8,color:"#444",textAlign:"center",whiteSpace:"nowrap"}}>{m.month.slice(5)}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{display:"flex",gap:16,marginTop:10,fontSize:10,color:"#555"}}>
+                        <span><span style={{display:"inline-block",width:10,height:10,background:"#22c55e",borderRadius:2,marginRight:4}}/>Revenue</span>
+                        <span><span style={{display:"inline-block",width:10,height:10,background:"#ef4444",borderRadius:2,marginRight:4}}/>Expenses</span>
+                      </div>
+                    </div>
+
+                    {/* Net profit line */}
+                    <div style={{...S.card,marginBottom:20}}>
+                      <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:16}}>Net Profit Trend</div>
+                      <div style={{position:"relative",height:100,padding:"0 8px"}}>
+                        <svg width="100%" height="100" viewBox={`0 0 ${Math.max(monthlyData.length*60,300)} 100`} preserveAspectRatio="none">
+                          <defs>
+                            <linearGradient id="netGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#22c55e" stopOpacity="0.3"/>
+                              <stop offset="100%" stopColor="#22c55e" stopOpacity="0"/>
+                            </linearGradient>
+                          </defs>
+                          {monthlyData.length>1&&(()=>{
+                            const w = Math.max(monthlyData.length*60,300);
+                            const points = monthlyData.map((m,i)=>{
+                              const x = (i/(monthlyData.length-1))*w;
+                              const y = 90 - ((m.net+maxNet)/(maxNet*2))*80;
+                              return `${x},${y}`;
+                            });
+                            const areaPoints = `${points[0].split(",")[0]},90 ${points.join(" ")} ${points[points.length-1].split(",")[0]},90`;
+                            return <>
+                              <polygon points={areaPoints} fill="url(#netGrad)"/>
+                              <polyline points={points.join(" ")} fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinejoin="round"/>
+                              {monthlyData.map((m,i)=>{
+                                const x=(i/(monthlyData.length-1))*w;
+                                const y=90-((m.net+maxNet)/(maxNet*2))*80;
+                                return <circle key={i} cx={x} cy={y} r="4" fill={m.net>=0?"#22c55e":"#ef4444"} stroke="#0a0a0a" strokeWidth="1.5"/>;
+                              })}
+                            </>;
+                          })()}
+                          <line x1="0" y1="90" x2="100%" y2="90" stroke="#1e1e1e" strokeWidth="1"/>
+                          <line x1="0" y1={90-80*0.5} x2="100%" y2={90-80*0.5} stroke="#1a1a1a" strokeWidth="1" strokeDasharray="4,4"/>
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* Monthly table */}
+                    <div style={S.card}>
+                      <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Monthly Summary</div>
+                      <div style={{overflowX:"auto"}}>
+                        <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                          <thead>
+                            <tr style={{borderBottom:"1px solid #1e1e1e"}}>
+                              {["Month","Revenue","Expenses","Net Profit","Margin"].map(h=><th key={h} style={{padding:"8px 12px",textAlign:h==="Month"?"left":"right",fontSize:9,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase"}}>{h}</th>)}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[...monthlyData].reverse().map(m=>(
+                              <tr key={m.month} style={{borderBottom:"1px solid #141414"}}>
+                                <td style={{padding:"10px 12px",color:"#c8c4bc",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{m.month}</td>
+                                <td style={{padding:"10px 12px",textAlign:"right",color:"#22c55e"}}>{fmt$(m.revenue)}</td>
+                                <td style={{padding:"10px 12px",textAlign:"right",color:"#ef4444"}}>{fmt$(m.expenses)}</td>
+                                <td style={{padding:"10px 12px",textAlign:"right",fontWeight:700,color:m.net>=0?"#22c55e":"#ef4444"}}>{fmt$(m.net)}</td>
+                                <td style={{padding:"10px 12px",textAlign:"right",color:parseFloat(m.margin)>=20?"#22c55e":parseFloat(m.margin)>=10?"#f59e0b":"#ef4444"}}>{m.margin}%</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {trendsView==="weekly"&&(
+                  <div style={{display:"flex",flexDirection:"column",gap:16}}>
+                    <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase"}}>Route Profitability — All Time</div>
+                    {routes.length===0?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No routes added. Add routes in the Routes screen first.</div>:
+                    routes.map(r=>{
+                      const netEst = parseFloat(r.rate||0)-((parseFloat(r.miles||0)/settings.mpg)*settings.dieselPrice)-parseFloat(r.driverPay||0)-parseFloat(r.otherCosts||0);
+                      const margin = parseFloat(r.rate||0)>0?(netEst/parseFloat(r.rate))*100:0;
+                      const grade = margin>=30?"A":margin>=20?"B":margin>=10?"C":"D";
+                      return (
+                        <div key={r.id} style={S.card}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+                            <div>
+                              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:17,fontWeight:700,color:"#e8e4d8"}}>{r.name}</div>
+                              <div style={{fontSize:10,color:"#555"}}>{r.stops||0} stops · {r.miles||0} mi · {r.frequency||"Daily"}</div>
+                            </div>
+                            <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                              <div style={{width:36,height:36,background:gradeColor(grade)+"22",border:`1px solid ${gradeColor(grade)}44`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:18,color:gradeColor(grade),borderRadius:4}}>{grade}</div>
+                            </div>
+                          </div>
+                          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:12}}>
+                            {[["Contracted",fmt$(parseFloat(r.rate||0)),"#22c55e"],["Est Expenses",fmt$(parseFloat(r.rate||0)-netEst),"#ef4444"],["Net Profit",fmt$(netEst),netEst>=0?"#22c55e":"#ef4444"],["Margin",`${margin.toFixed(1)}%`,parseFloat(margin)>=20?"#22c55e":parseFloat(margin)>=10?"#f59e0b":"#ef4444"]].map(([lbl,val,col])=>(
+                              <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}>
+                                <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>{lbl}</div>
+                                <div style={{fontSize:15,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{val}</div>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Mini profitability bar */}
+                          <div>
+                            <div style={{fontSize:9,color:"#555",marginBottom:4}}>Profitability</div>
+                            <div style={{height:8,background:"#1a1a1a",borderRadius:4,overflow:"hidden"}}>
+                              <div style={{height:"100%",width:`${Math.min(100,Math.max(0,margin))}%`,background:parseFloat(margin)>=20?"#22c55e":parseFloat(margin)>=10?"#f59e0b":"#ef4444",borderRadius:4,transition:"width 0.5s ease"}}/>
+                            </div>
+                          </div>
+                          {r.analysis&&(
+                            <div style={{marginTop:10,padding:"8px 12px",background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:4,fontSize:11,color:"#888",lineHeight:1.6}}>{r.analysis.summary}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ══ PHASE 3: USERS & ROLES ═════════════════════════════════════ */}
+      {screen==="users"&&(
+        <div style={{flex:1,overflowY:"auto",padding:24,animation:"fadeUp 0.3s ease"}}>
+          <div style={{maxWidth:700,margin:"0 auto"}}>
+            <div style={{...S.section,marginBottom:4}}>USERS & ROLES</div>
+            <p style={{fontSize:11,color:"#555",marginBottom:22,lineHeight:1.8}}>Control who can access ContractorOS and what they can do. Owner sees everything. Managers can edit. Drivers see read-only views of their own information.</p>
+
+            {/* Current user */}
+            <div style={{...S.card,marginBottom:20,border:`1px solid ${accent}44`,background:"#0f0f0a"}}>
+              <div style={{fontSize:10,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:10}}>Currently Signed In</div>
+              <div style={{display:"flex",alignItems:"center",gap:14}}>
+                <div style={{width:44,height:44,background:accent+"22",border:`1px solid ${accent}44`,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:18,color:accent}}>{currentUser.name.charAt(0)}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8"}}>{currentUser.name}</div>
+                  <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>{currentUser.role}</div>
+                </div>
+                {users.length>0&&<button onClick={()=>setSwitchingUser(true)} style={{...S.ghost,fontSize:10}}>Switch User</button>}
+              </div>
+            </div>
+
+            {/* Switch user panel */}
+            {switchingUser&&(
+              <div style={{...S.card,marginBottom:20,border:"1px solid #2a2a4a"}}>
+                <div style={{fontSize:10,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:12}}>Switch To</div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {/* Owner always available */}
+                  <div className="cardhov" onClick={()=>{setCurrentUser({id:"owner",name:"Owner",role:"owner",pin:""});setSwitchingUser(false);}} style={{...S.card,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
+                    <div style={{width:32,height:32,background:accent+"22",border:`1px solid ${accent}44`,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:accent}}>O</div>
+                    <div style={{flex:1}}><div style={{fontSize:12,color:"#e8e4d8"}}>Owner</div><div style={{fontSize:10,color:"#555"}}>Full access</div></div>
+                    <div style={{fontSize:9,color:"#22c55e",border:"1px solid #22c55e44",padding:"2px 7px",borderRadius:3}}>OWNER</div>
+                  </div>
+                  {users.map(u=>(
+                    <div key={u.id} className="cardhov" onClick={()=>switchUser(u)} style={{...S.card,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
+                      <div style={{width:32,height:32,background:"#2a2a2a",border:"1px solid #3a3a3a",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#888"}}>{u.name.charAt(0)}</div>
+                      <div style={{flex:1}}><div style={{fontSize:12,color:"#e8e4d8"}}>{u.name}</div><div style={{fontSize:10,color:"#555"}}>{u.driverId?`Driver: ${drivers.find(d=>d.id===u.driverId)?.name||"Unknown"}`:"No driver linked"}</div></div>
+                      <div style={{fontSize:9,color:u.role==="manager"?"#8888cc":"#4ade80",border:`1px solid ${u.role==="manager"?"#8888cc44":"#4ade8044"}`,padding:"2px 7px",borderRadius:3,textTransform:"uppercase"}}>{u.role}</div>
+                      {u.pin&&<div style={{fontSize:9,color:"#555"}}>🔒 PIN</div>}
+                    </div>
+                  ))}
+                </div>
+                <button onClick={()=>setSwitchingUser(false)} style={{...S.ghost,marginTop:12,fontSize:10}}>Cancel</button>
+              </div>
+            )}
+
+            {/* Add user */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase"}}>Team Members ({users.length})</div>
+              <button className="hov" onClick={()=>setShowAddUser(!showAddUser)} style={S.btn}>{showAddUser?"Cancel":"+ Add User"}</button>
+            </div>
+
+            {showAddUser&&(
+              <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}22`}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                  <div><label style={S.label}>Name *</label><input value={userForm.name} onChange={e=>setUserForm(p=>({...p,name:e.target.value}))} placeholder="Full name" style={S.input}/></div>
+                  <div><label style={S.label}>Role</label>
+                    <select value={userForm.role} onChange={e=>setUserForm(p=>({...p,role:e.target.value}))} style={S.input}>
+                      <option value="manager">Manager — can edit everything</option>
+                      <option value="driver">Driver — read-only, own info only</option>
+                    </select>
+                  </div>
+                  <div><label style={S.label}>PIN (optional)</label><input type="password" maxLength={6} value={userForm.pin} onChange={e=>setUserForm(p=>({...p,pin:e.target.value}))} placeholder="4-6 digits" style={S.input}/></div>
+                  {userForm.role==="driver"&&<div><label style={S.label}>Link to Driver</label>
+                    <select value={userForm.driverId} onChange={e=>setUserForm(p=>({...p,driverId:e.target.value}))} style={S.input}>
+                      <option value="">Select driver...</option>
+                      {drivers.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                  </div>}
+                </div>
+                <div style={{marginTop:10,padding:"10px 12px",background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:4,fontSize:10,color:"#555",lineHeight:1.7}}>
+                  <strong style={{color:"#888"}}>Manager:</strong> Can view and edit all data — routes, compliance, drivers, finance.<br/>
+                  <strong style={{color:"#888"}}>Driver:</strong> Read-only access. If linked, they can see their own route, compliance dates, and incident history.
+                </div>
+                <button className="hov" onClick={()=>{
+                  if(!userForm.name) return;
+                  setUsers(p=>[...p,{...userForm,id:Date.now()}]);
+                  setUserForm({name:"",role:"driver",pin:"",driverId:""});
+                  setShowAddUser(false);
+                }} style={{...S.btn,marginTop:14}}>Save User</button>
+              </div>
+            )}
+
+            {users.length===0&&!showAddUser&&(
+              <div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>
+                No team members added yet. Add managers or drivers to give them controlled access.
+              </div>
+            )}
+
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {users.map(u=>(
+                <div key={u.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
+                  <div style={{width:36,height:36,background:u.role==="manager"?"#1a1a2a":"#0a120a",border:`1px solid ${u.role==="manager"?"#2a2a5a":"#1a3a1a"}`,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:u.role==="manager"?"#8888cc":"#4ade80",flexShrink:0}}>{u.name.charAt(0)}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{u.name}</div>
+                    <div style={{fontSize:10,color:"#555"}}>{u.role==="manager"?"Manager — full edit access":"Driver — read only"}{u.driverId&&` · ${drivers.find(d=>d.id===u.driverId)?.name||"Driver linked"}`}{u.pin&&" · PIN protected"}</div>
+                  </div>
+                  <div style={{fontSize:9,color:u.role==="manager"?"#8888cc":"#4ade80",border:`1px solid ${u.role==="manager"?"#8888cc44":"#4ade8044"}`,padding:"2px 8px",borderRadius:3,textTransform:"uppercase",flexShrink:0}}>{u.role}</div>
+                  <button onClick={()=>setUsers(p=>p.filter(x=>x.id!==u.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
+                </div>
+              ))}
+            </div>
+
+            {/* Role guide */}
+            <div style={{marginTop:24,background:"#0c0c14",border:"1px solid #1a1a2a",borderRadius:8,padding:"16px 20px"}}>
+              <div style={{fontSize:10,color:"#3a3a6a",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>Role Permissions</div>
+              <table style={{width:"100%",fontSize:11,borderCollapse:"collapse"}}>
+                <thead><tr style={{borderBottom:"1px solid #1a1a2a"}}>{["Feature","Owner","Manager","Driver"].map(h=><th key={h} style={{padding:"6px 10px",textAlign:"left",fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {[["View all data","✓","✓","Own only"],["Add/Edit records","✓","✓","✗"],["Delete records","✓","✓","✗"],["View P&L / Finance","✓","✓","✗"],["Generate PDF reports","✓","✓","✗"],["Manage users","✓","✗","✗"],["Switch contractor type","✓","✗","✗"]].map(([feat,...perms])=>(
+                    <tr key={feat} style={{borderBottom:"1px solid #14141e"}}>
+                      <td style={{padding:"7px 10px",color:"#888"}}>{feat}</td>
+                      {perms.map((p,i)=><td key={i} style={{padding:"7px 10px",color:p==="✓"?"#22c55e":p==="✗"?"#ef4444":"#f59e0b",fontWeight:700}}>{p}</td>)}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══ SETTINGS ═══════════════════════════════════════════════════ */}
       {screen==="settings"&&(
