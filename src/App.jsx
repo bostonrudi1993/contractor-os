@@ -7,9 +7,21 @@ const KEYS = {
   expenses: "cos_expenses", revenue: "cos_revenue", routes: "cos_routes",
   contracts: "cos_contracts", incidents: "cos_incidents", brokers: "cos_brokers",
   loads: "cos_loads", users: "cos_users", currentUser: "cos_current_user",
-  notifications: "cos_notifications",
+  notifications: "cos_notifications", filings: "cos_filings",
 };
 const stor = { get: (k,fb) => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):fb; } catch { return fb; } }, set: (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch {} } };
+
+// Default federal filings — pre-seeded, always present
+const DEFAULT_FILINGS = [
+  {id:"ifta-q1", name:"IFTA Q1 Return", dueDate:"Jan 31", frequency:"Annual", notes:"Fuel tax for Oct–Dec quarter", federal:true, filedDate:"", confirmationNum:"", filedNotes:""},
+  {id:"ifta-q2", name:"IFTA Q2 Return", dueDate:"Apr 30", frequency:"Annual", notes:"Fuel tax for Jan–Mar quarter", federal:true, filedDate:"", confirmationNum:"", filedNotes:""},
+  {id:"ifta-q3", name:"IFTA Q3 Return", dueDate:"Jul 31", frequency:"Annual", notes:"Fuel tax for Apr–Jun quarter", federal:true, filedDate:"", confirmationNum:"", filedNotes:""},
+  {id:"ifta-q4", name:"IFTA Q4 Return", dueDate:"Oct 31", frequency:"Annual", notes:"Fuel tax for Jul–Sep quarter", federal:true, filedDate:"", confirmationNum:"", filedNotes:""},
+  {id:"ucr",     name:"UCR Registration", dueDate:"Dec 31", frequency:"Annual", notes:"Opens Oct 1 — don't miss it", federal:true, filedDate:"", confirmationNum:"", filedNotes:""},
+  {id:"mcs150",  name:"MCS-150 Update", dueDate:"Every 2 years", frequency:"Biennial", notes:"Based on USDOT# issuance date — check FMCSA portal", federal:true, filedDate:"", confirmationNum:"", filedNotes:""},
+  {id:"clearinghouse", name:"Drug Clearinghouse Query", dueDate:"Annual per driver", frequency:"Annual", notes:"Required employer query — once per driver per year", federal:true, filedDate:"", confirmationNum:"", filedNotes:""},
+  {id:"eld",     name:"ELD Log Retention", dueDate:"Ongoing — 6 months", frequency:"Ongoing", notes:"Keep all HOS logs minimum 6 months", federal:true, filedDate:"", confirmationNum:"", filedNotes:""},
+];
 
 // ─── SEGMENT CONFIG ───────────────────────────────────────────────────
 const SEGMENTS = {
@@ -190,6 +202,7 @@ export default function ContractorOS() {
 
   const [showAddMaint, setShowAddMaint] = useState(false);
   const [maintForm, setMaintForm] = useState({truckName:"",type:"",date:"",mileage:"",cost:"",notes:"",nextDueMiles:""});
+  const [maintCustomVehicle, setMaintCustomVehicle] = useState("");
 
   const [showAddContract, setShowAddContract] = useState(false);
   const [contractForm, setContractForm] = useState({name:"",company:"",startDate:"",renewalDate:"",value:"",status:"active",notes:""});
@@ -204,6 +217,22 @@ export default function ContractorOS() {
   // Phase 2 — Notifications
   const [notifications, setNotifications] = useState(() => stor.get(KEYS.notifications, []));
   const [notifPermission, setNotifPermission] = useState("default");
+
+  // Filings tracker
+  const [filings, setFilings] = useState(() => {
+    const saved = stor.get(KEYS.filings, null);
+    if(!saved) return DEFAULT_FILINGS;
+    // Merge saved data with defaults so new federal filings always appear
+    const savedMap = {};
+    saved.forEach(f=>{ savedMap[f.id]=f; });
+    const merged = DEFAULT_FILINGS.map(d=>savedMap[d.id]?{...d,...savedMap[d.id]}:d);
+    const customs = saved.filter(f=>!f.federal);
+    return [...merged, ...customs];
+  });
+  const [editFilingId, setEditFilingId] = useState(null);
+  const [editFilingForm, setEditFilingForm] = useState({});
+  const [showAddFiling, setShowAddFiling] = useState(false);
+  const [newFilingForm, setNewFilingForm] = useState({name:"",dueDate:"",frequency:"Annual",notes:"",filedDate:"",confirmationNum:"",filedNotes:""});
 
   // Phase 3 — Users / Roles
   const [users, setUsers] = useState(() => stor.get(KEYS.users, []));
@@ -221,7 +250,7 @@ export default function ContractorOS() {
   const [brokerForm, setBrokerForm] = useState({name:"",paySpeed:"",rating:3,notes:"",blacklisted:false});
 
   const [showAddVehicle, setShowAddVehicle] = useState(false);
-  const [vehicleForm, setVehicleForm] = useState({name:"",year:"",make:"",plate:"",dotInspection:"",ifta:"",irp:"",registration:""});
+  const [vehicleForm, setVehicleForm] = useState({name:"",nickname:"",vin:"",year:"",make:"",plate:"",dotInspection:"",ifta:"",irp:"",registration:""});
   const [showAddCompDriver, setShowAddCompDriver] = useState(false);
   const [compDriverForm, setCompDriverForm] = useState({name:"",cdlExpiry:"",medCardExpiry:"",mvrDue:"",drugTest:"",annualReview:""});
   const [aiResult, setAiResult] = useState(null);
@@ -249,6 +278,7 @@ export default function ContractorOS() {
   useEffect(()=>{stor.set(KEYS.users,users);},[users]);
   useEffect(()=>{stor.set(KEYS.currentUser,currentUser);},[currentUser]);
   useEffect(()=>{stor.set(KEYS.notifications,notifications);},[notifications]);
+  useEffect(()=>{stor.set(KEYS.filings,filings);},[filings]);
 
   const seg = segment ? SEGMENTS[segment] : null;
   const S = seg ? mkStyles(seg.color) : mkStyles("#f59e0b");
@@ -552,9 +582,11 @@ export default function ContractorOS() {
     vehicle: {
       title: "Edit Vehicle",
       fields: [
-        ["name","Unit Name / #","text"],["year","Year","text"],["make","Make & Model","text"],
-        ["plate","Plate #","text"],["dotInspection","DOT Inspection Expiry","date"],
-        ["registration","Registration Expiry","date"],["ifta","IFTA Renewal","date"],["irp","IRP Plate Renewal","date"],
+        ["name","Unit Name / #","text"],["nickname","Nickname (optional)","text"],
+        ["vin","VIN or Last 6 Digits","text"],["year","Year","text"],
+        ["make","Make & Model","text"],["plate","Plate #","text"],
+        ["dotInspection","DOT Inspection Expiry","date"],["registration","Registration Expiry","date"],
+        ["ifta","IFTA Renewal","date"],["irp","IRP Plate Renewal","date"],
       ]
     },
     compdriver: {
@@ -1011,7 +1043,7 @@ export default function ContractorOS() {
                     <div><label style={S.label}>Assigned Vehicle</label>
                       <select value={routeForm.vehicle} onChange={e=>setRouteForm(p=>({...p,vehicle:e.target.value}))} style={S.input}>
                         <option value="">Select...</option>
-                        {compliance.trucks.map(t=><option key={t.id} value={t.name}>{t.name}</option>)}
+                        {compliance.trucks.map(t=><option key={t.id} value={t.name}>{t.name}{t.nickname?` "${t.nickname}"`:""}{ t.vin?` · ${t.vin.slice(-6)}`:""}</option>)}
                         <option value="Unassigned">Unassigned</option>
                       </select>
                     </div>
@@ -1069,19 +1101,107 @@ export default function ContractorOS() {
                     <div style={{display:"flex",flexDirection:"column",gap:6}}>{urgentItems.map((item,i)=><ExpiryBadge key={i} {...item}/>)}</div>
                   </div>
                 )}
+                {/* Federal Filings Tracker */}
                 <div style={{background:"#0c0c14",border:"1px solid #1a1a2a",borderRadius:8,padding:"18px 22px"}}>
-                  <div style={{fontSize:10,color:"#3a3a6a",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Federal Recurring Deadlines</div>
-                  <div style={{display:"flex",flexDirection:"column",gap:0}}>
-                    {[["IFTA Q1 Return","Jan 31","Fuel tax for Oct–Dec"],["IFTA Q2 Return","Apr 30","Fuel tax for Jan–Mar"],["IFTA Q3 Return","Jul 31","Fuel tax for Apr–Jun"],["IFTA Q4 Return","Oct 31","Fuel tax for Jul–Sep"],["UCR Registration","Dec 31","Opens Oct 1 — don't miss it"],["MCS-150 Update","Every 2 years","Based on USDOT# issuance date"],["Drug Clearinghouse","Annually per driver","Required employer query"],["ELD Log Retention","6 months minimum","Keep all HOS logs"]].map(([item,when,note],i)=>(
-                      <div key={item} style={{display:"grid",gridTemplateColumns:"1fr auto",gap:0,padding:"10px 0",borderTop:i>0?"1px solid #14141e":"none",alignItems:"start"}}>
-                        <div>
-                          <div style={{fontSize:12,color:"#8888cc"}}>{item}</div>
-                          <div style={{fontSize:10,color:"#3a3a5a",marginTop:2}}>{note}</div>
-                        </div>
-                        <div style={{fontSize:13,color:"#6060aa",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,textAlign:"right",paddingLeft:20,whiteSpace:"nowrap"}}>{when}</div>
-                      </div>
-                    ))}
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                    <div>
+                      <div style={{fontSize:10,color:"#3a3a6a",letterSpacing:"0.2em",textTransform:"uppercase"}}>Federal Recurring Filings</div>
+                      <div style={{fontSize:10,color:"#2a2a4a",marginTop:3}}>Track completion dates, confirmation numbers, and notes for each filing</div>
+                    </div>
+                    {canEdit()&&<button className="hov" onClick={()=>setShowAddFiling(!showAddFiling)} style={{background:"transparent",border:"1px solid #2a2a5a",color:"#8888cc",padding:"5px 12px",fontSize:10,cursor:"pointer",borderRadius:4,fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em"}}>{showAddFiling?"Cancel":"+ Custom Deadline"}</button>}
                   </div>
+
+                  {/* Add custom filing form */}
+                  {showAddFiling&&canEdit()&&(
+                    <div style={{background:"#0f0f1a",border:"1px solid #2a2a4a",borderRadius:6,padding:"14px 16px",marginBottom:16}}>
+                      <div style={{fontSize:9,color:"#4a4a8a",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:12}}>New Custom Deadline</div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                        <div><label style={S.label}>Filing / Deadline Name *</label><input value={newFilingForm.name} onChange={e=>setNewFilingForm(p=>({...p,name:e.target.value}))} placeholder="e.g. State Fuel Tax, Business License" style={S.input}/></div>
+                        <div><label style={S.label}>Due Date</label><input value={newFilingForm.dueDate} onChange={e=>setNewFilingForm(p=>({...p,dueDate:e.target.value}))} placeholder="e.g. Mar 15, Quarterly, Annual" style={S.input}/></div>
+                        <div><label style={S.label}>Frequency</label>
+                          <select value={newFilingForm.frequency} onChange={e=>setNewFilingForm(p=>({...p,frequency:e.target.value}))} style={S.input}>
+                            {["Annual","Quarterly","Monthly","Biennial","Ongoing","One-time"].map(o=><option key={o}>{o}</option>)}
+                          </select>
+                        </div>
+                        <div><label style={S.label}>Notes</label><input value={newFilingForm.notes} onChange={e=>setNewFilingForm(p=>({...p,notes:e.target.value}))} placeholder="What is this filing for?" style={S.input}/></div>
+                      </div>
+                      <button className="hov" onClick={()=>{
+                        if(!newFilingForm.name) return;
+                        setFilings(p=>[...p,{...newFilingForm,id:`custom-${Date.now()}`,federal:false,filedDate:"",confirmationNum:"",filedNotes:""}]);
+                        setNewFilingForm({name:"",dueDate:"",frequency:"Annual",notes:"",filedDate:"",confirmationNum:"",filedNotes:""});
+                        setShowAddFiling(false);
+                      }} style={{...S.btn,background:"#6366f1",fontSize:11,padding:"7px 16px"}}>Add Deadline</button>
+                    </div>
+                  )}
+
+                  {/* Filings list */}
+                  <div style={{display:"flex",flexDirection:"column",gap:0}}>
+                    {filings.map((filing,i)=>{
+                      const isEditing = editFilingId===filing.id;
+                      const isFiled = !!filing.filedDate;
+                      const statusColor = isFiled?"#22c55e":"#f59e0b";
+                      const statusLabel = isFiled?"Filed":"Pending";
+                      return (
+                        <div key={filing.id} style={{borderTop:i>0?"1px solid #14141e":"none",padding:"12px 0"}}>
+                          {isEditing&&canEdit()?(
+                            /* Edit form */
+                            <div style={{background:"#0f0f1a",border:`1px solid ${accent}33`,borderRadius:6,padding:"14px 16px"}}>
+                              <div style={{fontSize:9,color:"#4a4a8a",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:12}}>Editing: {filing.name}</div>
+                              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                                {!filing.federal&&<div><label style={S.label}>Filing Name</label><input value={editFilingForm.name||""} onChange={e=>setEditFilingForm(p=>({...p,name:e.target.value}))} style={S.input}/></div>}
+                                {!filing.federal&&<div><label style={S.label}>Due Date</label><input value={editFilingForm.dueDate||""} onChange={e=>setEditFilingForm(p=>({...p,dueDate:e.target.value}))} style={S.input}/></div>}
+                                <div><label style={S.label}>Last Filed Date</label><input type="date" value={editFilingForm.filedDate||""} onChange={e=>setEditFilingForm(p=>({...p,filedDate:e.target.value}))} style={S.input}/></div>
+                                <div><label style={S.label}>Confirmation # / Reference</label><input value={editFilingForm.confirmationNum||""} onChange={e=>setEditFilingForm(p=>({...p,confirmationNum:e.target.value}))} placeholder="Confirmation or reference number" style={S.input}/></div>
+                                <div style={{gridColumn:"1/-1"}}><label style={S.label}>Filing Notes</label><input value={editFilingForm.filedNotes||""} onChange={e=>setEditFilingForm(p=>({...p,filedNotes:e.target.value}))} placeholder="Who filed it, any issues, follow-up needed..." style={S.input}/></div>
+                              </div>
+                              <div style={{display:"flex",gap:8}}>
+                                <button className="hov" onClick={()=>{
+                                  setFilings(p=>p.map(f=>f.id===filing.id?{...f,...editFilingForm}:f));
+                                  setEditFilingId(null);
+                                }} style={{...S.btn,fontSize:11,padding:"7px 16px"}}>Save</button>
+                                <button onClick={()=>setEditFilingId(null)} style={{...S.ghost,fontSize:10,padding:"7px 14px"}}>Cancel</button>
+                                {!filing.federal&&<button onClick={()=>{setFilings(p=>p.filter(f=>f.id!==filing.id));setEditFilingId(null);}} style={{background:"transparent",border:"1px solid #3a1010",color:"#7a4040",padding:"7px 12px",fontSize:10,cursor:"pointer",borderRadius:4,fontFamily:"'DM Mono',monospace",marginLeft:"auto"}}>Delete</button>}
+                              </div>
+                            </div>
+                          ):(
+                            /* Display row */
+                            <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:12,alignItems:"start"}}>
+                              <div style={{minWidth:0}}>
+                                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3,flexWrap:"wrap"}}>
+                                  <div style={{fontSize:12,color:"#8888cc",fontWeight:600}}>{filing.name}</div>
+                                  {!filing.federal&&<span style={{fontSize:8,color:"#6366f1",border:"1px solid #6366f133",padding:"1px 6px",borderRadius:2,letterSpacing:"0.1em"}}>CUSTOM</span>}
+                                  <span style={{fontSize:9,color:statusColor,border:`1px solid ${statusColor}44`,padding:"1px 6px",borderRadius:2,letterSpacing:"0.08em",textTransform:"uppercase"}}>{statusLabel}</span>
+                                </div>
+                                <div style={{fontSize:10,color:"#3a3a5a",marginBottom:isFiled?4:0}}>{filing.notes}</div>
+                                {isFiled&&(
+                                  <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+                                    <span style={{fontSize:10,color:"#22c55e"}}>✓ Filed: {new Date(filing.filedDate).toLocaleDateString()}</span>
+                                    {filing.confirmationNum&&<span style={{fontSize:10,color:"#555"}}>Ref: {filing.confirmationNum}</span>}
+                                    {filing.filedNotes&&<span style={{fontSize:10,color:"#555",fontStyle:"italic"}}>"{filing.filedNotes}"</span>}
+                                  </div>
+                                )}
+                              </div>
+                              <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
+                                <div style={{textAlign:"right"}}>
+                                  <div style={{fontSize:13,color:"#6060aa",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,whiteSpace:"nowrap"}}>{filing.dueDate}</div>
+                                  <div style={{fontSize:9,color:"#3a3a5a"}}>{filing.frequency}</div>
+                                </div>
+                                {canEdit()&&(
+                                  <button onClick={()=>{setEditFilingId(filing.id);setEditFilingForm({...filing});}} style={{background:"transparent",border:`1px solid ${accent}33`,color:accent,cursor:"pointer",fontSize:9,padding:"3px 8px",borderRadius:3,fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap"}}>
+                                    {isFiled?"Update":"Mark Filed"}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {!canEdit()&&(
+                    <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #14141e",fontSize:10,color:"#2a2a4a",fontStyle:"italic"}}>Read only — Owner or Manager access required to edit filings</div>
+                  )}
                 </div>
               </div>
             )}
@@ -1095,11 +1215,22 @@ export default function ContractorOS() {
                 {showAddVehicle&&(
                   <div style={{...S.card,marginBottom:18}}>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                      {[["name","Unit Name / # *","Unit 1"],["year","Year","2019"],["make","Make & Model","International 4300"],["plate","Plate #",""],["dotInspection","DOT Inspection Expiry","date"],["registration","Registration Expiry","date"],["ifta","IFTA Renewal","date"],["irp","IRP Plate Renewal","date"]].map(([f,lbl,ph])=>(
-                        <div key={f}><label style={S.label}>{lbl}</label><input type={ph==="date"?"date":"text"} value={vehicleForm[f]} onChange={e=>setVehicleForm(p=>({...p,[f]:e.target.value}))} placeholder={ph!=="date"?ph:""} style={S.input}/></div>
+                      {[
+                        ["name","Unit Name / # *","Unit 1, Truck 1"],
+                        ["nickname","Nickname (optional)","Blue Box, Big Red"],
+                        ["vin","VIN or Last 6 Digits","3ALACWDT..."],
+                        ["year","Year","2019"],
+                        ["make","Make & Model","International 4300"],
+                        ["plate","Plate #",""],
+                        ["dotInspection","DOT Inspection Expiry","date"],
+                        ["registration","Registration Expiry","date"],
+                        ["ifta","IFTA Renewal","date"],
+                        ["irp","IRP Plate Renewal","date"],
+                      ].map(([f,lbl,ph])=>(
+                        <div key={f}><label style={S.label}>{lbl}</label><input type={ph==="date"?"date":"text"} value={vehicleForm[f]||""} onChange={e=>setVehicleForm(p=>({...p,[f]:e.target.value}))} placeholder={ph!=="date"?ph:""} style={S.input}/></div>
                       ))}
                     </div>
-                    <button className="hov" onClick={()=>{ if(!vehicleForm.name)return; setCompliance(p=>({...p,trucks:[...p.trucks,{...vehicleForm,id:Date.now()}]})); setVehicleForm({name:"",year:"",make:"",plate:"",dotInspection:"",ifta:"",irp:"",registration:""}); setShowAddVehicle(false); }} style={{...S.btn,marginTop:14}}>Save Vehicle</button>
+                    <button className="hov" onClick={()=>{ if(!vehicleForm.name)return; setCompliance(p=>({...p,trucks:[...p.trucks,{...vehicleForm,id:Date.now()}]})); setVehicleForm({name:"",nickname:"",vin:"",year:"",make:"",plate:"",dotInspection:"",ifta:"",irp:"",registration:""}); setShowAddVehicle(false); }} style={{...S.btn,marginTop:14}}>Save Vehicle</button>
                   </div>
                 )}
                 {compliance.trucks.length===0&&!showAddVehicle&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No vehicles added yet.</div>}
@@ -1107,7 +1238,10 @@ export default function ContractorOS() {
                   {compliance.trucks.map(t=>(
                     <div key={t.id} style={S.card}>
                       <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
-                        <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:17,fontWeight:700,color:"#e8e4d8"}}>{t.name}</div><div style={{fontSize:10,color:"#555"}}>{t.year} {t.make} {t.plate&&`· ${t.plate}`}</div></div>
+                        <div>
+                          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:17,fontWeight:700,color:"#e8e4d8"}}>{t.name}{t.nickname&&<span style={{color:accent,marginLeft:8,fontSize:14}}>"{t.nickname}"</span>}</div>
+                          <div style={{fontSize:10,color:"#555"}}>{t.year} {t.make} {t.plate&&`· ${t.plate}`}{t.vin&&<span style={{color:"#444",marginLeft:6}}>· VIN: {t.vin}</span>}</div>
+                        </div>
                         <div style={{display:"flex",gap:8}}>
                           <button onClick={()=>openEdit("vehicle",t)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
                           <button onClick={()=>setCompliance(p=>({...p,trucks:p.trucks.filter(x=>x.id!==t.id)}))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
@@ -1441,11 +1575,30 @@ export default function ContractorOS() {
                   <div style={{...S.card,marginBottom:18}}>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
                       <div><label style={S.label}>Vehicle *</label>
-                        <select value={maintForm.truckName} onChange={e=>setMaintForm(p=>({...p,truckName:e.target.value}))} style={S.input}>
-                          <option value="">Select...</option>
-                          {compliance.trucks.map(t=><option key={t.id} value={t.name}>{t.name}</option>)}
-                          <option value="Other">Other</option>
+                        <select value={maintForm.truckName} onChange={e=>{setMaintForm(p=>({...p,truckName:e.target.value}));if(e.target.value!=="__other__")setMaintCustomVehicle("");}} style={S.input}>
+                          <option value="">Select vehicle...</option>
+                          {compliance.trucks.map(t=>(
+                            <option key={t.id} value={t.name}>
+                              {t.name}{t.nickname?` "${t.nickname}"`:""}
+                              {t.vin?` · VIN:${t.vin.slice(-6)}`:""}
+                              {t.year?` · ${t.year}`:""}
+                              {t.make?` ${t.make}`:""}
+                            </option>
+                          ))}
+                          <option value="__other__">+ Enter custom vehicle name / VIN</option>
                         </select>
+                        {maintForm.truckName==="__other__"&&(
+                          <input
+                            value={maintCustomVehicle}
+                            onChange={e=>setMaintCustomVehicle(e.target.value)}
+                            placeholder="Type vehicle name, nickname, or VIN..."
+                            style={{...S.input,marginTop:6}}
+                            autoFocus
+                          />
+                        )}
+                        {compliance.trucks.length===0&&(
+                          <div style={{fontSize:9,color:"#555",marginTop:5}}>No vehicles in Compliance yet — you can enter a custom name above, or <span style={{color:accent,cursor:"pointer"}} onClick={()=>{setScreen("compliance");setSubScreen("vehicles");}}>add vehicles to Compliance first</span>.</div>
+                        )}
                       </div>
                       <div><label style={S.label}>Service Type *</label>
                         <select value={maintForm.type} onChange={e=>setMaintForm(p=>({...p,type:e.target.value}))} style={S.input}>
@@ -1459,7 +1612,14 @@ export default function ContractorOS() {
                       <div><label style={S.label}>Next Due (miles)</label><input type="number" value={maintForm.nextDueMiles} onChange={e=>setMaintForm(p=>({...p,nextDueMiles:e.target.value}))} placeholder="147500" style={S.input}/></div>
                       <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={maintForm.notes} onChange={e=>setMaintForm(p=>({...p,notes:e.target.value}))} placeholder="Shop name, parts, etc." style={S.input}/></div>
                     </div>
-                    <button className="hov" onClick={()=>{ if(!maintForm.truckName||!maintForm.type)return; setMaintenance(p=>[{...maintForm,id:Date.now()},...p]); setMaintForm({truckName:"",type:"",date:"",mileage:"",cost:"",notes:"",nextDueMiles:""}); setShowAddMaint(false); }} style={{...S.btn,marginTop:14}}>Save Record</button>
+                    <button className="hov" onClick={()=>{
+                      const vehicleName = maintForm.truckName==="__other__" ? maintCustomVehicle.trim() : maintForm.truckName;
+                      if(!vehicleName||!maintForm.type) return;
+                      setMaintenance(p=>[{...maintForm,truckName:vehicleName,id:Date.now()},...p]);
+                      setMaintForm({truckName:"",type:"",date:"",mileage:"",cost:"",notes:"",nextDueMiles:""});
+                      setMaintCustomVehicle("");
+                      setShowAddMaint(false);
+                    }} style={{...S.btn,marginTop:14}}>Save Record</button>
                   </div>
                 )}
                 {maintenance.length===0&&!showAddMaint&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No maintenance records yet.</div>}
@@ -1620,7 +1780,7 @@ export default function ContractorOS() {
                       <div><label style={S.label}>Vehicle</label>
                         <select value={revenueForm.vehicle} onChange={e=>setRevenueForm(p=>({...p,vehicle:e.target.value}))} style={S.input}>
                           <option value="">All / General</option>
-                          {compliance.trucks.map(t=><option key={t.id} value={t.name}>{t.name}</option>)}
+                          {compliance.trucks.map(t=><option key={t.id} value={t.name}>{t.name}{t.nickname?` "${t.nickname}"`:""}{ t.vin?` · ${t.vin.slice(-6)}`:""}</option>)}
                         </select>
                       </div>
                     </div>
@@ -1660,7 +1820,7 @@ export default function ContractorOS() {
                       <div><label style={S.label}>Vehicle</label>
                         <select value={expenseForm.vehicle} onChange={e=>setExpenseForm(p=>({...p,vehicle:e.target.value}))} style={S.input}>
                           <option value="">All / General</option>
-                          {compliance.trucks.map(t=><option key={t.id} value={t.name}>{t.name}</option>)}
+                          {compliance.trucks.map(t=><option key={t.id} value={t.name}>{t.name}{t.nickname?` "${t.nickname}"`:""}{ t.vin?` · ${t.vin.slice(-6)}`:""}</option>)}
                         </select>
                       </div>
                       <div style={{gridColumn:"1/-1"}}><label style={S.label}>Description</label><input value={expenseForm.description} onChange={e=>setExpenseForm(p=>({...p,description:e.target.value}))} placeholder="Optional notes" style={S.input}/></div>
@@ -1685,9 +1845,21 @@ export default function ContractorOS() {
             {subScreen==="import"&&(
               <div style={{maxWidth:700,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
                 <div style={{...S.section,marginBottom:4}}>IMPORT FROM EXCEL / QUICKBOOKS</div>
-                <p style={{fontSize:11,color:"#555",marginBottom:22,lineHeight:1.8}}>
+                <p style={{fontSize:11,color:"#555",marginBottom:16,lineHeight:1.8}}>
                   Export your P&L from QuickBooks Online or Excel as a CSV file, then drop it here. ContractorOS will read it and automatically create your revenue and expense entries.
                 </p>
+
+                {/* Template download */}
+                <div style={{background:"#0a0f1a",border:`1px solid ${accent}33`,borderRadius:8,padding:"16px 20px",marginBottom:20,display:"flex",alignItems:"center",gap:16}}>
+                  <div style={{fontSize:28,flexShrink:0}}>📥</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:3}}>Download the ContractorOS Template</div>
+                    <div style={{fontSize:11,color:"#555",lineHeight:1.7}}>Not using QuickBooks? Download our Excel template — it has step-by-step instructions, example data, a category guide, and auto-calculates your P&L summary.</div>
+                  </div>
+                  <a href="/ContractorOS_PL_Template.xlsx" download="ContractorOS_PL_Template.xlsx" style={{...S.btn,background:accent,color:"#0a0a0a",textDecoration:"none",display:"inline-block",flexShrink:0,padding:"10px 20px",textAlign:"center"}}>
+                    Download Template →
+                  </a>
+                </div>
 
                 {/* How to export guide */}
                 <div style={{background:"#0c0c14",border:"1px solid #1a1a2a",borderRadius:8,padding:"16px 20px",marginBottom:20}}>
