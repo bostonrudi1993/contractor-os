@@ -196,7 +196,7 @@ export default function ContractorOS() {
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [expenseForm, setExpenseForm] = useState({date:"",category:"fuel",amount:"",description:"",vehicle:""});
 
-  const [routeForm, setRouteForm] = useState({name:"",stops:"",miles:"",rate:"",driverPay:"",otherCosts:"",frequency:"Daily",vehicle:"",notes:""});
+  const [routeForm, setRouteForm] = useState({name:"",stops:"",miles:"",rate:"",stopRate:"",ratePerMile:"",driverPay:"",otherCosts:"",frequency:"Daily",vehicle:"",notes:""});
   const [brokerForm, setBrokerForm] = useState({name:"",paySpeed:"",rating:3,notes:"",blacklisted:false});
 
   const [showAddVehicle, setShowAddVehicle] = useState(false);
@@ -315,7 +315,8 @@ export default function ContractorOS() {
       title: "Edit Route",
       fields: [
         ["name","Route Name","text"],["stops","Number of Stops","text"],["miles","Miles per Run","text"],
-        ["rate","Contracted Rate ($)","text"],["driverPay","Driver Pay ($)","text"],
+        ["rate","Flat Contracted Rate ($)","text"],["stopRate","Rate Per Stop ($)","text"],
+        ["ratePerMile","Rate Per Mile ($)","text"],["driverPay","Driver Pay ($)","text"],
         ["otherCosts","Other Costs ($)","text"],["frequency","Frequency","text"],["notes","Notes","textarea"],
       ]
     },
@@ -485,6 +486,7 @@ export default function ContractorOS() {
                 {seg.features.loadAnalysis&&<button className="cardhov" onClick={()=>setScreen("analyze")} style={{...S.card,padding:"10px 14px",fontSize:11,color:accent,cursor:"pointer",textAlign:"left",border:`1px solid ${accent}22`}}>→ Analyze a Load</button>}
                 {seg.features.routeProfit&&<button className="cardhov" onClick={()=>setScreen("routes")} style={{...S.card,padding:"10px 14px",fontSize:11,color:accent,cursor:"pointer",textAlign:"left",border:`1px solid ${accent}22`}}>→ View Route Profitability</button>}
                 <button className="cardhov" onClick={()=>setScreen("compliance")} style={{...S.card,padding:"10px 14px",fontSize:11,color:"#ef4444",cursor:"pointer",textAlign:"left",border:"1px solid #ef444422"}}>→ Check Compliance</button>
+                <button className="cardhov" onClick={()=>{setScreen("fleet");setSubScreen("schedule");}} style={{...S.card,padding:"10px 14px",fontSize:11,color:"#f59e0b",cursor:"pointer",textAlign:"left",border:"1px solid #f59e0b22"}}>→ Fleet Upcoming Service</button>
                 <button className="cardhov" onClick={()=>{setScreen("finance");setSubScreen("expenses");}} style={{...S.card,padding:"10px 14px",fontSize:11,color:"#22c55e",cursor:"pointer",textAlign:"left",border:"1px solid #22c55e22"}}>→ Log an Expense</button>
                 {seg.features.contractTracker&&<button className="cardhov" onClick={()=>setScreen("contracts")} style={{...S.card,padding:"10px 14px",fontSize:11,color:"#8888cc",cursor:"pointer",textAlign:"left",border:"1px solid #8888cc22"}}>→ View Contracts</button>}
               </div>
@@ -683,7 +685,16 @@ export default function ContractorOS() {
                         </div>
                       </div>
                       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-                        {[["Contract Rate",fmt$(parseFloat(r.rate||0)),"#22c55e"],["Fuel Est",fmt$((r.miles/settings.mpg)*settings.dieselPrice),"#ef4444"],["Driver Pay",fmt$(parseFloat(r.driverPay||0)),"#f59e0b"],["Net Est",fmt$(parseFloat(r.rate||0)-((r.miles/settings.mpg)*settings.dieselPrice)-parseFloat(r.driverPay||0)-parseFloat(r.otherCosts||0)),parseFloat(r.rate||0)-((r.miles/settings.mpg)*settings.dieselPrice)-parseFloat(r.driverPay||0)>0?"#22c55e":"#ef4444"]].map(([lbl,val,col])=>(
+                        {[
+                          ["Flat Rate",fmt$(parseFloat(r.rate||0)),"#22c55e"],
+                          ["Per Stop",r.stopRate?fmt$(parseFloat(r.stopRate)):"—","#4ade80"],
+                          ["Per Mile",r.ratePerMile?`$${parseFloat(r.ratePerMile).toFixed(2)}/mi`:"—","#86efac"],
+                          ["Fuel Est",fmt$((parseFloat(r.miles||0)/settings.mpg)*settings.dieselPrice),"#ef4444"],
+                          ["Driver Pay",fmt$(parseFloat(r.driverPay||0)),"#f59e0b"],
+                          ["Net Est",fmt$(parseFloat(r.rate||0)-((parseFloat(r.miles||0)/settings.mpg)*settings.dieselPrice)-parseFloat(r.driverPay||0)-parseFloat(r.otherCosts||0)),parseFloat(r.rate||0)-((parseFloat(r.miles||0)/settings.mpg)*settings.dieselPrice)-parseFloat(r.driverPay||0)>0?"#22c55e":"#ef4444"],
+                          ["Stops",r.stops||"—","#c8c4bc"],
+                          ["Miles",r.miles||"—","#c8c4bc"],
+                        ].map(([lbl,val,col])=>(
                           <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{lbl}</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{val}</div></div>
                         ))}
                       </div>
@@ -707,8 +718,8 @@ export default function ContractorOS() {
                 <div style={{...S.section,marginBottom:20}}>ADD ROUTE</div>
                 <div style={S.card}>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                    {[["name","Route Name *","Route A / Zone 3"],["stops",seg.features.stopMetrics?"Number of Stops":"Deliveries","42"],["miles","Miles per Run","87"],["rate","Contracted Rate ($)","485"],["driverPay","Driver Pay ($)","120"],["otherCosts","Other Costs ($)","25"]].map(([f,lbl,ph])=>(
-                      <div key={f}><label style={S.label}>{lbl}</label><input value={routeForm[f]} onChange={e=>setRouteForm(p=>({...p,[f]:e.target.value}))} placeholder={ph} style={S.input}/></div>
+                    {[["name","Route Name *","Route A / Zone 3"],["stops",seg.features.stopMetrics?"Number of Stops":"Deliveries","42"],["miles","Miles per Run","87"],["rate","Flat Contracted Rate ($)","485"],["stopRate","Rate Per Stop ($)","11.50"],["ratePerMile","Rate Per Mile ($)","2.10"],["driverPay","Driver Pay ($)","120"],["otherCosts","Other Costs ($)","25"]].map(([f,lbl,ph])=>(
+                      <div key={f}><label style={S.label}>{lbl}</label><input value={routeForm[f]||""} onChange={e=>setRouteForm(p=>({...p,[f]:e.target.value}))} placeholder={ph} style={S.input}/></div>
                     ))}
                     <div><label style={S.label}>Frequency</label>
                       <select value={routeForm.frequency} onChange={e=>setRouteForm(p=>({...p,frequency:e.target.value}))} style={S.input}>
@@ -725,7 +736,7 @@ export default function ContractorOS() {
                     <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={routeForm.notes} onChange={e=>setRouteForm(p=>({...p,notes:e.target.value}))} placeholder="Special instructions, access notes, etc." style={S.input}/></div>
                   </div>
                   <div style={{display:"flex",gap:12,marginTop:16}}>
-                    <button className="hov" onClick={()=>{ if(!routeForm.name)return; setRoutes(p=>[...p,{...routeForm,id:Date.now()}]); setRouteForm({name:"",stops:"",miles:"",rate:"",driverPay:"",otherCosts:"",frequency:"Daily",vehicle:"",notes:""}); setSubScreen("list"); }} style={S.btn}>Save Route</button>
+                    <button className="hov" onClick={()=>{ if(!routeForm.name)return; setRoutes(p=>[...p,{...routeForm,id:Date.now()}]); setRouteForm({name:"",stops:"",miles:"",rate:"",stopRate:"",ratePerMile:"",driverPay:"",otherCosts:"",frequency:"Daily",vehicle:"",notes:""}); setSubScreen("list"); }} style={S.btn}>Save Route</button>
                     <button onClick={()=>setSubScreen("list")} style={S.ghost}>Cancel</button>
                   </div>
                 </div>
@@ -778,11 +789,14 @@ export default function ContractorOS() {
                 )}
                 <div style={{background:"#0c0c14",border:"1px solid #1a1a2a",borderRadius:8,padding:"18px 22px"}}>
                   <div style={{fontSize:10,color:"#3a3a6a",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Federal Recurring Deadlines</div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0}}>
-                    {[["IFTA Q1","Jan 31"],["IFTA Q2","Apr 30"],["IFTA Q3","Jul 31"],["IFTA Q4","Oct 31"],["UCR Renewal","Dec 31"],["MCS-150 Update","Every 2 years"],["Drug Clearinghouse","Annually per driver"],["ELD Log Retention","6 months min"]].map(([item,when])=>(
-                      <div key={item} style={{padding:"8px 0",borderTop:"1px solid #14141e",display:"flex",justifyContent:"space-between",gap:12}}>
-                        <span style={{fontSize:11,color:"#8888cc"}}>{item}</span>
-                        <span style={{fontSize:11,color:"#6060aa",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{when}</span>
+                  <div style={{display:"flex",flexDirection:"column",gap:0}}>
+                    {[["IFTA Q1 Return","Jan 31","Fuel tax for Oct–Dec"],["IFTA Q2 Return","Apr 30","Fuel tax for Jan–Mar"],["IFTA Q3 Return","Jul 31","Fuel tax for Apr–Jun"],["IFTA Q4 Return","Oct 31","Fuel tax for Jul–Sep"],["UCR Registration","Dec 31","Opens Oct 1 — don't miss it"],["MCS-150 Update","Every 2 years","Based on USDOT# issuance date"],["Drug Clearinghouse","Annually per driver","Required employer query"],["ELD Log Retention","6 months minimum","Keep all HOS logs"]].map(([item,when,note],i)=>(
+                      <div key={item} style={{display:"grid",gridTemplateColumns:"1fr auto",gap:0,padding:"10px 0",borderTop:i>0?"1px solid #14141e":"none",alignItems:"start"}}>
+                        <div>
+                          <div style={{fontSize:12,color:"#8888cc"}}>{item}</div>
+                          <div style={{fontSize:10,color:"#3a3a5a",marginTop:2}}>{note}</div>
+                        </div>
+                        <div style={{fontSize:13,color:"#6060aa",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,textAlign:"right",paddingLeft:20,whiteSpace:"nowrap"}}>{when}</div>
                       </div>
                     ))}
                   </div>
@@ -1009,7 +1023,19 @@ export default function ContractorOS() {
                       </div>
                       <div style={{gridColumn:"1/-1"}}><label style={S.label}>Description *</label><input value={incidentForm.description} onChange={e=>setIncidentForm(p=>({...p,description:e.target.value}))} placeholder="What happened?" style={S.input}/></div>
                     </div>
-                    <button className="hov" onClick={()=>{ if(!incidentForm.description)return; const driver=drivers.find(d=>d.id===incidentForm.driverId); const inc={...incidentForm,id:Date.now(),driverName:driver?.name||"Unknown"}; setIncidents(p=>[inc,...p]); setIncidentForm({driverId:"",date:"",type:"delivery",description:"",severity:"minor"}); setShowAddIncident(null); }} style={{...S.danger,marginTop:14}}>Save Incident</button>
+                    <button className="hov" onClick={()=>{
+                      if(!incidentForm.description) return;
+                      const driver = drivers.find(d=>d.id===incidentForm.driverId);
+                      const inc = {...incidentForm, id:Date.now(), driverName:driver?.name||"Unknown"};
+                      // Save to global incidents list
+                      setIncidents(p=>[inc,...p]);
+                      // Also save to driver's own incidents array so it shows in All Drivers count
+                      if(driver) {
+                        setDrivers(p=>p.map(d=>d.id===incidentForm.driverId ? {...d, incidents:[...(d.incidents||[]),inc]} : d));
+                      }
+                      setIncidentForm({driverId:"",date:"",type:"delivery",description:"",severity:"minor"});
+                      setShowAddIncident(null);
+                    }} style={{...S.danger,marginTop:14}}>Save Incident</button>
                   </div>
                 )}
                 {incidents.length===0&&!showAddIncident&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No incidents logged. Good work!</div>}
