@@ -1310,10 +1310,10 @@ export default function ContractorOS() {
                     </div>
                     <button className="hov" onClick={()=>{
                       if(!incidentForm.description) return;
-                      const driver = drivers.find(d=>d.id===incidentForm.driverId);
-                      const inc = {...incidentForm, id:Date.now(), driverName:driver?.name||"Unknown"};
+                      const driver = drivers.find(d=>String(d.id)===String(incidentForm.driverId));
+                      const inc = {...incidentForm, id:Date.now(), driverName:driver?.name||"Unknown", driverId:driver?.id||incidentForm.driverId};
                       setIncidents(p=>[inc,...p]);
-                      if(driver) setDrivers(p=>p.map(d=>d.id===incidentForm.driverId?{...d,incidents:[...(d.incidents||[]),inc]}:d));
+                      if(driver) setDrivers(p=>p.map(d=>String(d.id)===String(incidentForm.driverId)?{...d,incidents:[...(d.incidents||[]),inc]}:d));
                       setIncidentForm({driverId:"",date:"",type:"delivery",description:"",severity:"minor"});
                       setShowAddIncident(null);
                     }} style={{...S.danger,marginTop:14}}>Save Incident</button>
@@ -1324,7 +1324,7 @@ export default function ContractorOS() {
                 {drivers.length>0&&(
                   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:8,marginBottom:20}}>
                     {drivers.map(d=>{
-                      const driverIncs = incidents.filter(i=>i.driverId===d.id||(i.driverName===d.name));
+                      const driverIncs = incidents.filter(i=>String(i.driverId)===String(d.id)||i.driverName===d.name);
                       const count = driverIncs.length;
                       const critical = driverIncs.filter(i=>i.severity==="critical"||i.severity==="major").length;
                       return (
@@ -1381,11 +1381,16 @@ export default function ContractorOS() {
                             </div>
                             <div style={{display:"flex",gap:8}}>
                               <button onClick={()=>{
-                                const updated = {...inc,...editIncidentForm};
+                                const updatedDriver = drivers.find(d=>String(d.id)===String(editIncidentForm.driverId));
+                                const updated = {...inc,...editIncidentForm, driverName:updatedDriver?.name||editIncidentForm.driverName||inc.driverName};
                                 // Update in global incidents
                                 setIncidents(p=>p.map(i=>i.id===inc.id?updated:i));
-                                // Update in driver's incidents array
+                                // Update in all driver incident arrays
                                 setDrivers(p=>p.map(d=>({...d,incidents:(d.incidents||[]).map(i=>i.id===inc.id?updated:i)})));
+                                // If driver changed, add to new driver's array if not already there
+                                if(updatedDriver && String(updatedDriver.id)!==String(inc.driverId)) {
+                                  setDrivers(p=>p.map(d=>String(d.id)===String(updatedDriver.id)?{...d,incidents:[...(d.incidents||[]).filter(i=>i.id!==updated.id),updated]}:d));
+                                }
                                 setEditIncidentId(null);
                               }} style={S.btn}>Save Changes</button>
                               <button onClick={()=>setEditIncidentId(null)} style={S.ghost}>Cancel</button>
