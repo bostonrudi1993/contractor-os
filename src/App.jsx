@@ -8,6 +8,10 @@ const KEYS = {
   contracts: "cos_contracts", incidents: "cos_incidents", brokers: "cos_brokers",
   loads: "cos_loads", users: "cos_users", currentUser: "cos_current_user",
   notifications: "cos_notifications", filings: "cos_filings",
+  // ── v10: New feature keys ──
+  payroll: "cos_payroll", fuelLog: "cos_fuel_log", invoices: "cos_invoices",
+  odometer: "cos_odometer", tires: "cos_tires", documents: "cos_documents",
+  dispatches: "cos_dispatches", contacts: "cos_contacts", hosLog: "cos_hos_log",
 };
 const stor = { get: (k,fb) => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):fb; } catch { return fb; } }, set: (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch {} } };
 
@@ -29,35 +33,35 @@ const SEGMENTS = {
     id: "otr", label: "OTR / Owner Operator", icon: "🚛",
     tagline: "Load board hauling with your own authority",
     color: "#f59e0b", darkColor: "#92400e",
-    nav: ["dashboard","analyze","boards","compliance","brokers","fleet","finance","reports","trends","users","settings"],
+    nav: ["dashboard","analyze","boards","compliance","brokers","fleet","finance","payroll","invoices","dispatch","contacts","documents","reports","trends","users","settings","data"],
     features: { loadAnalysis:true, brokerScorecard:true, loadBoards:true, routeProfit:false, contractTracker:false, dspMetrics:false, stopMetrics:false },
   },
   fedex: {
     id: "fedex", label: "FedEx Ground / HD Contractor", icon: "📦",
     tagline: "ISP route management & compliance",
     color: "#6366f1", darkColor: "#3730a3",
-    nav: ["dashboard","routes","compliance","drivers","fleet","finance","contracts","reports","trends","users","settings"],
+    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","reports","trends","users","settings","data"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:false, stopMetrics:true },
   },
   amazon: {
     id: "amazon", label: "Amazon DSP", icon: "📬",
     tagline: "Delivery Service Partner operations",
     color: "#f97316", darkColor: "#9a3412",
-    nav: ["dashboard","routes","compliance","drivers","fleet","finance","contracts","reports","trends","users","settings"],
+    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","reports","trends","users","settings","data"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:true, stopMetrics:true },
   },
   lastmile: {
     id: "lastmile", label: "Last Mile (Lowe's / Home Depot)", icon: "🏠",
     tagline: "Home delivery contractor management",
     color: "#22c55e", darkColor: "#14532d",
-    nav: ["dashboard","routes","compliance","drivers","fleet","finance","contracts","reports","trends","users","settings"],
+    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","reports","trends","users","settings","data"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:false, stopMetrics:true },
   },
   usps: {
     id: "usps", label: "USPS HCR Contractor", icon: "📮",
     tagline: "Highway Contract Route operations",
     color: "#3b82f6", darkColor: "#1e3a8a",
-    nav: ["dashboard","routes","compliance","drivers","fleet","finance","contracts","reports","trends","users","settings"],
+    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","reports","trends","users","settings","data"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:false, stopMetrics:false },
   },
 };
@@ -80,6 +84,7 @@ const daysUntil = d => { if(!d) return null; return Math.ceil((new Date(d)-new D
 const statusColor = d => { if(d===null) return "#444"; if(d<0) return "#ef4444"; if(d<=30) return "#ef4444"; if(d<=60) return "#f59e0b"; if(d<=90) return "#facc15"; return "#22c55e"; };
 const statusLabel = d => { if(d===null) return "Not set"; if(d<0) return `OVERDUE ${Math.abs(d)}d`; if(d===0) return "TODAY"; if(d<=30) return `${d}d URGENT`; if(d<=90) return `${d}d Soon`; return `${d}d`; };
 const gradeColor = g => ({A:"#22c55e",B:"#84cc16",C:"#f59e0b",D:"#ef4444"}[g]||"#555");
+const fmtDate = d => d ? new Date(d).toLocaleDateString() : "—";
 
 // ─── SHARED STYLES ────────────────────────────────────────────────────
 const mkStyles = (accent) => ({
@@ -250,7 +255,7 @@ export default function ContractorOS() {
   const [brokerForm, setBrokerForm] = useState({name:"",paySpeed:"",rating:3,notes:"",blacklisted:false});
 
   const [showAddVehicle, setShowAddVehicle] = useState(false);
-  const [vehicleForm, setVehicleForm] = useState({name:"",nickname:"",vin:"",year:"",make:"",plate:"",dotInspection:"",ifta:"",irp:"",registration:""});
+  const [vehicleForm, setVehicleForm] = useState({name:"",nickname:"",vin:"",year:"",make:"",plate:"",dotInspection:"",ifta:"",irp:"",registration:"",insuranceExpiry:""});
   const [showAddCompDriver, setShowAddCompDriver] = useState(false);
   const [compDriverForm, setCompDriverForm] = useState({name:"",cdlExpiry:"",medCardExpiry:"",mvrDue:"",drugTest:"",annualReview:""});
   const [aiResult, setAiResult] = useState(null);
@@ -260,6 +265,51 @@ export default function ContractorOS() {
   const [parsedLoad, setParsedLoad] = useState(null);
   const [loadForm, setLoadForm] = useState({origin:"",destination:"",miles:"",offeredRate:"",deadheadMiles:"",commodity:"",pickupDate:"",brokerName:""});
   const [analyzeStep, setAnalyzeStep] = useState("paste");
+
+  // ── v10: New feature state ──────────────────────────────────────────
+  const [payroll, setPayroll] = useState(() => stor.get(KEYS.payroll, []));
+  const [fuelLog, setFuelLog] = useState(() => stor.get(KEYS.fuelLog, []));
+  const [invoices, setInvoices] = useState(() => stor.get(KEYS.invoices, []));
+  const [odometer, setOdometer] = useState(() => stor.get(KEYS.odometer, []));
+  const [tires, setTires] = useState(() => stor.get(KEYS.tires, []));
+  const [documents, setDocuments] = useState(() => stor.get(KEYS.documents, []));
+  const [dispatches, setDispatches] = useState(() => stor.get(KEYS.dispatches, []));
+  const [contacts, setContacts] = useState(() => stor.get(KEYS.contacts, []));
+  const [hosLog, setHosLog] = useState(() => stor.get(KEYS.hosLog, []));
+  // New feature UI state
+  const [payrollSub, setPayrollSub] = useState("runs");
+  const [payrollShowAdd, setPayrollShowAdd] = useState(false);
+  const [payrollForm, setPayrollForm] = useState({driverId:"",periodStart:"",periodEnd:"",miles:"",hours:"",stops:"",loadRevenue:"",manualAmount:"",notes:""});
+  const [payrollPreview, setPayrollPreview] = useState(null);
+  const [payStub, setPayStub] = useState(null);
+  const [fuelSub, setFuelSub] = useState("log");
+  const [fuelShowAdd, setFuelShowAdd] = useState(false);
+  const [fuelForm, setFuelForm] = useState({truckName:"",date:"",gallons:"",pricePerGallon:"",totalCost:"",odometer:"",state:"",cardType:"company",notes:""});
+  const [invoiceSub, setInvoiceSub] = useState("open");
+  const [invoiceShowAdd, setInvoiceShowAdd] = useState(false);
+  const [invoiceForm, setInvoiceForm] = useState({invoiceNum:"",clientName:"",amount:"",issueDate:"",dueDate:"",description:"",status:"open",notes:""});
+  const [odomSub, setOdomSub] = useState("log");
+  const [odomShowAdd, setOdomShowAdd] = useState(false);
+  const [odomForm, setOdomForm] = useState({truckName:"",date:"",reading:"",state:"",notes:""});
+  const [tireShowAdd, setTireShowAdd] = useState(false);
+  const [tireForm, setTireForm] = useState({truckName:"",date:"",position:"",brand:"",size:"",treadDepth:"",cost:"",mileageInstalled:"",status:"active",notes:""});
+  const [docFilter, setDocFilter] = useState("all");
+  const [docShowAdd, setDocShowAdd] = useState(false);
+  const [docForm, setDocForm] = useState({name:"",type:"Rate Confirmation",date:"",linkedTo:"",notes:"",fileName:""});
+  const [docFileData, setDocFileData] = useState(null);
+  const [dispatchShowAdd, setDispatchShowAdd] = useState(false);
+  const [dispatchFilter, setDispatchFilter] = useState("active");
+  const [dispatchForm, setDispatchForm] = useState({driverId:"",vehicleName:"",routeName:"",origin:"",destination:"",date:"",pickupTime:"",notes:"",status:"assigned"});
+  const [contactShowAdd, setContactShowAdd] = useState(false);
+  const [contactSearch, setContactSearch] = useState("");
+  const [contactFilter, setContactFilter] = useState("all");
+  const [contactForm, setContactForm] = useState({name:"",company:"",type:"Client",phone:"",email:"",address:"",notes:"",paySpeed:"",rating:""});
+  const [driverExtraSub, setDriverExtraSub] = useState("onboarding");
+  const [hosShowAdd, setHosShowAdd] = useState(false);
+  const [hosForm, setHosForm] = useState({driverId:"",date:"",hoursOnDuty:"",hoursDriving:"",hoursOffDuty:"",miles:"",notes:""});
+  const [selectedOnboardDriver, setSelectedOnboardDriver] = useState("");
+  const [dataSub, setDataSub] = useState("backup");
+  const [incidentFollowUpId, setIncidentFollowUpId] = useState(null);
 
   // Persist all state
   useEffect(()=>{if(segment)stor.set(KEYS.segment,segment);},[segment]);
@@ -279,6 +329,15 @@ export default function ContractorOS() {
   useEffect(()=>{stor.set(KEYS.currentUser,currentUser);},[currentUser]);
   useEffect(()=>{stor.set(KEYS.notifications,notifications);},[notifications]);
   useEffect(()=>{stor.set(KEYS.filings,filings);},[filings]);
+  useEffect(()=>{stor.set(KEYS.payroll,payroll);},[payroll]);
+  useEffect(()=>{stor.set(KEYS.fuelLog,fuelLog);},[fuelLog]);
+  useEffect(()=>{stor.set(KEYS.invoices,invoices);},[invoices]);
+  useEffect(()=>{stor.set(KEYS.odometer,odometer);},[odometer]);
+  useEffect(()=>{stor.set(KEYS.tires,tires);},[tires]);
+  useEffect(()=>{stor.set(KEYS.documents,documents);},[documents]);
+  useEffect(()=>{stor.set(KEYS.dispatches,dispatches);},[dispatches]);
+  useEffect(()=>{stor.set(KEYS.contacts,contacts);},[contacts]);
+  useEffect(()=>{stor.set(KEYS.hosLog,hosLog);},[hosLog]);
 
   const seg = segment ? SEGMENTS[segment] : null;
   const S = seg ? mkStyles(seg.color) : mkStyles("#f59e0b");
@@ -587,6 +646,7 @@ export default function ContractorOS() {
         ["make","Make & Model","text"],["plate","Plate #","text"],
         ["dotInspection","DOT Inspection Expiry","date"],["registration","Registration Expiry","date"],
         ["ifta","IFTA Renewal","date"],["irp","IRP Plate Renewal","date"],
+        ["insuranceExpiry","Liability Insurance Expiry","date"],
       ]
     },
     compdriver: {
@@ -670,6 +730,7 @@ export default function ContractorOS() {
     const items = [];
     compliance.trucks.forEach(t=>{
       if(t.dotInspection) items.push({label:`DOT Inspection — ${t.name}`,days:daysUntil(t.dotInspection)});
+      if(t.insuranceExpiry) items.push({label:`Insurance Expiry — ${t.name}`,days:daysUntil(t.insuranceExpiry)});
       if(t.registration) items.push({label:`Registration — ${t.name}`,days:daysUntil(t.registration)});
     });
     compliance.drivers.forEach(d=>{
@@ -709,7 +770,7 @@ export default function ContractorOS() {
   }
 
   // ── SHARED COMPONENTS ──────────────────────────────────────────────
-  const navLabels = {dashboard:"Dashboard",analyze:"Analyze Load",boards:"Load Boards",compliance:"Compliance",brokers:"Brokers",fleet:"Fleet",finance:"Finance",routes:"Routes",drivers:"Drivers",contracts:"Contracts",reports:"Reports",trends:"P&L Trends",users:"Users",settings:"Settings"};
+  const navLabels = {dashboard:"Dashboard",analyze:"Analyze Load",boards:"Load Boards",compliance:"Compliance",brokers:"Brokers",fleet:"Fleet",finance:"Finance",routes:"Routes",drivers:"Drivers",contracts:"Contracts",reports:"Reports",trends:"P&L Trends",users:"Users",settings:"Settings",payroll:"Payroll",invoices:"Invoices",dispatch:"Dispatch",contacts:"Contacts",documents:"Documents",data:"Data & Backup"};
   const SubNav = ({tabs,active,onSelect}) => <SubNavComp tabs={tabs} active={active} accent={accent} onSelect={onSelect}/>;
   const Stat = ({label,value,color,sub}) => <StatCard label={label} value={value} color={color||accent} sub={sub} card={S.card}/>;
   const ExpiryBadge = ({label,days}) => <ExpiryBadgeComp label={label} days={days}/>;
@@ -1226,11 +1287,12 @@ export default function ContractorOS() {
                         ["registration","Registration Expiry","date"],
                         ["ifta","IFTA Renewal","date"],
                         ["irp","IRP Plate Renewal","date"],
+        ["insuranceExpiry","Liability Insurance Expiry","date"],
                       ].map(([f,lbl,ph])=>(
                         <div key={f}><label style={S.label}>{lbl}</label><input type={ph==="date"?"date":"text"} value={vehicleForm[f]||""} onChange={e=>setVehicleForm(p=>({...p,[f]:e.target.value}))} placeholder={ph!=="date"?ph:""} style={S.input}/></div>
                       ))}
                     </div>
-                    <button className="hov" onClick={()=>{ if(!vehicleForm.name)return; setCompliance(p=>({...p,trucks:[...p.trucks,{...vehicleForm,id:Date.now()}]})); setVehicleForm({name:"",nickname:"",vin:"",year:"",make:"",plate:"",dotInspection:"",ifta:"",irp:"",registration:""}); setShowAddVehicle(false); }} style={{...S.btn,marginTop:14}}>Save Vehicle</button>
+                    <button className="hov" onClick={()=>{ if(!vehicleForm.name)return; setCompliance(p=>({...p,trucks:[...p.trucks,{...vehicleForm,id:Date.now()}]})); setVehicleForm({name:"",nickname:"",vin:"",year:"",make:"",plate:"",dotInspection:"",ifta:"",irp:"",registration:"",insuranceExpiry:""}); setShowAddVehicle(false); }} style={{...S.btn,marginTop:14}}>Save Vehicle</button>
                   </div>
                 )}
                 {compliance.trucks.length===0&&!showAddVehicle&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No vehicles added yet.</div>}
@@ -1248,7 +1310,7 @@ export default function ContractorOS() {
                         </div>
                       </div>
                       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-                        {[["DOT Inspection",t.dotInspection],["Registration",t.registration],["IFTA",t.ifta],["IRP Plates",t.irp]].map(([lbl,date])=>{
+                {[["DOT Inspection",t.dotInspection],["Registration",t.registration],["IFTA",t.ifta],["IRP Plates",t.irp],["Insurance",t.insuranceExpiry]].map(([lbl,date])=>{
                           const d=daysUntil(date),c=statusColor(d);
                           return <div key={lbl} style={{background:"#0f0f0f",border:`1px solid ${c}22`,borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{lbl}</div><div style={{fontSize:12,color:c,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{date?new Date(date).toLocaleDateString():"—"}</div>{d!==null&&<div style={{fontSize:9,color:c,marginTop:2}}>{statusLabel(d)}</div>}</div>;
                         })}
@@ -1347,7 +1409,7 @@ export default function ContractorOS() {
       {/* ══ DRIVERS ════════════════════════════════════════════════════ */}
       {screen==="drivers"&&(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["list","All Drivers"],["scorecards","Scorecards"],["incidents","Incidents"]]} active={subScreen||"list"} onSelect={setSubScreen}/>
+          <SubNav tabs={[["list","All Drivers"],["scorecards","Scorecards"],["incidents","Incidents"],["onboarding","Onboarding"],["hos","HOS Log"]]} active={subScreen||"list"} onSelect={setSubScreen}/>
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             {(!subScreen||subScreen==="list")&&(
               <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -1560,10 +1622,100 @@ export default function ContractorOS() {
         </div>
       )}
 
+            {(subScreen==="onboarding"||subScreen==="hos")&&(()=>{
+              const ONBOARDING_STEPS=[{id:"application",label:"Employment Application",req:true},{id:"background",label:"Background Check Ordered",req:true},{id:"background_clear",label:"Background Check — Cleared",req:true},{id:"pre_drug_test",label:"Pre-Employment Drug Test",req:true},{id:"drug_clear",label:"Drug Test — Negative Result",req:true},{id:"clearinghouse_query",label:"FMCSA Drug Clearinghouse Query",req:true},{id:"cdl_copy",label:"CDL Copy on File",req:true},{id:"medical_card",label:"Medical Card Copy on File",req:true},{id:"mvr",label:"MVR (Motor Vehicle Record) Pulled",req:true},{id:"driving_history_3yr",label:"3-Year Driving/Employment History Verified",req:true},{id:"orientation",label:"Orientation / Safety Training Completed",req:true},{id:"orientation_signed",label:"Orientation Sign-off Form Signed",req:true},{id:"i9",label:"I-9 Employment Eligibility",req:true},{id:"direct_deposit",label:"Direct Deposit / Pay Setup",req:false},{id:"uniform",label:"Uniform / Equipment Issued",req:false},{id:"eld_training",label:"ELD / HOS Training",req:false},{id:"handbook",label:"Company Handbook Acknowledged",req:false}];
+              const toggleStep=(driverId,stepId)=>setDrivers(prev=>prev.map(d=>{if(String(d.id)!==String(driverId))return d;const checklist=d.onboarding||{};return{...d,onboarding:{...checklist,[stepId]:checklist[stepId]?null:new Date().toISOString().slice(0,10)}};}));
+              const weeklyHOS=(driverId)=>{const now=new Date();const weekAgo=new Date(now-7*86400000);return hosLog.filter(h=>String(h.driverId)===String(driverId)&&new Date(h.date)>=weekAgo).reduce((s,h)=>({driving:s.driving+parseFloat(h.hoursDriving||0),onDuty:s.onDuty+parseFloat(h.hoursOnDuty||0)}),{driving:0,onDuty:0});};
+              const selDriver=drivers.find(d=>String(d.id)===String(selectedOnboardDriver));
+              return(
+              <div style={{maxWidth:800,margin:"0 auto",padding:24,animation:"fadeUp 0.3s ease"}}>
+                {subScreen==="onboarding"&&(
+                  <>
+                    <div style={{...S.section,marginBottom:4}}>DRIVER ONBOARDING</div>
+                    <p style={{fontSize:11,color:"#555",marginBottom:20,lineHeight:1.8}}>Track every required step when hiring a new driver. DOT requires most of these before the first day behind the wheel.</p>
+                    <div style={{marginBottom:16}}><label style={S.label}>Select Driver</label><select value={selectedOnboardDriver} onChange={e=>setSelectedOnboardDriver(e.target.value)} style={{...S.input,maxWidth:320}}><option value="">Choose a driver...</option>{drivers.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
+                    {selDriver&&(()=>{const checklist=selDriver.onboarding||{};const required=ONBOARDING_STEPS.filter(s=>s.req);const completed=ONBOARDING_STEPS.filter(s=>checklist[s.id]).length;const pct=Math.round((completed/ONBOARDING_STEPS.length)*100);const readyToDrive=required.every(s=>checklist[s.id]);return(
+                      <>
+                        <div style={{...S.card,marginBottom:16,display:"flex",alignItems:"center",gap:16}}>
+                          <div style={{flex:1}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#e8e4d8"}}>{selDriver.name}</div><div style={{fontSize:11,color:"#555"}}>Hired: {fmtDate(selDriver.hireDate)||"Not set"}</div></div>
+                          <div style={{textAlign:"center"}}><div style={{fontSize:32,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:pct===100?"#22c55e":pct>60?"#f59e0b":"#ef4444"}}>{pct}%</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Complete</div></div>
+                          <div style={{background:readyToDrive?"#051a05":"#1a0808",border:`1px solid ${readyToDrive?"#22c55e44":"#ef444444"}`,borderRadius:6,padding:"8px 16px",textAlign:"center"}}><div style={{fontSize:12,color:readyToDrive?"#22c55e":"#ef4444",fontWeight:700}}>{readyToDrive?"✓ DOT Ready":"⚠ Not Ready"}</div><div style={{fontSize:9,color:"#555"}}>Required items</div></div>
+                        </div>
+                        <div style={{fontSize:10,color:"#ef4444",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:10}}>Required (DOT)</div>
+                        <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:20}}>
+                          {required.map(step=>(
+                            <div key={step.id} onClick={()=>toggleStep(selDriver.id,step.id)} style={{...S.card,display:"flex",alignItems:"center",gap:12,cursor:"pointer",borderLeft:`3px solid ${checklist[step.id]?"#22c55e":"#ef4444"}`,background:checklist[step.id]?"#0a150a":"#141414"}}>
+                              <div style={{width:20,height:20,borderRadius:4,border:`2px solid ${checklist[step.id]?"#22c55e":"#444"}`,background:checklist[step.id]?"#22c55e22":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:12,color:"#22c55e"}}>{checklist[step.id]?"✓":""}</div>
+                              <div style={{flex:1,fontSize:12,color:checklist[step.id]?"#888":"#c8c4bc"}}>{step.label}</div>
+                              {checklist[step.id]&&<div style={{fontSize:10,color:"#22c55e55"}}>{checklist[step.id]}</div>}
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{fontSize:10,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:10}}>Optional / Company Policy</div>
+                        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                          {ONBOARDING_STEPS.filter(s=>!s.req).map(step=>(
+                            <div key={step.id} onClick={()=>toggleStep(selDriver.id,step.id)} style={{...S.card,display:"flex",alignItems:"center",gap:12,cursor:"pointer",borderLeft:`3px solid ${checklist[step.id]?"#22c55e":"#333"}`,opacity:checklist[step.id]?0.7:1}}>
+                              <div style={{width:20,height:20,borderRadius:4,border:`2px solid ${checklist[step.id]?"#22c55e":"#333"}`,background:checklist[step.id]?"#22c55e22":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:12,color:"#22c55e"}}>{checklist[step.id]?"✓":""}</div>
+                              <div style={{flex:1,fontSize:12,color:"#888"}}>{step.label}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    );}())}
+                    {!selDriver&&selectedOnboardDriver&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>Driver not found.</div>}
+                    {drivers.length===0&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>Add drivers in the All Drivers tab first.</div>}
+                  </>
+                )}
+                {subScreen==="hos"&&(
+                  <>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+                      <div><div style={S.section}>HOURS OF SERVICE</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Federal limit: 11 hrs driving, 14 hrs on-duty per day. Keep 6 months minimum.</div></div>
+                      <button className="hov" onClick={()=>setHosShowAdd(!hosShowAdd)} style={S.btn}>{hosShowAdd?"Cancel":"+ Log Hours"}</button>
+                    </div>
+                    {drivers.filter(d=>d.status==="active").length>0&&(
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10,marginBottom:20}}>
+                        {drivers.filter(d=>d.status==="active").map(d=>{const week=weeklyHOS(d.id);const over=week.driving>60;return(
+                          <div key={d.id} style={{...S.card,borderTop:`3px solid ${over?"#ef4444":week.driving>50?"#f59e0b":"#22c55e"}`}}>
+                            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"#e8e4d8",marginBottom:8}}>{d.name}</div>
+                            <div style={{fontSize:18,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:over?"#ef4444":"#e8e4d8"}}>{week.driving.toFixed(1)} hrs</div>
+                            <div style={{fontSize:9,color:"#555"}}>driving · {week.onDuty.toFixed(1)} on-duty this week</div>
+                            <div style={{marginTop:8,height:4,background:"#1e1e1e",borderRadius:2}}><div style={{height:"100%",width:`${Math.min((week.driving/60)*100,100)}%`,background:over?"#ef4444":week.driving>50?"#f59e0b":"#22c55e",borderRadius:2}}/></div>
+                            <div style={{fontSize:9,color:"#555",marginTop:3}}>{Math.max(0,60-week.driving).toFixed(1)} hrs remaining (60hr limit)</div>
+                          </div>
+                        );})}
+                      </div>
+                    )}
+                    {hosShowAdd&&(<div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                        <div><label style={S.label}>Driver *</label><select value={hosForm.driverId} onChange={e=>setHosForm(p=>({...p,driverId:e.target.value}))} style={S.input}><option value="">Select driver...</option>{drivers.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
+                        <div><label style={S.label}>Date *</label><input type="date" value={hosForm.date} onChange={e=>setHosForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
+                        <div><label style={S.label}>Hours Driving (max 11)</label><input type="number" step="0.5" max="11" value={hosForm.hoursDriving} onChange={e=>setHosForm(p=>({...p,hoursDriving:e.target.value}))} placeholder="11" style={S.input}/></div>
+                        <div><label style={S.label}>Hours On-Duty (max 14)</label><input type="number" step="0.5" max="14" value={hosForm.hoursOnDuty} onChange={e=>setHosForm(p=>({...p,hoursOnDuty:e.target.value}))} placeholder="14" style={S.input}/></div>
+                        <div><label style={S.label}>Hours Off-Duty</label><input type="number" step="0.5" value={hosForm.hoursOffDuty} onChange={e=>setHosForm(p=>({...p,hoursOffDuty:e.target.value}))} placeholder="10 min required" style={S.input}/></div>
+                        <div><label style={S.label}>Miles Driven</label><input type="number" value={hosForm.miles} onChange={e=>setHosForm(p=>({...p,miles:e.target.value}))} placeholder="0" style={S.input}/></div>
+                        <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={hosForm.notes} onChange={e=>setHosForm(p=>({...p,notes:e.target.value}))} placeholder="Breakdown, delay, inspection..." style={S.input}/></div>
+                      </div>
+                      <button className="hov" onClick={()=>{if(!hosForm.driverId||!hosForm.date)return;const drv=drivers.find(d=>String(d.id)===String(hosForm.driverId));setHosLog(p=>[{...hosForm,id:Date.now(),driverName:drv?.name||"Unknown"},...p]);setHosForm(prev=>({...prev,date:"",hoursOnDuty:"",hoursDriving:"",hoursOffDuty:"",miles:"",notes:""}));setHosShowAdd(false);}} style={{...S.btn,marginTop:14}}>Save HOS Log</button>
+                    </div>)}
+                    {hosLog.length===0&&!hosShowAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No HOS records yet. Log driver hours daily to stay DOT compliant (6-month retention required).</div>}
+                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                      {[...hosLog].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(h=>{const dOver=parseFloat(h.hoursDriving||0)>11;const oOver=parseFloat(h.hoursOnDuty||0)>14;const viol=dOver||oOver;return(
+                        <div key={h.id} style={{...S.card,display:"flex",alignItems:"center",gap:14,borderLeft:`3px solid ${viol?"#ef4444":"#22c55e"}`}}>
+                          <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{h.driverName} — {h.date}</div><div style={{fontSize:10,color:"#555"}}>Driving: <span style={{color:dOver?"#ef4444":"#888"}}>{h.hoursDriving||0}h</span> · On-duty: <span style={{color:oOver?"#ef4444":"#888"}}>{h.hoursOnDuty||0}h</span> · Off: {h.hoursOffDuty||0}h{h.miles?` · ${h.miles} mi`:""}{h.notes?` · ${h.notes}`:""}</div>{viol&&<div style={{fontSize:10,color:"#ef4444",marginTop:3}}>⚠ HOS Violation: {dOver?"Driving >11hr":"On-duty >14hr"}</div>}</div>
+                          <button onClick={()=>setHosLog(p=>p.filter(x=>x.id!==h.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                        </div>
+                      );})}
+                    </div>
+                  </>
+                )}
+              </div>
+              );
+            })()}
+
       {/* ══ FLEET / MAINTENANCE ════════════════════════════════════════ */}
       {screen==="fleet"&&(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["log","Maintenance Log"],["schedule","Upcoming Service"]]} active={subScreen||"log"} onSelect={setSubScreen}/>
+          <SubNav tabs={[["log","Maintenance Log"],["schedule","Upcoming Service"],["fuel","Fuel Log"],["odometer","Odometer / Miles"],["tires","Tires"]]} active={subScreen||"log"} onSelect={setSubScreen}/>
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             {(!subScreen||subScreen==="log")&&(
               <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -1653,6 +1805,137 @@ export default function ContractorOS() {
           </div>
         </div>
       )}
+            {subScreen==="fuel"&&(
+              <div style={{flex:1,overflowY:"auto",padding:24}}>
+                <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+                    <div><div style={S.section}>FUEL LOG</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Track every fill-up per truck. IFTA-ready state breakdown.</div></div>
+                    <button className="hov" onClick={()=>setFuelShowAdd(!fuelShowAdd)} style={S.btn}>{fuelShowAdd?"Cancel":"+ Log Fuel"}</button>
+                  </div>
+                  {(()=>{const totalGal=fuelLog.reduce((s,r)=>s+parseFloat(r.gallons||0),0);const totalCost=fuelLog.reduce((s,r)=>s+parseFloat(r.totalCost||0),0);return(
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+                      {[["Total Gallons",totalGal.toFixed(0)+" gal","#60a5fa"],["Total Fuel Cost",fmt$(totalCost),"#ef4444"],["Avg $/Gal",totalGal>0?fmt$(totalCost/totalGal):"$0.00",accent]].map(([lbl,val,col])=>(
+                        <div key={lbl} style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div><div style={{fontSize:9,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginTop:4}}>{lbl}</div></div>
+                      ))}
+                    </div>
+                  );})()}
+                  {fuelShowAdd&&(
+                    <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                        <div><label style={S.label}>Truck *</label><select value={fuelForm.truckName} onChange={e=>setFuelForm(p=>({...p,truckName:e.target.value}))} style={S.input}><option value="">Select...</option>{compliance.trucks.map(v=><option key={v.id} value={v.name}>{v.name}{v.nickname?` "${v.nickname}"`:""}  </option>)}<option value="__other__">+ Enter manually</option></select>{fuelForm.truckName==="__other__"&&<input value={fuelForm._customTruck||""} onChange={e=>setFuelForm(p=>({...p,_customTruck:e.target.value}))} placeholder="Truck name/unit #" style={{...S.input,marginTop:6}}/>}</div>
+                        <div><label style={S.label}>Date *</label><input type="date" value={fuelForm.date} onChange={e=>setFuelForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
+                        <div><label style={S.label}>Gallons *</label><input type="number" value={fuelForm.gallons} onChange={e=>{const g=e.target.value;const total=(parseFloat(g||0)*parseFloat(fuelForm.pricePerGallon||0)).toFixed(2);setFuelForm(p=>({...p,gallons:g,totalCost:total>0?total:p.totalCost}));}} placeholder="100" style={S.input}/></div>
+                        <div><label style={S.label}>Price / Gallon ($)</label><input type="number" step="0.001" value={fuelForm.pricePerGallon} onChange={e=>{const p2=e.target.value;const total=(parseFloat(fuelForm.gallons||0)*parseFloat(p2||0)).toFixed(2);setFuelForm(p=>({...p,pricePerGallon:p2,totalCost:total>0?total:p.totalCost}));}} placeholder="3.85" style={S.input}/></div>
+                        <div><label style={S.label}>Total Cost ($)</label><input type="number" value={fuelForm.totalCost} onChange={e=>setFuelForm(p=>({...p,totalCost:e.target.value}))} placeholder="385.00" style={S.input}/></div>
+                        <div><label style={S.label}>Odometer (miles)</label><input type="number" value={fuelForm.odometer} onChange={e=>setFuelForm(p=>({...p,odometer:e.target.value}))} placeholder="142500" style={S.input}/></div>
+                        <div><label style={S.label}>State (IFTA)</label><input value={fuelForm.state} onChange={e=>setFuelForm(p=>({...p,state:e.target.value.toUpperCase()}))} placeholder="SC" maxLength={2} style={S.input}/></div>
+                        <div><label style={S.label}>Card Type</label><select value={fuelForm.cardType} onChange={e=>setFuelForm(p=>({...p,cardType:e.target.value}))} style={S.input}>{["company","EFS / Comcheck","Comdata","Relay","Cash","Other"].map(t=><option key={t} value={t.toLowerCase().replace(/ /g,"_")}>{t}</option>)}</select></div>
+                        <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes (truck stop, DEF added, etc.)</label><input value={fuelForm.notes} onChange={e=>setFuelForm(p=>({...p,notes:e.target.value}))} style={S.input}/></div>
+                      </div>
+                      <button className="hov" onClick={()=>{const name=fuelForm.truckName==="__other__"?(fuelForm._customTruck||""):fuelForm.truckName;if(!name||!fuelForm.gallons||!fuelForm.date)return;setFuelLog(p=>[{...fuelForm,truckName:name,id:Date.now()},...p]);setFuelForm({truckName:"",date:"",gallons:"",pricePerGallon:"",totalCost:"",odometer:"",state:"",cardType:"company",notes:""});setFuelShowAdd(false);}} style={{...S.btn,marginTop:14}}>Save Fuel Entry</button>
+                    </div>
+                  )}
+                  {fuelLog.length===0&&!fuelShowAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No fuel entries yet.</div>}
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    {fuelLog.map(r=>(<div key={r.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
+                      <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{r.truckName} — {r.gallons} gal{r.state?` · ${r.state}`:""}</div><div style={{fontSize:10,color:"#555"}}>{fmtDate(r.date)} · {r.cardType}{r.odometer?` · ${parseInt(r.odometer).toLocaleString()} mi`:""}{r.notes?` · ${r.notes}`:""}</div></div>
+                      <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ef4444"}}>{fmt$(parseFloat(r.totalCost||0))}</div>{r.pricePerGallon&&<div style={{fontSize:9,color:"#555"}}>${parseFloat(r.pricePerGallon).toFixed(3)}/gal</div>}</div>
+                      <button onClick={()=>setFuelLog(p=>p.filter(x=>x.id!==r.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                    </div>))}
+                  </div>
+                </div>
+              </div>
+            )}
+            {subScreen==="odometer"&&(
+              <div style={{flex:1,overflowY:"auto",padding:24}}>
+                <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+                    <div><div style={S.section}>ODOMETER LOG</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Log readings to track real miles per truck. Pairs with fuel log for IFTA.</div></div>
+                    <button className="hov" onClick={()=>setOdomShowAdd(!odomShowAdd)} style={S.btn}>{odomShowAdd?"Cancel":"+ Log Reading"}</button>
+                  </div>
+                  {odomShowAdd&&(<div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                      <div><label style={S.label}>Truck *</label><select value={odomForm.truckName} onChange={e=>setOdomForm(p=>({...p,truckName:e.target.value}))} style={S.input}><option value="">Select...</option>{compliance.trucks.map(v=><option key={v.id} value={v.name}>{v.name}{v.nickname?` "${v.nickname}"`:""}</option>)}</select></div>
+                      <div><label style={S.label}>Date *</label><input type="date" value={odomForm.date} onChange={e=>setOdomForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
+                      <div><label style={S.label}>Odometer Reading (miles) *</label><input type="number" value={odomForm.reading} onChange={e=>setOdomForm(p=>({...p,reading:e.target.value}))} placeholder="142500" style={S.input}/></div>
+                      <div><label style={S.label}>State (IFTA miles)</label><input value={odomForm.state} onChange={e=>setOdomForm(p=>({...p,state:e.target.value.toUpperCase()}))} placeholder="SC" maxLength={2} style={S.input}/></div>
+                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={odomForm.notes} onChange={e=>setOdomForm(p=>({...p,notes:e.target.value}))} placeholder="Start of week, end of week, etc." style={S.input}/></div>
+                    </div>
+                    <button className="hov" onClick={()=>{if(!odomForm.truckName||!odomForm.reading)return;setOdometer(p=>[{...odomForm,id:Date.now()},...p]);setOdomForm(prev=>({...prev,date:"",reading:"",state:"",notes:""}));setOdomShowAdd(false);}} style={{...S.btn,marginTop:14}}>Save Reading</button>
+                  </div>)}
+                  {(()=>{
+                    const byTruck={};
+                    odometer.forEach(r=>{if(!byTruck[r.truckName])byTruck[r.truckName]=[];byTruck[r.truckName].push(r);});
+                    Object.values(byTruck).forEach(arr=>{arr.sort((a,b)=>new Date(a.date)-new Date(b.date));});
+                    if(Object.keys(byTruck).length>0) return(
+                      <div style={{marginBottom:20}}>
+                        <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>Mileage Summary</div>
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
+                          {Object.entries(byTruck).map(([truck,arr])=>{const total=arr.length>=2?parseInt(arr[arr.length-1].reading||0)-parseInt(arr[0].reading||0):0;return(
+                            <div key={truck} style={S.card}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8",marginBottom:6}}>{truck}</div><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:accent}}>{total.toLocaleString()} mi</div><div style={{fontSize:9,color:"#555",marginTop:3}}>Latest: {parseInt(arr[arr.length-1]?.reading||0).toLocaleString()}</div></div>
+                          );})}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {odometer.length===0&&!odomShowAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No odometer readings yet. Log start and end of week to track mileage.</div>}
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    {[...odometer].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(r=>(<div key={r.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
+                      <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{r.truckName}{r.state?` — ${r.state}`:""}</div><div style={{fontSize:10,color:"#555"}}>{fmtDate(r.date)}{r.notes?` · ${r.notes}`:""}</div></div>
+                      <div style={{fontSize:18,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:accent,flexShrink:0}}>{parseInt(r.reading||0).toLocaleString()} mi</div>
+                      <button onClick={()=>setOdometer(p=>p.filter(x=>x.id!==r.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                    </div>))}
+                  </div>
+                </div>
+              </div>
+            )}
+            {subScreen==="tires"&&(
+              <div style={{flex:1,overflowY:"auto",padding:24}}>
+                <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+                    <div><div style={S.section}>TIRE MANAGEMENT</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Track tires by position, tread depth, and replacement cost.</div></div>
+                    <button className="hov" onClick={()=>setTireShowAdd(!tireShowAdd)} style={S.btn}>{tireShowAdd?"Cancel":"+ Add Tire Record"}</button>
+                  </div>
+                  {(()=>{const totalSpent=tires.reduce((s,t)=>s+parseFloat(t.cost||0),0);const active=tires.filter(t=>t.status==="active").length;return(
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+                      {[["Active Tires",active.toString(),accent],["Total Records",tires.length.toString(),"#888"],["Total Invested",fmt$(totalSpent),"#ef4444"]].map(([lbl,val,col])=>(
+                        <div key={lbl} style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div><div style={{fontSize:9,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginTop:4}}>{lbl}</div></div>
+                      ))}
+                    </div>
+                  );})()}
+                  {tireShowAdd&&(<div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                      <div><label style={S.label}>Truck *</label><select value={tireForm.truckName} onChange={e=>setTireForm(p=>({...p,truckName:e.target.value}))} style={S.input}><option value="">Select...</option>{compliance.trucks.map(v=><option key={v.id} value={v.name}>{v.name}</option>)}<option value="__other__">+ Enter manually</option></select>{tireForm.truckName==="__other__"&&<input value={tireForm._customTruck||""} onChange={e=>setTireForm(p=>({...p,_customTruck:e.target.value}))} placeholder="Truck name/unit #" style={{...S.input,marginTop:6}}/>}</div>
+                      <div><label style={S.label}>Position *</label><select value={tireForm.position} onChange={e=>setTireForm(p=>({...p,position:e.target.value}))} style={S.input}><option value="">Select position...</option>{["Front Left (Steer)","Front Right (Steer)","Rear Left Inner (Drive)","Rear Left Outer (Drive)","Rear Right Inner (Drive)","Rear Right Outer (Drive)","Spare","Trailer Left Front","Trailer Right Front","Trailer Left Rear","Trailer Right Rear"].map(pos=><option key={pos} value={pos}>{pos}</option>)}</select></div>
+                      <div><label style={S.label}>Date Installed</label><input type="date" value={tireForm.date} onChange={e=>setTireForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
+                      <div><label style={S.label}>Brand / Model</label><input value={tireForm.brand} onChange={e=>setTireForm(p=>({...p,brand:e.target.value}))} placeholder="Michelin XDN2, Bridgestone..." style={S.input}/></div>
+                      <div><label style={S.label}>Size</label><input value={tireForm.size} onChange={e=>setTireForm(p=>({...p,size:e.target.value}))} placeholder="11R22.5" style={S.input}/></div>
+                      <div><label style={S.label}>Tread Depth (32nds)</label><input type="number" value={tireForm.treadDepth} onChange={e=>setTireForm(p=>({...p,treadDepth:e.target.value}))} placeholder="New=32, Min=4" style={S.input}/></div>
+                      <div><label style={S.label}>Cost ($)</label><input type="number" value={tireForm.cost} onChange={e=>setTireForm(p=>({...p,cost:e.target.value}))} placeholder="0.00" style={S.input}/></div>
+                      <div><label style={S.label}>Mileage at Install</label><input type="number" value={tireForm.mileageInstalled} onChange={e=>setTireForm(p=>({...p,mileageInstalled:e.target.value}))} placeholder="142500" style={S.input}/></div>
+                      <div><label style={S.label}>Status</label><select value={tireForm.status} onChange={e=>setTireForm(p=>({...p,status:e.target.value}))} style={S.input}><option value="active">Active / Installed</option><option value="replaced">Replaced</option><option value="scrap">Scrap</option></select></div>
+                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={tireForm.notes} onChange={e=>setTireForm(p=>({...p,notes:e.target.value}))} placeholder="Vendor, warranty info..." style={S.input}/></div>
+                    </div>
+                    <button className="hov" onClick={()=>{const name=tireForm.truckName==="__other__"?(tireForm._customTruck||""):tireForm.truckName;if(!name||!tireForm.position)return;setTires(p=>[{...tireForm,truckName:name,id:Date.now()},...p]);setTireForm({truckName:"",date:"",position:"",brand:"",size:"",treadDepth:"",cost:"",mileageInstalled:"",status:"active",notes:""});setTireShowAdd(false);}} style={{...S.btn,marginTop:14}}>Save Tire Record</button>
+                  </div>)}
+                  {tires.length===0&&!tireShowAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No tire records yet.</div>}
+                  {(()=>{const byTruck={};tires.filter(t=>t.status==="active").forEach(t=>{if(!byTruck[t.truckName])byTruck[t.truckName]=[];byTruck[t.truckName].push(t);});if(!Object.keys(byTruck).length)return null;return Object.entries(byTruck).map(([truck,ts])=>(
+                    <div key={truck} style={{...S.card,marginBottom:12}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>{truck}</div>
+                      {ts.map(t=>{const tread=parseInt(t.treadDepth||0);const tc=tread===0?"#555":tread<=4?"#ef4444":tread<=8?"#f59e0b":"#22c55e";return(
+                        <div key={t.id} style={{display:"flex",alignItems:"center",gap:14,padding:"8px 0",borderBottom:"1px solid #1a1a1a"}}>
+                          <div style={{flex:1}}><div style={{fontSize:11,color:"#c8c4bc"}}>{t.position}</div><div style={{fontSize:10,color:"#555"}}>{t.brand||"—"} {t.size||""}{t.date?` · ${fmtDate(t.date)}`:""}</div></div>
+                          {t.treadDepth&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:tc}}>{t.treadDepth}/32</div><div style={{fontSize:8,color:"#555",textTransform:"uppercase"}}>Tread</div></div>}
+                          {t.cost&&<div style={{fontSize:13,color:"#ef4444",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,flexShrink:0}}>{fmt$(parseFloat(t.cost))}</div>}
+                          <button onClick={()=>setTires(p=>p.filter(x=>x.id!==t.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                        </div>
+                      );})}
+                    </div>
+                  ));})}
+                </div>
+              </div>
+            )}
+
 
       {/* ══ CONTRACTS ══════════════════════════════════════════════════ */}
       {screen==="contracts"&&(
@@ -2484,6 +2767,436 @@ export default function ContractorOS() {
           </div>
         </div>
       )}
+
+
+      {/* ══ PAYROLL ════════════════════════════════════════════════════ */}
+      {screen==="payroll"&&(()=>{
+        const calcRunPay=(driver,form)=>{const rate=parseFloat(driver.payRate||0);let gross=0,breakdown="";switch(driver.payType){case"per_mile":gross=rate*parseFloat(form.miles||0);breakdown=`${form.miles} mi × $${rate}/mi`;break;case"hourly":gross=rate*parseFloat(form.hours||0);breakdown=`${form.hours} hrs × $${rate}/hr`;break;case"percentage":gross=(rate/100)*parseFloat(form.loadRevenue||0);breakdown=`${rate}% of $${form.loadRevenue}`;break;case"salary":gross=rate/52;breakdown=`$${rate}/yr ÷ 52 weeks`;break;case"per_stop":gross=rate*parseFloat(form.stops||0);breakdown=`${form.stops} stops × $${rate}/stop`;break;default:gross=parseFloat(form.manualAmount||0);breakdown="Manual entry";}return{gross:parseFloat(gross.toFixed(2)),breakdown};};
+        const totalUnpaid=payroll.filter(r=>r.status==="unpaid").reduce((s,r)=>s+r.gross,0);
+        const totalPaid=payroll.filter(r=>r.status==="paid").reduce((s,r)=>s+r.gross,0);
+        const PAY_FIELDS={per_mile:[["miles","Miles Driven","number"]],hourly:[["hours","Hours Worked","number"]],percentage:[["loadRevenue","Route/Load Revenue ($)","number"]],salary:[],per_stop:[["stops","Stops Completed","number"]]};
+        const selDriver=drivers.find(d=>String(d.id)===String(payrollForm.driverId));
+        const extraFields=selDriver?(PAY_FIELDS[selDriver.payType]||[["manualAmount","Pay Amount ($)","number"]]):[];
+        return(
+        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          <SubNav tabs={[["runs","Pay Runs"],["summary","Driver Summary"],["ytd","YTD Report"]]} active={payrollSub} onSelect={setPayrollSub}/>
+          <div style={{flex:1,overflowY:"auto",padding:24}}>
+            {payrollSub==="runs"&&(
+              <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+                  <div><div style={S.section}>PAYROLL</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Log pay runs, generate pay stubs, and track what's owed.</div></div>
+                  <button className="hov" onClick={()=>setPayrollShowAdd(!payrollShowAdd)} style={S.btn}>{payrollShowAdd?"Cancel":"+ New Pay Run"}</button>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+                  {[["Unpaid Balance",fmt$(totalUnpaid),"#ef4444"],["Total Paid (All Time)",fmt$(totalPaid),"#22c55e"],["Pay Runs",payroll.length.toString(),accent]].map(([lbl,val,col])=>(
+                    <div key={lbl} style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div><div style={{fontSize:9,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginTop:4}}>{lbl}</div></div>
+                  ))}
+                </div>
+                {payrollShowAdd&&(
+                  <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                      <div><label style={S.label}>Driver *</label>
+                        <select value={payrollForm.driverId} onChange={e=>{setPayrollForm(p=>({...p,driverId:e.target.value}));setPayrollPreview(null);}} style={S.input}>
+                          <option value="">Select driver...</option>
+                          {drivers.filter(d=>d.status==="active").map(d=><option key={d.id} value={d.id}>{d.name} — {d.payType?.replace(/_/g," ")} @ ${d.payRate}</option>)}
+                        </select>
+                      </div>
+                      <div><label style={S.label}>Pay Period Start *</label><input type="date" value={payrollForm.periodStart} onChange={e=>setPayrollForm(p=>({...p,periodStart:e.target.value}))} style={S.input}/></div>
+                      <div><label style={S.label}>Pay Period End</label><input type="date" value={payrollForm.periodEnd} onChange={e=>setPayrollForm(p=>({...p,periodEnd:e.target.value}))} style={S.input}/></div>
+                      {extraFields.map(([f,lbl,t])=>(<div key={f}><label style={S.label}>{lbl}</label><input type={t} value={payrollForm[f]||""} onChange={e=>setPayrollForm(p=>({...p,[f]:e.target.value}))} style={S.input}/></div>))}
+                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes (bonus, deduction, etc.)</label><input value={payrollForm.notes} onChange={e=>setPayrollForm(p=>({...p,notes:e.target.value}))} style={S.input}/></div>
+                    </div>
+                    <div style={{display:"flex",gap:10,marginTop:14}}>
+                      <button className="hov" onClick={()=>{if(!payrollForm.driverId)return;const d=drivers.find(x=>String(x.id)===String(payrollForm.driverId));if(!d)return;const{gross,breakdown}=calcRunPay(d,payrollForm);setPayrollPreview({driver:d,gross,breakdown});}} style={{...S.btn,background:"#6366f1"}}>Preview Pay</button>
+                      {payrollPreview&&<button className="hov" onClick={()=>{const d=drivers.find(x=>String(x.id)===String(payrollForm.driverId));if(!d)return;const{gross,breakdown}=calcRunPay(d,payrollForm);const run={id:Date.now(),driverId:d.id,driverName:d.name,periodStart:payrollForm.periodStart,periodEnd:payrollForm.periodEnd,gross,breakdown,notes:payrollForm.notes,date:new Date().toISOString().slice(0,10),payType:d.payType,payRate:d.payRate,status:"unpaid"};setPayroll(p=>[run,...p]);setPayrollForm({driverId:"",periodStart:"",periodEnd:"",miles:"",hours:"",stops:"",loadRevenue:"",manualAmount:"",notes:""});setPayrollPreview(null);setPayrollShowAdd(false);}} style={S.btn}>Save Pay Run</button>}
+                      <button onClick={()=>{setPayrollShowAdd(false);setPayrollPreview(null);}} style={S.ghost}>Cancel</button>
+                    </div>
+                    {payrollPreview&&(<div style={{marginTop:14,background:"#0a1a0a",border:"1px solid #1a3a1a",borderRadius:6,padding:"14px 18px"}}><div style={{fontSize:10,color:"#2d5a2d",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:8}}>Pay Preview — {payrollPreview.driver.name}</div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontSize:11,color:"#888"}}>{payrollPreview.breakdown}</div><div style={{fontSize:24,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#22c55e"}}>{fmt$(payrollPreview.gross)}</div></div></div>)}
+                  </div>
+                )}
+                {payroll.length===0&&!payrollShowAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No pay runs yet. Add drivers first, then log pay runs here.</div>}
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {payroll.map(run=>(
+                    <div key={run.id} style={{...S.card,borderLeft:`3px solid ${run.status==="paid"?"#22c55e":"#f59e0b"}`,display:"flex",alignItems:"center",gap:14}}>
+                      <div style={{flex:1}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{run.driverName}</div><div style={{fontSize:10,color:"#555"}}>{run.periodStart}{run.periodEnd?` → ${run.periodEnd}`:""} · {run.breakdown}{run.notes&&` · ${run.notes}`}</div></div>
+                      <div style={{textAlign:"right"}}><div style={{fontSize:18,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#22c55e"}}>{fmt$(run.gross)}</div><div style={{fontSize:9,color:run.status==="paid"?"#22c55e":"#f59e0b",textTransform:"uppercase",letterSpacing:"0.1em"}}>{run.status==="paid"?`✓ Paid ${fmtDate(run.paidDate)}`:"Unpaid"}</div></div>
+                      <div style={{display:"flex",gap:6,flexShrink:0}}>
+                        {run.status==="unpaid"&&<button onClick={()=>setPayroll(p=>p.map(r=>r.id===run.id?{...r,status:"paid",paidDate:new Date().toISOString().slice(0,10)}:r))} style={{...S.btn,background:"#22c55e",fontSize:10,padding:"5px 12px"}}>Mark Paid</button>}
+                        <button onClick={()=>setPayStub(run)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"5px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Stub</button>
+                        <button onClick={()=>setPayroll(p=>p.filter(r=>r.id!==run.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {payrollSub==="summary"&&(
+              <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{...S.section,marginBottom:20}}>DRIVER PAY SUMMARY</div>
+                {drivers.length===0&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No drivers added yet.</div>}
+                <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                  {drivers.map(d=>{const runs=payroll.filter(r=>String(r.driverId)===String(d.id));const ytd=runs.reduce((s,r)=>s+r.gross,0);const unpaid=runs.filter(r=>r.status==="unpaid").reduce((s,r)=>s+r.gross,0);return(
+                    <div key={d.id} style={S.card}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+                        <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:17,fontWeight:700,color:"#e8e4d8"}}>{d.name}</div><div style={{fontSize:10,color:"#555"}}>{d.payType?.replace(/_/g," ")} · ${d.payRate}</div></div>
+                        {unpaid>0&&<div style={{fontSize:11,color:"#f59e0b"}}>⚠ {fmt$(unpaid)} owed</div>}
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+                        {[["YTD Earnings",fmt$(ytd),"#22c55e"],["Unpaid",fmt$(unpaid),unpaid>0?"#f59e0b":"#555"],["Pay Runs",runs.length.toString(),accent]].map(([lbl,val,col])=>(
+                          <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>{lbl}</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{val}</div></div>
+                        ))}
+                      </div>
+                    </div>
+                  );})}
+                </div>
+              </div>
+            )}
+            {payrollSub==="ytd"&&(
+              <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{...S.section,marginBottom:4}}>YTD PAYROLL REPORT</div>
+                <div style={{fontSize:11,color:"#555",marginBottom:20}}>Year-to-date totals by driver. Give this to your accountant at tax time.</div>
+                <div style={{border:"1px solid #1e1e1e",borderRadius:8,overflow:"hidden"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",background:"#0d0d0d",borderBottom:"1px solid #1e1e1e"}}>
+                    {["Driver","Pay Runs","Total Gross","Status"].map(h=>(<div key={h} style={{padding:"10px 14px",fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</div>))}
+                  </div>
+                  {drivers.map(d=>{const runs=payroll.filter(r=>String(r.driverId)===String(d.id));const ytd=runs.reduce((s,r)=>s+r.gross,0);const unpaid=runs.filter(r=>r.status==="unpaid").reduce((s,r)=>s+r.gross,0);return(
+                    <div key={d.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",borderBottom:"1px solid #161616"}}>
+                      <div style={{padding:"10px 14px"}}><div style={{fontSize:12,color:"#c8c4bc"}}>{d.name}</div><div style={{fontSize:9,color:"#555"}}>{d.payType?.replace(/_/g," ")}</div></div>
+                      <div style={{padding:"10px 14px",fontSize:12,color:"#888"}}>{runs.length}</div>
+                      <div style={{padding:"10px 14px",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e"}}>{fmt$(ytd)}</div>
+                      <div style={{padding:"10px 14px",fontSize:11,color:unpaid>0?"#f59e0b":"#22c55e"}}>{unpaid>0?`${fmt$(unpaid)} owed`:"Fully paid"}</div>
+                    </div>
+                  );})}
+                  <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",background:"#0d0d0d",borderTop:"1px solid #2a2a2a"}}>
+                    <div style={{padding:"10px 14px",fontSize:10,color:"#555",textTransform:"uppercase"}}>Total</div>
+                    <div style={{padding:"10px 14px",fontSize:12,color:"#888"}}>{payroll.length}</div>
+                    <div style={{padding:"10px 14px",fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:accent}}>{fmt$(payroll.reduce((s,r)=>s+r.gross,0))}</div>
+                    <div style={{padding:"10px 14px",fontSize:11,color:"#ef4444"}}>{fmt$(totalUnpaid)} owed</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          {/* Pay Stub Modal */}
+          {payStub&&(<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:20}} onClick={()=>setPayStub(null)}><div style={{background:"#141414",border:`1px solid ${accent}44`,borderRadius:10,padding:"28px 32px",maxWidth:480,width:"100%",animation:"fadeUp 0.2s ease"}} onClick={e=>e.stopPropagation()}><div style={{textAlign:"center",marginBottom:20,paddingBottom:16,borderBottom:"1px solid #222"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:900,color:"#e8e4d8"}}>PAY STUB</div><div style={{fontSize:10,color:"#555",marginTop:4}}>ContractorOS · {new Date().toLocaleDateString()}</div></div><div style={{display:"flex",flexDirection:"column",gap:10}}>{[["Driver",payStub.driverName],["Pay Period",`${payStub.periodStart}${payStub.periodEnd?" → "+payStub.periodEnd:""}`],["Pay Type",payStub.payType?.replace(/_/g," ")],["Calculation",payStub.breakdown],["Status",payStub.status==="paid"?`Paid ${fmtDate(payStub.paidDate)}`:"Unpaid"]].map(([lbl,val])=>(<div key={lbl} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid #1a1a1a",paddingBottom:8}}><span style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>{lbl}</span><span style={{fontSize:12,color:"#c8c4bc"}}>{val}</span></div>))}<div style={{display:"flex",justifyContent:"space-between",marginTop:8,paddingTop:8,borderTop:"2px solid #2a2a2a"}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#e8e4d8"}}>GROSS PAY</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:900,color:"#22c55e"}}>{fmt$(payStub.gross)}</span></div>{payStub.notes&&<div style={{fontSize:11,color:"#555",fontStyle:"italic"}}>Note: {payStub.notes}</div>}</div><button onClick={()=>window.print()} style={{...S.btn,width:"100%",marginTop:20}}>Print / Save as PDF</button></div></div>)}
+        </div>
+      )})()}
+
+      {/* ══ DISPATCH ═══════════════════════════════════════════════════ */}
+      {screen==="dispatch"&&(
+        <div style={{flex:1,overflowY:"auto",padding:24}}>
+          <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <div><div style={S.section}>DISPATCH BOARD</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Assign loads and routes to drivers and trucks. Track run status.</div></div>
+              <button className="hov" onClick={()=>setDispatchShowAdd(!dispatchShowAdd)} style={S.btn}>{dispatchShowAdd?"Cancel":"+ Assign Run"}</button>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+              {[["Active",dispatches.filter(d=>d.status==="assigned"||d.status==="in_progress"||d.status==="issue").length.toString(),accent],["Completed",dispatches.filter(d=>d.status==="completed").length.toString(),"#22c55e"],["Issues",dispatches.filter(d=>d.status==="issue").length.toString(),dispatches.filter(d=>d.status==="issue").length>0?"#ef4444":"#555"],["Total",dispatches.length.toString(),"#555"]].map(([lbl,val,col])=>(
+                <div key={lbl} style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div><div style={{fontSize:9,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginTop:4}}>{lbl}</div></div>
+              ))}
+            </div>
+            {dispatchShowAdd&&(
+              <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                  <div><label style={S.label}>Driver</label><select value={dispatchForm.driverId} onChange={e=>setDispatchForm(p=>({...p,driverId:e.target.value}))} style={S.input}><option value="">Select driver...</option>{drivers.filter(d=>d.status==="active").map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
+                  <div><label style={S.label}>Truck / Vehicle</label><select value={dispatchForm.vehicleName} onChange={e=>setDispatchForm(p=>({...p,vehicleName:e.target.value}))} style={S.input}><option value="">Select truck...</option>{compliance.trucks.map(v=><option key={v.id} value={v.name}>{v.name}{v.nickname?` "${v.nickname}""`:""}</option>)}</select></div>
+                  {routes.length>0&&<div><label style={S.label}>Saved Route</label><select value={dispatchForm.routeName} onChange={e=>setDispatchForm(p=>({...p,routeName:e.target.value}))} style={S.input}><option value="">Custom or select...</option>{routes.map(r=><option key={r.id} value={r.name}>{r.name}</option>)}</select></div>}
+                  <div><label style={S.label}>Date</label><input type="date" value={dispatchForm.date} onChange={e=>setDispatchForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
+                  <div><label style={S.label}>Origin / Pickup</label><input value={dispatchForm.origin} onChange={e=>setDispatchForm(p=>({...p,origin:e.target.value}))} placeholder="City, address, terminal..." style={S.input}/></div>
+                  <div><label style={S.label}>Destination / Delivery</label><input value={dispatchForm.destination} onChange={e=>setDispatchForm(p=>({...p,destination:e.target.value}))} placeholder="City, store #, address..." style={S.input}/></div>
+                  <div><label style={S.label}>Pickup Time</label><input type="time" value={dispatchForm.pickupTime} onChange={e=>setDispatchForm(p=>({...p,pickupTime:e.target.value}))} style={S.input}/></div>
+                  <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes / Special Instructions</label><input value={dispatchForm.notes} onChange={e=>setDispatchForm(p=>({...p,notes:e.target.value}))} placeholder="Load #, delivery contact, access code..." style={S.input}/></div>
+                </div>
+                <button className="hov" onClick={()=>{const driver=drivers.find(d=>String(d.id)===String(dispatchForm.driverId));setDispatches(p=>[{...dispatchForm,id:Date.now(),driverName:driver?.name||"Unassigned",createdDate:new Date().toISOString().slice(0,10)},...p]);setDispatchForm({driverId:"",vehicleName:"",routeName:"",origin:"",destination:"",date:"",pickupTime:"",notes:"",status:"assigned"});setDispatchShowAdd(false);}} style={{...S.btn,marginTop:14}}>Assign Run</button>
+              </div>
+            )}
+            <div style={{display:"flex",gap:8,marginBottom:16}}>
+              {[["active","Active"],["history","History"],["all","All"]].map(([k,lbl])=>(
+                <button key={k} onClick={()=>setDispatchFilter(k)} style={{background:dispatchFilter===k?accent+"22":"transparent",border:`1px solid ${dispatchFilter===k?accent:"#2a2a2a"}`,color:dispatchFilter===k?accent:"#555",padding:"6px 16px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>{lbl}</button>
+              ))}
+            </div>
+            {(()=>{
+              const STATUS_COLORS={assigned:"#f59e0b",in_progress:"#60a5fa",completed:"#22c55e",cancelled:"#555",issue:"#ef4444"};
+              const STATUS_LABELS={assigned:"Assigned",in_progress:"In Progress",completed:"Completed",cancelled:"Cancelled",issue:"Issue"};
+              const active=dispatches.filter(d=>d.status==="assigned"||d.status==="in_progress"||d.status==="issue");
+              const history=dispatches.filter(d=>d.status==="completed"||d.status==="cancelled");
+              const shown=dispatchFilter==="active"?active:dispatchFilter==="history"?history:dispatches;
+              if(shown.length===0) return <div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>{dispatchFilter==="active"?"No active dispatches.":"No dispatch history yet."}</div>;
+              return shown.map(d=>(
+                <div key={d.id} style={{...S.card,borderLeft:`3px solid ${STATUS_COLORS[d.status]||"#555"}`,marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                    <div>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8"}}>{d.driverName}</div>
+                        {d.vehicleName&&<span style={{fontSize:10,color:accent,border:`1px solid ${accent}44`,padding:"1px 7px",borderRadius:3}}>{d.vehicleName}</span>}
+                        <span style={{fontSize:9,color:STATUS_COLORS[d.status],border:`1px solid ${STATUS_COLORS[d.status]}44`,padding:"1px 7px",borderRadius:3,textTransform:"uppercase"}}>{STATUS_LABELS[d.status]}</span>
+                      </div>
+                      <div style={{fontSize:11,color:"#888"}}>{d.routeName&&`${d.routeName} · `}{d.origin&&d.destination?`${d.origin} → ${d.destination}`:d.origin||d.destination||"No route details"}</div>
+                      <div style={{fontSize:10,color:"#555",marginTop:3}}>{fmtDate(d.date)}{d.pickupTime?` @ ${d.pickupTime}`:""}{d.notes&&` · ${d.notes}`}</div>
+                    </div>
+                  </div>
+                  {(d.status==="assigned"||d.status==="in_progress"||d.status==="issue")&&(
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                      {d.status==="assigned"&&<button onClick={()=>setDispatches(p=>p.map(x=>x.id===d.id?{...x,status:"in_progress"}:x))} style={{...S.btn,background:"#60a5fa",fontSize:10,padding:"5px 12px"}}>Start Run</button>}
+                      {d.status==="in_progress"&&<button onClick={()=>setDispatches(p=>p.map(x=>x.id===d.id?{...x,status:"completed"}:x))} style={{...S.btn,background:"#22c55e",fontSize:10,padding:"5px 12px"}}>Complete</button>}
+                      <button onClick={()=>setDispatches(p=>p.map(x=>x.id===d.id?{...x,status:"issue"}:x))} style={{background:"transparent",border:"1px solid #ef444444",color:"#ef4444",cursor:"pointer",fontSize:10,padding:"5px 10px",borderRadius:4,fontFamily:"'DM Mono',monospace"}}>Flag Issue</button>
+                      <button onClick={()=>setDispatches(p=>p.filter(x=>x.id!==d.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,marginLeft:"auto"}}>✕</button>
+                    </div>
+                  )}
+                </div>
+              ));
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* ══ INVOICES / AR ══════════════════════════════════════════════ */}
+      {screen==="invoices"&&(()=>{
+        const open=invoices.filter(i=>i.status==="open"||i.status==="partial");
+        const paid=invoices.filter(i=>i.status==="paid");
+        const overdue=open.filter(i=>i.dueDate&&new Date(i.dueDate)<new Date());
+        const totalOpen=open.reduce((s,i)=>s+parseFloat(i.amount||0),0);
+        const nextNum=()=>{const nums=invoices.map(i=>parseInt(i.invoiceNum?.replace(/\D/g,"")||0)).filter(Boolean);const max=nums.length>0?Math.max(...nums):1000;return`INV-${max+1}`;};
+        const STATUS_COLORS={open:"#f59e0b",partial:"#60a5fa",paid:"#22c55e",void:"#555"};
+        const agingLabel=(dueDate)=>{if(!dueDate)return{label:"No due date",color:"#555"};const days=Math.ceil((new Date()-new Date(dueDate))/86400000);if(days<0)return{label:`Due in ${Math.abs(days)}d`,color:"#22c55e"};if(days<=30)return{label:`${days}d overdue`,color:"#f59e0b"};if(days<=60)return{label:`${days}d overdue`,color:"#f87171"};return{label:`${days}d overdue`,color:"#ef4444"};};
+        const shown=invoiceSub==="open"?open:invoiceSub==="overdue"?overdue:invoiceSub==="paid"?paid:invoices;
+        return(
+        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          <SubNav tabs={[[`open`,`Open (${open.length})`],[`overdue`,`Overdue (${overdue.length})`],["paid","Paid"],["all","All"]]} active={invoiceSub} onSelect={setInvoiceSub}/>
+          <div style={{flex:1,overflowY:"auto",padding:24}}>
+            <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+                <div><div style={S.section}>ACCOUNTS RECEIVABLE</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Track what's owed to you and how old each invoice is.</div></div>
+                <button className="hov" onClick={()=>setInvoiceShowAdd(!invoiceShowAdd)} style={S.btn}>{invoiceShowAdd?"Cancel":"+ New Invoice"}</button>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+                {[["Total Open",fmt$(totalOpen),"#f59e0b"],["Overdue",fmt$(overdue.reduce((s,i)=>s+parseFloat(i.amount||0),0)),overdue.length>0?"#ef4444":"#555"],["Collected YTD",fmt$(paid.reduce((s,i)=>s+parseFloat(i.amount||0),0)),"#22c55e"]].map(([lbl,val,col])=>(
+                  <div key={lbl} style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div><div style={{fontSize:9,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginTop:4}}>{lbl}</div></div>
+                ))}
+              </div>
+              {invoiceShowAdd&&(
+                <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    <div><label style={S.label}>Client / Broker *</label><input value={invoiceForm.clientName} onChange={e=>setInvoiceForm(p=>({...p,clientName:e.target.value}))} placeholder="Hub Group, FedEx Ground..." style={S.input}/></div>
+                    <div><label style={S.label}>Invoice # (auto if blank)</label><input value={invoiceForm.invoiceNum} onChange={e=>setInvoiceForm(p=>({...p,invoiceNum:e.target.value}))} placeholder={nextNum()} style={S.input}/></div>
+                    <div><label style={S.label}>Amount ($) *</label><input type="number" value={invoiceForm.amount} onChange={e=>setInvoiceForm(p=>({...p,amount:e.target.value}))} placeholder="0.00" style={S.input}/></div>
+                    <div><label style={S.label}>Issue Date</label><input type="date" value={invoiceForm.issueDate} onChange={e=>setInvoiceForm(p=>({...p,issueDate:e.target.value}))} style={S.input}/></div>
+                    <div><label style={S.label}>Due Date</label><input type="date" value={invoiceForm.dueDate} onChange={e=>setInvoiceForm(p=>({...p,dueDate:e.target.value}))} style={S.input}/></div>
+                    <div><label style={S.label}>Description / Load #</label><input value={invoiceForm.description} onChange={e=>setInvoiceForm(p=>({...p,description:e.target.value}))} placeholder="Load ref, route, BOL #..." style={S.input}/></div>
+                    <div><label style={S.label}>Notes</label><input value={invoiceForm.notes} onChange={e=>setInvoiceForm(p=>({...p,notes:e.target.value}))} placeholder="Payment terms, PO #..." style={S.input}/></div>
+                  </div>
+                  <button className="hov" onClick={()=>{if(!invoiceForm.clientName||!invoiceForm.amount)return;setInvoices(p=>[{...invoiceForm,id:Date.now(),invoiceNum:invoiceForm.invoiceNum||nextNum(),createdDate:new Date().toISOString().slice(0,10)},...p]);setInvoiceForm({invoiceNum:"",clientName:"",amount:"",issueDate:"",dueDate:"",description:"",status:"open",notes:""});setInvoiceShowAdd(false);}} style={{...S.btn,marginTop:14}}>Save Invoice</button>
+                </div>
+              )}
+              {shown.length===0&&!invoiceShowAdd&&<div style={{...S.card,textAlign:"center",color:invoiceSub==="open"?"#22c55e":"#555",fontSize:12,padding:40}}>{invoiceSub==="open"?"✓ No open invoices — all caught up!":"No invoices in this category."}</div>}
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {shown.map(inv=>{const aging=agingLabel(inv.dueDate);return(
+                  <div key={inv.id} style={{...S.card,borderLeft:`3px solid ${STATUS_COLORS[inv.status]||"#555"}`}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                      <div>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8"}}>{inv.clientName}</div>
+                          <span style={{fontSize:9,color:"#555",border:"1px solid #2a2a2a",padding:"1px 7px",borderRadius:3}}>{inv.invoiceNum}</span>
+                          <span style={{fontSize:9,color:STATUS_COLORS[inv.status],border:`1px solid ${STATUS_COLORS[inv.status]}44`,padding:"1px 7px",borderRadius:3,textTransform:"uppercase"}}>{inv.status}</span>
+                        </div>
+                        <div style={{fontSize:10,color:"#555"}}>{inv.description&&`${inv.description} · `}Issued: {fmtDate(inv.issueDate||inv.createdDate)}{inv.dueDate&&` · Due: ${fmtDate(inv.dueDate)}`}</div>
+                      </div>
+                      <div style={{textAlign:"right",flexShrink:0,marginLeft:16}}>
+                        <div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:inv.status==="paid"?"#22c55e":"#e8e4d8"}}>{fmt$(parseFloat(inv.amount||0))}</div>
+                        {inv.status!=="paid"&&inv.dueDate&&<div style={{fontSize:10,color:aging.color,fontWeight:700}}>{aging.label}</div>}
+                        {inv.status==="paid"&&<div style={{fontSize:10,color:"#22c55e"}}>Paid {fmtDate(inv.paidDate)}</div>}
+                      </div>
+                    </div>
+                    {inv.status!=="paid"&&inv.status!=="void"&&(
+                      <div style={{display:"flex",gap:8}}>
+                        <button onClick={()=>setInvoices(p=>p.map(i=>i.id===inv.id?{...i,status:"paid",paidDate:new Date().toISOString().slice(0,10)}:i))} style={{...S.btn,background:"#22c55e",fontSize:10,padding:"5px 14px"}}>Mark Paid</button>
+                        <button onClick={()=>setInvoices(p=>p.map(i=>i.id===inv.id?{...i,status:"partial"}:i))} style={{background:"transparent",border:"1px solid #60a5fa44",color:"#60a5fa",cursor:"pointer",fontSize:10,padding:"5px 10px",borderRadius:4,fontFamily:"'DM Mono',monospace"}}>Partial</button>
+                        <button onClick={()=>setInvoices(p=>p.filter(x=>x.id!==inv.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,marginLeft:"auto"}}>✕</button>
+                      </div>
+                    )}
+                  </div>
+                );})}
+              </div>
+            </div>
+          </div>
+        </div>
+      )})()}
+
+      {/* ══ CONTACTS ═══════════════════════════════════════════════════ */}
+      {screen==="contacts"&&(()=>{
+        const CONTACT_TYPES=["Client","Broker","Shipper","Receiver","Dispatcher","Vendor","Insurance","Other"];
+        const TYPE_COLORS={Client:"#22c55e",Broker:"#f59e0b",Shipper:"#60a5fa",Receiver:"#8888cc",Dispatcher:"#f87171",Vendor:"#555",Insurance:"#ef4444",Other:"#444"};
+        const filtered=contacts.filter(c=>{const matchType=contactFilter==="all"||c.type===contactFilter;const matchSearch=!contactSearch||c.name.toLowerCase().includes(contactSearch.toLowerCase())||(c.company||"").toLowerCase().includes(contactSearch.toLowerCase());return matchType&&matchSearch;});
+        return(
+        <div style={{flex:1,overflowY:"auto",padding:24}}>
+          <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <div><div style={S.section}>CONTACTS</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Clients, brokers, shippers, dispatchers, and vendors in one place.</div></div>
+              <button className="hov" onClick={()=>setContactShowAdd(!contactShowAdd)} style={S.btn}>{contactShowAdd?"Cancel":"+ Add Contact"}</button>
+            </div>
+            {contactShowAdd&&(
+              <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                  <div><label style={S.label}>Name *</label><input value={contactForm.name} onChange={e=>setContactForm(p=>({...p,name:e.target.value}))} placeholder="Contact name" style={S.input}/></div>
+                  <div><label style={S.label}>Company</label><input value={contactForm.company} onChange={e=>setContactForm(p=>({...p,company:e.target.value}))} placeholder="Company name" style={S.input}/></div>
+                  <div><label style={S.label}>Type</label><select value={contactForm.type} onChange={e=>setContactForm(p=>({...p,type:e.target.value}))} style={S.input}>{CONTACT_TYPES.map(t=><option key={t}>{t}</option>)}</select></div>
+                  <div><label style={S.label}>Phone</label><input value={contactForm.phone} onChange={e=>setContactForm(p=>({...p,phone:e.target.value}))} placeholder="(864) 555-0100" style={S.input}/></div>
+                  <div><label style={S.label}>Email</label><input type="email" value={contactForm.email} onChange={e=>setContactForm(p=>({...p,email:e.target.value}))} placeholder="contact@company.com" style={S.input}/></div>
+                  <div><label style={S.label}>Address / City</label><input value={contactForm.address} onChange={e=>setContactForm(p=>({...p,address:e.target.value}))} placeholder="City, ST" style={S.input}/></div>
+                  {(contactForm.type==="Broker"||contactForm.type==="Client")&&<><div><label style={S.label}>Pay Speed (days)</label><input type="number" value={contactForm.paySpeed} onChange={e=>setContactForm(p=>({...p,paySpeed:e.target.value}))} placeholder="30" style={S.input}/></div><div><label style={S.label}>Rating (1–5)</label><input type="number" min={1} max={5} value={contactForm.rating} onChange={e=>setContactForm(p=>({...p,rating:e.target.value}))} placeholder="5" style={S.input}/></div></>}
+                  <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><textarea value={contactForm.notes} onChange={e=>setContactForm(p=>({...p,notes:e.target.value}))} placeholder="Payment terms, dock hours, store code..." style={{...S.input,height:70,resize:"vertical"}}/></div>
+                </div>
+                <button className="hov" onClick={()=>{if(!contactForm.name)return;setContacts(p=>[{...contactForm,id:Date.now(),createdDate:new Date().toISOString().slice(0,10)},...p]);setContactForm({name:"",company:"",type:"Client",phone:"",email:"",address:"",notes:"",paySpeed:"",rating:""});setContactShowAdd(false);}} style={{...S.btn,marginTop:14}}>Save Contact</button>
+              </div>
+            )}
+            <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+              <input value={contactSearch} onChange={e=>setContactSearch(e.target.value)} placeholder="Search contacts..." style={{...S.input,maxWidth:260}}/>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {["all",...CONTACT_TYPES].map(t=>(
+                  <button key={t} onClick={()=>setContactFilter(t)} style={{background:contactFilter===t?accent+"22":"transparent",border:`1px solid ${contactFilter===t?accent:"#2a2a2a"}`,color:contactFilter===t?accent:"#555",padding:"4px 10px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap"}}>{t==="all"?`All (${contacts.length})`:t}</button>
+                ))}
+              </div>
+            </div>
+            {filtered.length===0&&!contactShowAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>{contacts.length===0?"No contacts yet. Add clients, brokers, and business contacts here.":"No contacts match your filter."}</div>}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
+              {filtered.map(c=>(
+                <div key={c.id} style={{...S.card,borderTop:`3px solid ${TYPE_COLORS[c.type]||"#555"}`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                    <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8"}}>{c.name}</div>{c.company&&<div style={{fontSize:10,color:"#555"}}>{c.company}</div>}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:8,color:TYPE_COLORS[c.type]||"#555",border:`1px solid ${TYPE_COLORS[c.type]||"#555"}44`,padding:"2px 6px",borderRadius:3,textTransform:"uppercase"}}>{c.type}</span><button onClick={()=>setContacts(p=>p.filter(x=>x.id!==c.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button></div>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                    {c.phone&&<div style={{fontSize:11,color:"#888"}}>📞 <a href={`tel:${c.phone}`} style={{color:accent,textDecoration:"none"}}>{c.phone}</a></div>}
+                    {c.email&&<div style={{fontSize:11,color:"#888"}}>✉ <a href={`mailto:${c.email}`} style={{color:accent,textDecoration:"none"}}>{c.email}</a></div>}
+                    {c.address&&<div style={{fontSize:11,color:"#888"}}>📍 {c.address}</div>}
+                    {c.paySpeed&&<div style={{fontSize:10,color:"#555"}}>Pay: {c.paySpeed}d{c.rating?` · ${"★".repeat(parseInt(c.rating||0))}`:""}</div>}
+                    {c.notes&&<div style={{fontSize:10,color:"#444",marginTop:4,fontStyle:"italic",lineHeight:1.5}}>{c.notes}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )})()}
+
+      {/* ══ DOCUMENTS ══════════════════════════════════════════════════ */}
+      {screen==="documents"&&(()=>{
+        const DOC_TYPES=["Rate Confirmation","Bill of Lading (BOL)","Delivery Confirmation","Insurance Certificate","Contract","Invoice","Driver File","Inspection Report","Permit","Other"];
+        const TYPE_COLORS={"Rate Confirmation":"#f59e0b","Bill of Lading (BOL)":"#60a5fa","Delivery Confirmation":"#22c55e","Insurance Certificate":"#ef4444","Contract":"#8888cc","Invoice":"#22c55e","Driver File":"#60a5fa","Inspection Report":"#f59e0b","Permit":"#f87171","Other":"#555"};
+        const types=["all",...DOC_TYPES];
+        const filtered=docFilter==="all"?documents:documents.filter(d=>d.type===docFilter);
+        const typeCount={};documents.forEach(d=>{typeCount[d.type]=(typeCount[d.type]||0)+1;});
+        const handleFileUpload=(e)=>{const file=e.target.files[0];if(!file)return;if(file.size>2*1024*1024){alert("File too large for localStorage (max 2MB). Use filename/reference only for large files.");return;}const reader=new FileReader();reader.onload=(ev)=>{setDocFileData({name:file.name,dataUrl:ev.target.result,size:file.size});setDocForm(p=>({...p,fileName:file.name}));};reader.readAsDataURL(file);};
+        return(
+        <div style={{flex:1,overflowY:"auto",padding:24}}>
+          <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <div><div style={S.section}>DOCUMENT CENTER</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Rate cons, BOLs, insurance certs, and all key documents.</div></div>
+              <button className="hov" onClick={()=>setDocShowAdd(!docShowAdd)} style={S.btn}>{docShowAdd?"Cancel":"+ Add Document"}</button>
+            </div>
+            <div style={{background:"#0a0f1a",border:"1px solid #1a1a3a",borderRadius:8,padding:"12px 18px",marginBottom:20,display:"flex",alignItems:"center",gap:14}}>
+              <div style={{fontSize:20}}>📎</div>
+              <div style={{fontSize:10,color:"#4a4a8a",lineHeight:1.7}}>Small files (&lt;2MB) are stored as Base64 in localStorage. For large files, log the filename/reference here and keep the original in Google Drive or Dropbox. Cloud sync coming in next update.</div>
+            </div>
+            {docShowAdd&&(
+              <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                  <div style={{gridColumn:"1/-1"}}><label style={S.label}>Document Name *</label><input value={docForm.name} onChange={e=>setDocForm(p=>({...p,name:e.target.value}))} placeholder="Rate Con #1234 — Hub Group, BOL Chicago run..." style={S.input}/></div>
+                  <div><label style={S.label}>Type</label><select value={docForm.type} onChange={e=>setDocForm(p=>({...p,type:e.target.value}))} style={S.input}>{DOC_TYPES.map(t=><option key={t}>{t}</option>)}</select></div>
+                  <div><label style={S.label}>Date</label><input type="date" value={docForm.date} onChange={e=>setDocForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
+                  <div><label style={S.label}>Linked To (truck / driver / load)</label><input value={docForm.linkedTo} onChange={e=>setDocForm(p=>({...p,linkedTo:e.target.value}))} placeholder="Unit 1, John Smith, Load #5678..." style={S.input}/></div>
+                  <div><label style={S.label}>File (optional, max 2MB)</label><input type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.csv,.xlsx" onChange={handleFileUpload} style={{...S.input,padding:"7px 14px"}}/></div>
+                  <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={docForm.notes} onChange={e=>setDocForm(p=>({...p,notes:e.target.value}))} placeholder="Confirmation #, broker contact, expiry..." style={S.input}/></div>
+                </div>
+                {docFileData&&<div style={{marginTop:8,fontSize:10,color:"#22c55e"}}>✓ {docFileData.name} ({(docFileData.size/1024).toFixed(0)}KB) — will be stored in browser</div>}
+                <button className="hov" onClick={()=>{if(!docForm.name)return;const doc={...docForm,id:Date.now(),createdDate:new Date().toISOString().slice(0,10),fileData:docFileData?.dataUrl||null,fileSize:docFileData?.size||null};setDocuments(p=>[doc,...p]);setDocForm({name:"",type:"Rate Confirmation",date:"",linkedTo:"",notes:"",fileName:""});setDocFileData(null);setDocShowAdd(false);}} style={{...S.btn,marginTop:14}}>Save Document</button>
+              </div>
+            )}
+            <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
+              {types.map(t=>(<button key={t} onClick={()=>setDocFilter(t)} style={{background:docFilter===t?accent+"22":"transparent",border:`1px solid ${docFilter===t?accent:"#2a2a2a"}`,color:docFilter===t?accent:"#555",padding:"4px 12px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>{t==="all"?`All (${documents.length})`:`${t} (${typeCount[t]||0})`}</button>))}
+            </div>
+            {filtered.length===0&&!docShowAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>{docFilter==="all"?"No documents tracked yet.`:`No ${docFilter} documents yet."}</div>}
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {filtered.map(doc=>(
+                <div key={doc.id} style={{...S.card,display:"flex",alignItems:"center",gap:14,borderLeft:`3px solid ${TYPE_COLORS[doc.type]||"#555"}`}}>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                      <div style={{fontSize:12,color:"#c8c4bc"}}>{doc.name}</div>
+                      <span style={{fontSize:9,color:TYPE_COLORS[doc.type]||"#555",border:`1px solid ${TYPE_COLORS[doc.type]||"#555"}33`,padding:"1px 7px",borderRadius:3}}>{doc.type}</span>
+                    </div>
+                    <div style={{fontSize:10,color:"#555"}}>{fmtDate(doc.date||doc.createdDate)}{doc.linkedTo&&` · ${doc.linkedTo}`}{doc.fileName&&` · ${doc.fileName}`}{doc.notes&&` · ${doc.notes}`}</div>
+                  </div>
+                  <div style={{display:"flex",gap:8,flexShrink:0,alignItems:"center"}}>
+                    {doc.fileData&&<a href={doc.fileData} download={doc.fileName||doc.name} style={{...S.btn,background:"#22c55e",fontSize:10,padding:"5px 12px",textDecoration:"none",display:"inline-block"}}>↓ Download</a>}
+                    <div style={{fontSize:9,color:"#333",border:"1px solid #222",padding:"2px 8px",borderRadius:3}}>{doc.fileData?"📎 File":"📋 Ref"}</div>
+                    <button onClick={()=>setDocuments(p=>p.filter(x=>x.id!==doc.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )})()}
+
+      {/* ══ DATA & BACKUP ══════════════════════════════════════════════ */}
+      {screen==="data"&&(()=>{
+        const currentYear=new Date().getFullYear();const lastYear=currentYear-1;
+        const yearTotals=(yr)=>{const rev=revenue.filter(r=>r.date?.startsWith(yr.toString())).reduce((s,r)=>s+parseFloat(r.amount||0),0);const exp=expenses.filter(e=>e.date?.startsWith(yr.toString())).reduce((s,e)=>s+parseFloat(e.amount||0),0);return{rev,exp,net:rev-exp};};
+        const cy=yearTotals(currentYear);const ly=yearTotals(lastYear);
+        const revChange=ly.rev>0?(((cy.rev-ly.rev)/ly.rev)*100).toFixed(1):null;
+        const netChange=ly.net!==0?(((cy.net-ly.net)/Math.abs(ly.net))*100).toFixed(1):null;
+        const downloadJSON=()=>{const allData={exportDate:new Date().toISOString(),version:"ContractorOS-v10",revenue,expenses,drivers,vehicles,maintenance,compliance,contracts,incidents,brokers,loads,dispatches,payroll,fuelLog,invoices,odometer,tires,documents:documents.map(d=>({...d,fileData:undefined})),contacts};const blob=new Blob([JSON.stringify(allData,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`ContractorOS_Backup_${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(url);};
+        const downloadCSV=(data,filename,cols)=>{if(!data.length)return;const header=cols.join(",");const rows=data.map(r=>cols.map(c=>`"${(r[c]||"").toString().replace(/"/g,'""')}"`).join(","));const blob=new Blob([[header,...rows].join("\n")],{type:"text/csv"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);};
+        return(
+        <div style={{flex:1,overflowY:"auto",padding:24}}>
+          <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+            <div style={{...S.section,marginBottom:4}}>DATA & BACKUP</div>
+            <p style={{fontSize:11,color:"#555",marginBottom:24,lineHeight:1.8}}>Export your data for backup, accounting, or migration. ContractorOS stores everything in your browser — export regularly so you don't lose anything if you clear your cache.</p>
+            {/* Year-over-year */}
+            <div style={{...S.card,marginBottom:24,background:"#0d0d14",border:"1px solid #1a1a2a"}}>
+              <div style={{fontSize:10,color:"#3a3a6a",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:16}}>Year-Over-Year Comparison</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+                {[["Revenue",fmt$(ly.rev),fmt$(cy.rev),revChange],["Expenses",fmt$(ly.exp),fmt$(cy.exp),null],["Net Profit",fmt$(ly.net),fmt$(cy.net),netChange]].map(([lbl,prev,curr,chg])=>{const isPos=lbl==="Expenses"?false:parseFloat(chg)>0;return(
+                  <div key={lbl} style={{background:"#0f0f1a",border:"1px solid #1a1a2a",borderRadius:6,padding:14}}>
+                    <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8}}>{lbl}</div>
+                    <div style={{marginBottom:6}}><div style={{fontSize:10,color:"#444"}}>{lastYear}</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#666"}}>{prev}</div></div>
+                    <div><div style={{fontSize:10,color:"#666"}}>{currentYear}</div><div style={{fontSize:18,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:lbl==="Expenses"?"#ef4444":"#22c55e"}}>{curr}</div></div>
+                    {chg!==null&&<div style={{marginTop:8,fontSize:11,color:isPos?"#22c55e":"#ef4444",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{parseFloat(chg)>0?"▲":"▼"} {Math.abs(parseFloat(chg))}% vs last year</div>}
+                  </div>
+                );})}
+              </div>
+            </div>
+            {/* Full backup */}
+            <div style={{...S.card,marginBottom:20}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8"}}>Full Data Backup (JSON)</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Exports all data — drivers, vehicles, compliance, finance, payroll, everything. Note: uploaded files are excluded to keep backup small.</div></div>
+                <button className="hov" onClick={downloadJSON} style={S.btn}>Download →</button>
+              </div>
+              <div style={{padding:"10px 14px",background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,fontSize:10,color:"#444",lineHeight:1.7}}>💡 <strong style={{color:"#666"}}>Tip:</strong> Save to Google Drive or Dropbox. If you clear browser cache, this is your only recovery option until cloud sync is added.</div>
+            </div>
+            {/* CSV exports */}
+            <div style={{...S.card,marginBottom:20}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8",marginBottom:4}}>Spreadsheet Exports (CSV)</div>
+              <div style={{fontSize:11,color:"#555",marginBottom:16}}>Individual tables as CSV — open in Excel, Google Sheets, or send to your accountant.</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
+                {[[revenue,"Revenue","revenue.csv",["date","description","amount","vehicle"]],[expenses,"Expenses","expenses.csv",["date","category","amount","description","vehicle"]],[drivers,"Drivers","drivers.csv",["name","phone","hireDate","payType","payRate","status"]],[maintenance,"Maintenance","maintenance.csv",["truckName","type","date","mileage","cost","notes"]],[payroll,"Payroll","payroll.csv",["driverName","periodStart","periodEnd","gross","status","paidDate"]],[fuelLog,"Fuel Log","fuel.csv",["date","truckName","gallons","pricePerGallon","totalCost","state"]]].map(([data,label,file,cols])=>(
+                  <button key={file} className="hov" onClick={()=>downloadCSV(data,file,cols)} style={{...S.card,textAlign:"left",cursor:"pointer",display:"block",border:`1px solid ${accent}33`}}>
+                    <div style={{fontSize:13,color:accent,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{label}</div>
+                    <div style={{fontSize:10,color:"#555",marginTop:3}}>{data.length} records · .csv</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Danger zone */}
+            <div style={{...S.card,background:"#1a0808",border:"1px solid #3a1010"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8",marginBottom:4}}>⚠ Danger Zone</div>
+              <div style={{fontSize:11,color:"#7a4040",marginBottom:14,lineHeight:1.7}}>Permanently deletes data from your browser. <strong>Download a backup first.</strong> Cannot be undone.</div>
+              <button onClick={()=>{if(window.confirm("Delete ALL ContractorOS data? This cannot be undone. Have you downloaded a backup?)){Object.keys(localStorage).filter(k=>k.startsWith("cos_")).forEach(k=>localStorage.removeItem(k));window.location.reload();}}} style={{...S.danger,fontSize:11,padding:"8px 16px"}}>Clear All Data</button>
+            </div>
+          </div>
+        </div>
+      )})()}
+
     </div>
   );
 }
