@@ -1769,8 +1769,14 @@ export default function ContractorOS() {
                     <div style={{...S.section,marginBottom:4}}>DRIVER ONBOARDING</div>
                     <p style={{fontSize:11,color:"#555",marginBottom:20,lineHeight:1.8}}>Track every required step when hiring a new driver. DOT requires most of these before the first day behind the wheel.</p>
                     <div style={{marginBottom:16}}><label style={S.label}>Select Driver</label><select value={selectedOnboardDriver} onChange={e=>setSelectedOnboardDriver(e.target.value)} style={{...S.input,maxWidth:320}}><option value="">Choose a driver...</option>{drivers.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
-                    {selDriver&&(()=>{const checklist=selDriver.onboarding||{};const required=ONBOARDING_STEPS.filter(s=>s.req);const completed=ONBOARDING_STEPS.filter(s=>checklist[s.id]).length;const pct=Math.round((completed/ONBOARDING_STEPS.length)*100);const readyToDrive=required.every(s=>checklist[s.id]);return(
-                      <>
+                    {selDriver&&(()=>{
+                      const checklist=selDriver.onboarding||{};
+                      const required=ONBOARDING_STEPS.filter(s=>s.req);
+                      const completed=ONBOARDING_STEPS.filter(s=>checklist[s.id]).length;
+                      const pct=Math.round((completed/ONBOARDING_STEPS.length)*100);
+                      const readyToDrive=required.every(s=>checklist[s.id]);
+                      const OnboardDetail = () => (
+                        <>
                         <div style={{...S.card,marginBottom:16,display:"flex",alignItems:"center",gap:16}}>
                           <div style={{flex:1}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#e8e4d8"}}>{selDriver.name}</div><div style={{fontSize:11,color:"#555"}}>Hired: {fmtDate(selDriver.hireDate)||"Not set"}</div></div>
                           <div style={{textAlign:"center"}}><div style={{fontSize:32,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:pct===100?"#22c55e":pct>60?"#f59e0b":"#ef4444"}}>{pct}%</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Complete</div></div>
@@ -1795,8 +1801,10 @@ export default function ContractorOS() {
                             </div>
                           ))}
                         </div>
-                      </>
-                    );}())}
+                        </>
+                      );
+                      return <OnboardDetail/>;
+                    })()}
                     {!selDriver&&selectedOnboardDriver&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>Driver not found.</div>}
                     {drivers.length===0&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>Add drivers in the All Drivers tab first.</div>}
                   </>
