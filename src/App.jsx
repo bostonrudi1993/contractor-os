@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { db } from "./supabase.js";
 
 // ─── STORAGE ─────────────────────────────────────────────────────────
 const KEYS = {
@@ -176,20 +177,21 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
 
 // ════════════════════════════════════════════════════════════════════════
 export default function ContractorOS() {
-  const [segment, setSegment] = useState(() => stor.get(KEYS.segment, null));
+  const [segment, setSegment] = useState(null);
   const [screen, setScreen] = useState("dashboard");
-  const [settings, setSettings] = useState(() => stor.get(KEYS.settings, {mpg:8,dieselPrice:3.85,cpm:0.18,homeBase:"",companyName:""}));
-  const [compliance, setCompliance] = useState(() => stor.get(KEYS.compliance, {trucks:[],drivers:[]}));
-  const [vehicles, setVehicles] = useState(() => stor.get(KEYS.vehicles, []));
-  const [drivers, setDrivers] = useState(() => stor.get(KEYS.drivers, []));
-  const [maintenance, setMaintenance] = useState(() => stor.get(KEYS.maintenance, []));
-  const [expenses, setExpenses] = useState(() => stor.get(KEYS.expenses, []));
-  const [revenue, setRevenue] = useState(() => stor.get(KEYS.revenue, []));
-  const [routes, setRoutes] = useState(() => stor.get(KEYS.routes, []));
-  const [contracts, setContracts] = useState(() => stor.get(KEYS.contracts, []));
-  const [incidents, setIncidents] = useState(() => stor.get(KEYS.incidents, []));
-  const [brokers, setBrokers] = useState(() => stor.get(KEYS.brokers, []));
-  const [loads, setLoads] = useState(() => stor.get(KEYS.loads, []));
+  const [navOpen, setNavOpen] = useState(false);
+  const [settings, setSettings] = useState({mpg:8,dieselPrice:3.85,cpm:0.18,homeBase:"",companyName:""});
+  const [compliance, setCompliance] = useState({trucks:[],drivers:[]});
+  const [vehicles, setVehicles] = useState([]);
+  const [drivers, setDrivers] = useState([]);
+  const [maintenance, setMaintenance] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [revenue, setRevenue] = useState([]);
+  const [routes, setRoutes] = useState([]);
+  const [contracts, setContracts] = useState([]);
+  const [incidents, setIncidents] = useState([]);
+  const [brokers, setBrokers] = useState([]);
+  const [loads, setLoads] = useState([]);
 
   // UI state
   const [subScreen, setSubScreen] = useState(null);
@@ -220,28 +222,19 @@ export default function ContractorOS() {
   const [excelResult, setExcelResult] = useState(null);
 
   // Phase 2 — Notifications
-  const [notifications, setNotifications] = useState(() => stor.get(KEYS.notifications, []));
+  const [notifications, setNotifications] = useState([]);
   const [notifPermission, setNotifPermission] = useState("default");
 
   // Filings tracker
-  const [filings, setFilings] = useState(() => {
-    const saved = stor.get(KEYS.filings, null);
-    if(!saved) return DEFAULT_FILINGS;
-    // Merge saved data with defaults so new federal filings always appear
-    const savedMap = {};
-    saved.forEach(f=>{ savedMap[f.id]=f; });
-    const merged = DEFAULT_FILINGS.map(d=>savedMap[d.id]?{...d,...savedMap[d.id]}:d);
-    const customs = saved.filter(f=>!f.federal);
-    return [...merged, ...customs];
-  });
+  const [filings, setFilings] = useState(DEFAULT_FILINGS); // cloud load merges in useEffect
   const [editFilingId, setEditFilingId] = useState(null);
   const [editFilingForm, setEditFilingForm] = useState({});
   const [showAddFiling, setShowAddFiling] = useState(false);
   const [newFilingForm, setNewFilingForm] = useState({name:"",dueDate:"",frequency:"Annual",notes:"",filedDate:"",confirmationNum:"",filedNotes:""});
 
   // Phase 3 — Users / Roles
-  const [users, setUsers] = useState(() => stor.get(KEYS.users, []));
-  const [currentUser, setCurrentUser] = useState(() => stor.get(KEYS.currentUser, {id:"owner",name:"Owner",role:"owner",pin:""}));
+  const [users, setUsers] = useState([]);
+  const [currentUser, setCurrentUser] = useState({id:"owner",name:"Owner",role:"owner",pin:""});
   const [showAddUser, setShowAddUser] = useState(false);
   const [userForm, setUserForm] = useState({name:"",role:"driver",pin:"",driverId:""});
   const [pinEntry, setPinEntry] = useState(null); // {userId, enteredPin}
@@ -265,17 +258,18 @@ export default function ContractorOS() {
   const [parsedLoad, setParsedLoad] = useState(null);
   const [loadForm, setLoadForm] = useState({origin:"",destination:"",miles:"",offeredRate:"",deadheadMiles:"",commodity:"",pickupDate:"",brokerName:""});
   const [analyzeStep, setAnalyzeStep] = useState("paste");
+  const [dbLoaded, setDbLoaded] = useState(false);
 
   // ── v10: New feature state ──────────────────────────────────────────
-  const [payroll, setPayroll] = useState(() => stor.get(KEYS.payroll, []));
-  const [fuelLog, setFuelLog] = useState(() => stor.get(KEYS.fuelLog, []));
-  const [invoices, setInvoices] = useState(() => stor.get(KEYS.invoices, []));
-  const [odometer, setOdometer] = useState(() => stor.get(KEYS.odometer, []));
-  const [tires, setTires] = useState(() => stor.get(KEYS.tires, []));
-  const [documents, setDocuments] = useState(() => stor.get(KEYS.documents, []));
-  const [dispatches, setDispatches] = useState(() => stor.get(KEYS.dispatches, []));
-  const [contacts, setContacts] = useState(() => stor.get(KEYS.contacts, []));
-  const [hosLog, setHosLog] = useState(() => stor.get(KEYS.hosLog, []));
+  const [payroll, setPayroll] = useState([]);
+  const [fuelLog, setFuelLog] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [odometer, setOdometer] = useState([]);
+  const [tires, setTires] = useState([]);
+  const [documents, setDocuments] = useState([]);
+  const [dispatches, setDispatches] = useState([]);
+  const [contacts, setContacts] = useState([]);
+  const [hosLog, setHosLog] = useState([]);
   // New feature UI state
   const [payrollSub, setPayrollSub] = useState("runs");
   const [payrollShowAdd, setPayrollShowAdd] = useState(false);
@@ -312,32 +306,108 @@ export default function ContractorOS() {
   const [incidentFollowUpId, setIncidentFollowUpId] = useState(null);
 
   // Persist all state
+  // ── Segment & settings stay in localStorage (tiny, sync, no cloud needed) ──
   useEffect(()=>{if(segment)stor.set(KEYS.segment,segment);},[segment]);
   useEffect(()=>{stor.set(KEYS.settings,settings);},[settings]);
-  useEffect(()=>{stor.set(KEYS.compliance,compliance);},[compliance]);
-  useEffect(()=>{stor.set(KEYS.vehicles,vehicles);},[vehicles]);
-  useEffect(()=>{stor.set(KEYS.drivers,drivers);},[drivers]);
-  useEffect(()=>{stor.set(KEYS.maintenance,maintenance);},[maintenance]);
-  useEffect(()=>{stor.set(KEYS.expenses,expenses);},[expenses]);
-  useEffect(()=>{stor.set(KEYS.revenue,revenue);},[revenue]);
-  useEffect(()=>{stor.set(KEYS.routes,routes);},[routes]);
-  useEffect(()=>{stor.set(KEYS.contracts,contracts);},[contracts]);
-  useEffect(()=>{stor.set(KEYS.incidents,incidents);},[incidents]);
-  useEffect(()=>{stor.set(KEYS.brokers,brokers);},[brokers]);
-  useEffect(()=>{stor.set(KEYS.loads,loads);},[loads]);
-  useEffect(()=>{stor.set(KEYS.users,users);},[users]);
-  useEffect(()=>{stor.set(KEYS.currentUser,currentUser);},[currentUser]);
-  useEffect(()=>{stor.set(KEYS.notifications,notifications);},[notifications]);
-  useEffect(()=>{stor.set(KEYS.filings,filings);},[filings]);
-  useEffect(()=>{stor.set(KEYS.payroll,payroll);},[payroll]);
-  useEffect(()=>{stor.set(KEYS.fuelLog,fuelLog);},[fuelLog]);
-  useEffect(()=>{stor.set(KEYS.invoices,invoices);},[invoices]);
-  useEffect(()=>{stor.set(KEYS.odometer,odometer);},[odometer]);
-  useEffect(()=>{stor.set(KEYS.tires,tires);},[tires]);
-  useEffect(()=>{stor.set(KEYS.documents,documents);},[documents]);
-  useEffect(()=>{stor.set(KEYS.dispatches,dispatches);},[dispatches]);
-  useEffect(()=>{stor.set(KEYS.contacts,contacts);},[contacts]);
-  useEffect(()=>{stor.set(KEYS.hosLog,hosLog);},[hosLog]);
+
+  // ── Load ALL cloud data once on mount ────────────────────────────────────
+  useEffect(()=>{
+    let cancelled = false;
+    (async()=>{
+      const D = KEYS;
+      const [
+        _compliance, _vehicles, _drivers, _maintenance, _expenses, _revenue,
+        _routes, _contracts, _incidents, _brokers, _loads, _users, _currentUser,
+        _notifications, _filings, _payroll, _fuelLog, _invoices, _odometer,
+        _tires, _documents, _dispatches, _contacts, _hosLog,
+      ] = await Promise.all([
+        db.get(D.compliance,  {trucks:[],drivers:[]}),
+        db.get(D.vehicles,    []),
+        db.get(D.drivers,     []),
+        db.get(D.maintenance, []),
+        db.get(D.expenses,    []),
+        db.get(D.revenue,     []),
+        db.get(D.routes,      []),
+        db.get(D.contracts,   []),
+        db.get(D.incidents,   []),
+        db.get(D.brokers,     []),
+        db.get(D.loads,       []),
+        db.get(D.users,       []),
+        db.get(D.currentUser, {id:"owner",name:"Owner",role:"owner",pin:""}),
+        db.get(D.notifications, []),
+        db.get(D.filings,     null),
+        db.get(D.payroll,     []),
+        db.get(D.fuelLog,     []),
+        db.get(D.invoices,    []),
+        db.get(D.odometer,    []),
+        db.get(D.tires,       []),
+        db.get(D.documents,   []),
+        db.get(D.dispatches,  []),
+        db.get(D.contacts,    []),
+        db.get(D.hosLog,      []),
+      ]);
+      if(cancelled) return;
+      setCompliance(_compliance);
+      setVehicles(_vehicles);
+      setDrivers(_drivers);
+      setMaintenance(_maintenance);
+      setExpenses(_expenses);
+      setRevenue(_revenue);
+      setRoutes(_routes);
+      setContracts(_contracts);
+      setIncidents(_incidents);
+      setBrokers(_brokers);
+      setLoads(_loads);
+      setUsers(_users);
+      setCurrentUser(_currentUser);
+      setNotifications(_notifications);
+      // Filings: merge saved with defaults (same logic as before)
+      if(_filings){
+        const saved=_filings; const merged=[...DEFAULT_FILINGS];
+        merged.forEach((f,i)=>{const s=saved.find(x=>x.id===f.id);if(s){merged[i]={...f,...s};}});
+        saved.filter(s=>!DEFAULT_FILINGS.find(f=>f.id===s.id)).forEach(s=>merged.push(s));
+        setFilings(merged);
+      }
+      setPayroll(_payroll);
+      setFuelLog(_fuelLog);
+      setInvoices(_invoices);
+      setOdometer(_odometer);
+      setTires(_tires);
+      setDocuments(_documents);
+      setDispatches(_dispatches);
+      setContacts(_contacts);
+      setHosLog(_hosLog);
+      setDbLoaded(true);
+    })();
+    return ()=>{ cancelled=true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
+
+  // ── Save to cloud whenever state changes (debounced via useEffect) ────────
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.compliance,compliance);},[compliance,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.vehicles,vehicles);},[vehicles,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.drivers,drivers);},[drivers,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.maintenance,maintenance);},[maintenance,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.expenses,expenses);},[expenses,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.revenue,revenue);},[revenue,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.routes,routes);},[routes,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.contracts,contracts);},[contracts,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.incidents,incidents);},[incidents,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.brokers,brokers);},[brokers,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.loads,loads);},[loads,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.users,users);},[users,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.currentUser,currentUser);},[currentUser,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.notifications,notifications);},[notifications,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.filings,filings);},[filings,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.payroll,payroll);},[payroll,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.fuelLog,fuelLog);},[fuelLog,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.invoices,invoices);},[invoices,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.odometer,odometer);},[odometer,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.tires,tires);},[tires,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.documents,documents);},[documents,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.dispatches,dispatches);},[dispatches,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.contacts,contacts);},[contacts,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.hosLog,hosLog);},[hosLog,dbLoaded]);
 
   const seg = segment ? SEGMENTS[segment] : null;
   const S = seg ? mkStyles(seg.color) : mkStyles("#f59e0b");
@@ -775,9 +845,18 @@ export default function ContractorOS() {
   const Stat = ({label,value,color,sub}) => <StatCard label={label} value={value} color={color||accent} sub={sub} card={S.card}/>;
   const ExpiryBadge = ({label,days}) => <ExpiryBadgeComp label={label} days={days}/>;
   const Loader = ({msg}) => <LoaderComp msg={msg} accent={accent}/>;
-  const handleNav = (id) => { setScreen(id); setSubScreen(null); setAiResult(null); setAnalyzeStep("paste"); };
+  const handleNav = (id) => { setScreen(id); setSubScreen(null); setAiResult(null); setAnalyzeStep("paste"); setNavOpen(false); };
 
   // ── RENDER ─────────────────────────────────────────────────────────
+  // Show loading screen while data loads from Supabase
+  if(!dbLoaded) return (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#0a0a0a",flexDirection:"column",gap:16}}>
+      <div style={{width:48,height:48,border:"3px solid #1e1e1e",borderTop:`3px solid ${segment?SEGMENTS[segment]?.color||"#f59e0b":"#f59e0b"}`,borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,color:"#555",letterSpacing:"0.1em"}}>LOADING YOUR DATA...</div>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+
   return (
     <div style={{minHeight:"100vh",background:"#0a0a0a",fontFamily:"'DM Mono','Courier New',monospace",color:"#d4d0c8",display:"flex",flexDirection:"column"}}>
       <EditModalComp modal={modal} editForm={editForm} setEditForm={setEditForm} saveEdit={saveEdit} closeModal={closeModal} accent={accent} S={S} MODAL_CONFIGS={MODAL_CONFIGS}/>
@@ -820,10 +899,56 @@ export default function ContractorOS() {
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         .hov:hover{opacity:0.85} .cardhov:hover{border-color:#333!important;background:#181818!important}
         select option{background:#111;color:#e8e4d8}
+        @media(max-width:768px){
+          .mob-menu-btn{display:block !important}
+          .desk-nav{display:none !important}
+          .mob-screen-title{display:flex !important}
+        }
+        @keyframes drawerIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
       `}</style>
 
+      {/* ── MOBILE DRAWER OVERLAY ─────────────────────────────────── */}
+      {navOpen&&<div onClick={()=>setNavOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:200,backdropFilter:"blur(2px)"}}/>}
+
+      {/* ── LEFT SLIDE DRAWER (mobile) ────────────────────────────── */}
+      <div style={{position:"fixed",top:0,left:0,height:"100%",width:260,background:"#0d0d0d",borderRight:"1px solid #1e1e1e",zIndex:201,transform:navOpen?"translateX(0)":"translateX(-100%)",transition:"transform 0.25s cubic-bezier(0.4,0,0.2,1)",display:"flex",flexDirection:"column",overflowY:"auto"}}>
+        {/* Drawer header */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 18px",borderBottom:"1px solid #1e1e1e",flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:32,height:32,background:accent,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:4,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:14,color:"#0a0a0a"}}>CO</div>
+            <div>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#e8e4d8",lineHeight:1}}>CONTRACTOR<span style={{color:accent}}>OS</span></div>
+              <div style={{fontSize:8,color:"#444",letterSpacing:"0.12em",textTransform:"uppercase"}}>{seg.icon} {seg.label}</div>
+            </div>
+          </div>
+          <button onClick={()=>setNavOpen(false)} style={{background:"transparent",border:"none",color:"#555",fontSize:20,cursor:"pointer",padding:"4px 8px",lineHeight:1}}>✕</button>
+        </div>
+        {/* Drawer nav items */}
+        <div style={{flex:1,padding:"8px 0"}}>
+          {seg.nav.map(id=>{
+            const isActive=screen===id;
+            const label=urgentItems.length>0&&id==="compliance"?"Compliance 🔴":navLabels[id]||id;
+            const NAV_ICONS={dashboard:"◈",analyze:"⚡",boards:"📋",compliance:"🛡",brokers:"🤝",fleet:"🚛",finance:"💰",routes:"🗺",drivers:"👤",contracts:"📄",reports:"📊",trends:"📈",users:"👥",settings:"⚙",payroll:"💵",invoices:"🧾",dispatch:"📡",contacts:"📞",documents:"📁",data:"💾"};
+            return(
+              <button key={id} onClick={()=>handleNav(id)} style={{display:"flex",alignItems:"center",gap:12,width:"100%",padding:"11px 18px",background:isActive?accent+"18":"transparent",border:"none",borderLeft:isActive?`3px solid ${accent}`:"3px solid transparent",color:isActive?accent:"#666",fontSize:12,fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em",textTransform:"uppercase",cursor:"pointer",textAlign:"left",transition:"all 0.12s"}}>
+                <span style={{fontSize:14,width:20,textAlign:"center",flexShrink:0}}>{NAV_ICONS[id]||"·"}</span>
+                <span>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+        {/* Drawer footer */}
+        <div style={{padding:"12px 18px",borderTop:"1px solid #1e1e1e",flexShrink:0}}>
+          <button onClick={()=>{setSegment(null);setNavOpen(false);}} style={{width:"100%",background:"transparent",border:`1px solid ${accent}44`,color:accent,padding:"9px 14px",borderRadius:5,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em"}}>⇄ Switch Contractor Type</button>
+        </div>
+      </div>
+
       {/* TOP BAR */}
-      <div style={{display:"flex",alignItems:"center",height:50,borderBottom:"1px solid #1e1e1e",background:"#0d0d0d",padding:"0 16px",gap:4,overflowX:"auto",flexShrink:0}}>
+      <div style={{display:"flex",alignItems:"center",height:50,borderBottom:"1px solid #1e1e1e",background:"#0d0d0d",padding:"0 16px",gap:4,flexShrink:0,position:"sticky",top:0,zIndex:100}}>
+        {/* Hamburger — mobile only */}
+        <button onClick={()=>setNavOpen(true)} style={{display:"none",background:"transparent",border:"none",color:"#888",fontSize:22,cursor:"pointer",padding:"4px 8px",lineHeight:1,marginRight:4,flexShrink:0}} className="mob-menu-btn" aria-label="Open menu">☰</button>
+
+        {/* Logo */}
         <div style={{display:"flex",alignItems:"center",gap:8,marginRight:12,flexShrink:0}}>
           <div style={{width:30,height:30,background:accent,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:4,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:13,color:"#0a0a0a",letterSpacing:"0.05em"}}>CO</div>
           <div>
@@ -831,9 +956,19 @@ export default function ContractorOS() {
             <div style={{fontSize:8,color:"#444",letterSpacing:"0.15em",textTransform:"uppercase"}}>{seg.icon} {seg.label}</div>
           </div>
         </div>
-        <div style={{flex:1}}/>
-        <button onClick={()=>setSegment(null)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,padding:"5px 12px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em",marginRight:8,flexShrink:0}}>Switch Type</button>
-        {seg.nav.map(id=><NavBtn key={id} id={id} label={urgentItems.length>0&&id==="compliance"?`Compliance 🔴`:navLabels[id]||id} active={screen===id} accent={accent} onNav={handleNav}/>)}
+
+        {/* Desktop nav — hidden on mobile */}
+        <div style={{display:"flex",flex:1,alignItems:"center",gap:0,overflowX:"auto"}} className="desk-nav">
+          <div style={{flex:1}}/>
+          <button onClick={()=>setSegment(null)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,padding:"5px 12px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em",marginRight:8,flexShrink:0}}>Switch Type</button>
+          {seg.nav.map(id=><NavBtn key={id} id={id} label={urgentItems.length>0&&id==="compliance"?`Compliance 🔴`:navLabels[id]||id} active={screen===id} accent={accent} onNav={handleNav}/>)}
+        </div>
+
+        {/* Mobile: show current screen name + urgent badge */}
+        <div style={{flex:1,display:"none",alignItems:"center",justifyContent:"center"}} className="mob-screen-title">
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,color:"#e8e4d8",textTransform:"uppercase",letterSpacing:"0.08em"}}>{navLabels[screen]||screen}</span>
+          {urgentItems.length>0&&<span style={{marginLeft:8,fontSize:10,color:"#ef4444"}}>🔴</span>}
+        </div>
       </div>
 
       {/* ══ DASHBOARD ══════════════════════════════════════════════════ */}
@@ -2899,7 +3034,7 @@ export default function ContractorOS() {
               <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
                   <div><label style={S.label}>Driver</label><select value={dispatchForm.driverId} onChange={e=>setDispatchForm(p=>({...p,driverId:e.target.value}))} style={S.input}><option value="">Select driver...</option>{drivers.filter(d=>d.status==="active").map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
-                  <div><label style={S.label}>Truck / Vehicle</label><select value={dispatchForm.vehicleName} onChange={e=>setDispatchForm(p=>({...p,vehicleName:e.target.value}))} style={S.input}><option value="">Select truck...</option>{compliance.trucks.map(v=><option key={v.id} value={v.name}>{v.name}{v.nickname?` "${v.nickname}""`:""}</option>)}</select></div>
+                  <div><label style={S.label}>Truck / Vehicle</label><select value={dispatchForm.vehicleName} onChange={e=>setDispatchForm(p=>({...p,vehicleName:e.target.value}))} style={S.input}><option value="">Select truck...</option>{compliance.trucks.map(v=><option key={v.id} value={v.name}>{v.name}{v.nickname?` "${v.nickname}"`:""}</option>)}</select></div>
                   {routes.length>0&&<div><label style={S.label}>Saved Route</label><select value={dispatchForm.routeName} onChange={e=>setDispatchForm(p=>({...p,routeName:e.target.value}))} style={S.input}><option value="">Custom or select...</option>{routes.map(r=><option key={r.id} value={r.name}>{r.name}</option>)}</select></div>}
                   <div><label style={S.label}>Date</label><input type="date" value={dispatchForm.date} onChange={e=>setDispatchForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
                   <div><label style={S.label}>Origin / Pickup</label><input value={dispatchForm.origin} onChange={e=>setDispatchForm(p=>({...p,origin:e.target.value}))} placeholder="City, address, terminal..." style={S.input}/></div>
@@ -3115,7 +3250,7 @@ export default function ContractorOS() {
             <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
               {types.map(t=>(<button key={t} onClick={()=>setDocFilter(t)} style={{background:docFilter===t?accent+"22":"transparent",border:`1px solid ${docFilter===t?accent:"#2a2a2a"}`,color:docFilter===t?accent:"#555",padding:"4px 12px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>{t==="all"?`All (${documents.length})`:`${t} (${typeCount[t]||0})`}</button>))}
             </div>
-            {filtered.length===0&&!docShowAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>{docFilter==="all"?"No documents tracked yet.`:`No ${docFilter} documents yet."}</div>}
+            {filtered.length===0&&!docShowAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>{docFilter==="all"?"No documents tracked yet.":`No ${docFilter} documents yet.`}</div>}
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {filtered.map(doc=>(
                 <div key={doc.id} style={{...S.card,display:"flex",alignItems:"center",gap:14,borderLeft:`3px solid ${TYPE_COLORS[doc.type]||"#555"}`}}>
@@ -3191,7 +3326,7 @@ export default function ContractorOS() {
             <div style={{...S.card,background:"#1a0808",border:"1px solid #3a1010"}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8",marginBottom:4}}>⚠ Danger Zone</div>
               <div style={{fontSize:11,color:"#7a4040",marginBottom:14,lineHeight:1.7}}>Permanently deletes data from your browser. <strong>Download a backup first.</strong> Cannot be undone.</div>
-              <button onClick={()=>{if(window.confirm("Delete ALL ContractorOS data? This cannot be undone. Have you downloaded a backup?)){Object.keys(localStorage).filter(k=>k.startsWith("cos_")).forEach(k=>localStorage.removeItem(k));window.location.reload();}}} style={{...S.danger,fontSize:11,padding:"8px 16px"}}>Clear All Data</button>
+              <button onClick={()=>{if(window.confirm("Delete ALL ContractorOS data? This cannot be undone. Have you downloaded a backup?")){db.clearAll().then(()=>window.location.reload());}}} style={{...S.danger,fontSize:11,padding:"8px 16px"}}>Clear All Data</button>
             </div>
           </div>
         </div>
