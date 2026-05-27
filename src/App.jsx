@@ -280,9 +280,7 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
               <div><label style={S.label}>Description *</label><textarea value={bugForm.description} onChange={e=>setBugForm(p=>({...p,description:e.target.value}))} placeholder="Describe what happened, what screen you were on, and what you expected..." style={{...S.input,height:90,resize:"vertical"}}/></div>
             </div>
             <div style={{display:"flex",gap:10}}>
-              <a href={`mailto:bostonrudi1993@gmail.com?subject=${encodeURIComponent(bugForm.subject||"ContractorOS Feedback")}&body=${encodeURIComponent((bugForm.email?"From: "+bugForm.email+"
-
-":"")+bugForm.description)}`} style={{...S.btn,textDecoration:"none",display:"inline-block",fontSize:12}} onClick={()=>setShowBugReport(false)}>Send Email →</a>
+              <a href={`mailto:bostonrudi1993@gmail.com?subject=${encodeURIComponent(bugForm.subject||"ContractorOS Feedback")}&body=${encodeURIComponent((bugForm.email?"From: "+bugForm.email+"\n\n":"")+bugForm.description)}`} style={{...S.btn,textDecoration:"none",display:"inline-block",fontSize:12}} onClick={()=>setShowBugReport(false)}>Send Email →</a>
               <button onClick={()=>setShowBugReport(false)} style={{...S.ghost,fontSize:11}}>Cancel</button>
             </div>
           </div>
