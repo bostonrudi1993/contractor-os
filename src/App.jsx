@@ -34,35 +34,35 @@ const SEGMENTS = {
     id: "otr", label: "OTR / Owner Operator", icon: "🚛",
     tagline: "Load board hauling with your own authority",
     color: "#f59e0b", darkColor: "#92400e",
-    nav: ["dashboard","analyze","boards","compliance","brokers","fleet","finance","payroll","invoices","dispatch","contacts","documents","reports","trends","users","settings","data"],
+    nav: ["dashboard","analyze","boards","compliance","brokers","fleet","finance","payroll","invoices","dispatch","contacts","documents","reports","trends","users","settings","fmcsa","data"],
     features: { loadAnalysis:true, brokerScorecard:true, loadBoards:true, routeProfit:false, contractTracker:false, dspMetrics:false, stopMetrics:false },
   },
   fedex: {
     id: "fedex", label: "FedEx Ground / HD Contractor", icon: "📦",
     tagline: "ISP route management & compliance",
     color: "#6366f1", darkColor: "#3730a3",
-    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","reports","trends","users","settings","data"],
+    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","reports","trends","users","settings","fmcsa","data"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:false, stopMetrics:true },
   },
   amazon: {
     id: "amazon", label: "Amazon DSP", icon: "📬",
     tagline: "Delivery Service Partner operations",
     color: "#f97316", darkColor: "#9a3412",
-    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","reports","trends","users","settings","data"],
+    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","reports","trends","users","settings","fmcsa","data"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:true, stopMetrics:true },
   },
   lastmile: {
     id: "lastmile", label: "Last Mile (Lowe's / Home Depot)", icon: "🏠",
     tagline: "Home delivery contractor management",
     color: "#22c55e", darkColor: "#14532d",
-    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","reports","trends","users","settings","data"],
+    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","reports","trends","users","settings","fmcsa","data"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:false, stopMetrics:true },
   },
   usps: {
     id: "usps", label: "USPS HCR Contractor", icon: "📮",
     tagline: "Highway Contract Route operations",
     color: "#3b82f6", darkColor: "#1e3a8a",
-    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","reports","trends","users","settings","data"],
+    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","reports","trends","users","settings","fmcsa","data"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:false, stopMetrics:false },
   },
 };
@@ -171,6 +171,133 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
           <button onClick={closeModal} style={S.ghost}>Cancel</button>
         </div>
       </div>
+      {/* ══ FMCSA LOOKUP ══════════════════════════════════════════════ */}
+      {screen==="fmcsa"&&(()=>{
+        const lookupDOT = async () => {
+          if(!fmcsaDot.trim()) return;
+          setFmcsaLoading(true); setFmcsaError(""); setFmcsaResult(null);
+          try {
+            // FMCSA SAFER public API — free, no key needed for basic snapshot
+            const url = `https://safer.fmcsa.dot.gov/query.asp?query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${fmcsaDot.trim()}`;
+            // We use a CORS proxy since SAFER doesn't support cross-origin
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+            const res = await fetch(proxyUrl);
+            const data = await res.json();
+            const html = data.contents;
+            // Parse key fields from the HTML response
+            const extract = (label, src) => {
+              const regex = new RegExp(label + '[^<]*<[^>]+>([^<]+)', 'i');
+              const m = src.match(regex); return m ? m[1].trim() : null;
+            };
+            const legalName = html.match(/Legal Name[^<]*<\/td>\s*<td[^>]*>([^<]+)/i)?.[1]?.trim();
+            const dbaName = html.match(/DBA Name[^<]*<\/td>\s*<td[^>]*>([^<]+)/i)?.[1]?.trim();
+            const address = html.match(/Physical Address[^<]*<\/td>\s*<td[^>]*>([^<]+)/i)?.[1]?.trim();
+            const phone = html.match(/Phone[^<]*<\/td>\s*<td[^>]*>([^<]+)/i)?.[1]?.trim();
+            const mcNum = html.match(/Docket Number[^<]*<\/td>\s*<td[^>]*>([^<]+)/i)?.[1]?.trim();
+            const safetyRating = html.match(/Safety Rating[^<]*<\/td>\s*<td[^>]*>([^<]+)/i)?.[1]?.trim();
+            const powerUnits = html.match(/Power Units[^<]*<\/td>\s*<td[^>]*>([^<]+)/i)?.[1]?.trim();
+            const drivers = html.match(/Drivers[^<]*<\/td>\s*<td[^>]*>([^<]+)/i)?.[1]?.trim();
+            const opStatus = html.match(/Operating Status[^<]*<\/td>\s*<td[^>]*>([^<]+)/i)?.[1]?.trim();
+            if(!legalName && !address) { setFmcsaError("No carrier found for that DOT number. Double-check the number and try again."); }
+            else { setFmcsaResult({legalName,dbaName,address,phone,mcNum,safetyRating,powerUnits,drivers,opStatus,dotNum:fmcsaDot.trim()}); }
+          } catch(err) {
+            setFmcsaError("Lookup failed — check your internet connection and try again.");
+          }
+          setFmcsaLoading(false);
+        };
+        const applyToSettings = () => {
+          if(!fmcsaResult) return;
+          setSettings(p=>({...p,companyName:fmcsaResult.legalName||p.companyName}));
+          alert("Company name applied to Settings. Go to Settings to review and save other details.");
+        };
+        return(
+        <div style={{flex:1,overflowY:"auto",padding:24}}>
+          <div style={{maxWidth:700,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+            <div style={{...S.section,marginBottom:4}}>FMCSA CARRIER LOOKUP</div>
+            <p style={{fontSize:11,color:"#555",marginBottom:20,lineHeight:1.8}}>Enter your USDOT number to pull your carrier profile from the FMCSA SAFER database. Verify your authority status, safety rating, and auto-fill your company name.</p>
+            <div style={{...S.card,marginBottom:20,border:`1px solid ${accent}33`}}>
+              <label style={S.label}>USDOT Number</label>
+              <div style={{display:"flex",gap:10,marginBottom:8}}>
+                <input value={fmcsaDot} onChange={e=>setFmcsaDot(e.target.value.replace(/\D/g,""))} onKeyDown={e=>e.key==="Enter"&&lookupDOT()} placeholder="Enter your DOT number (numbers only)" style={{...S.input,flex:1}} maxLength={10}/>
+                <button className="hov" onClick={lookupDOT} style={{...S.btn,flexShrink:0}}>{fmcsaLoading?"Looking up...":"Lookup →"}</button>
+              </div>
+              <div style={{fontSize:10,color:"#444"}}>Your USDOT number is on your operating authority certificate and cab card. Find it at <a href="https://safer.fmcsa.dot.gov" target="_blank" rel="noreferrer" style={{color:accent}}>safer.fmcsa.dot.gov</a></div>
+            </div>
+            {fmcsaError&&<div style={{...S.card,background:"#1a0808",border:"1px solid #3a1010",color:"#f87171",fontSize:12,marginBottom:16}}>{fmcsaError}</div>}
+            {fmcsaLoading&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>Querying FMCSA SAFER database...</div>}
+            {fmcsaResult&&(
+              <div style={{...S.card,border:`1px solid ${accent}33`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
+                  <div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#e8e4d8"}}>{fmcsaResult.legalName||"Unknown"}</div>
+                    {fmcsaResult.dbaName&&<div style={{fontSize:11,color:"#666"}}>DBA: {fmcsaResult.dbaName}</div>}
+                  </div>
+                  <div style={{background:fmcsaResult.opStatus?.toLowerCase().includes("authorized")?"#051a05":"#1a0808",border:`1px solid ${fmcsaResult.opStatus?.toLowerCase().includes("authorized")?"#22c55e44":"#ef444444"}`,borderRadius:6,padding:"6px 14px",textAlign:"center",flexShrink:0}}>
+                    <div style={{fontSize:11,color:fmcsaResult.opStatus?.toLowerCase().includes("authorized")?"#22c55e":"#ef4444",fontWeight:700}}>{fmcsaResult.opStatus||"Unknown"}</div>
+                    <div style={{fontSize:9,color:"#555"}}>Operating Status</div>
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:10,marginBottom:16}}>
+                  {[["USDOT #",fmcsaResult.dotNum],["MC/Docket #",fmcsaResult.mcNum||"—"],["Safety Rating",fmcsaResult.safetyRating||"Not Rated"],["Power Units",fmcsaResult.powerUnits||"—"],["Drivers",fmcsaResult.drivers||"—"],["Phone",fmcsaResult.phone||"—"]].map(([lbl,val])=>val&&(
+                    <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}>
+                      <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>{lbl}</div>
+                      <div style={{fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#c8c4bc"}}>{val}</div>
+                    </div>
+                  ))}
+                </div>
+                {fmcsaResult.address&&<div style={{fontSize:11,color:"#666",marginBottom:16}}>📍 {fmcsaResult.address}</div>}
+                <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                  <button className="hov" onClick={applyToSettings} style={{...S.btn,fontSize:11}}>Apply Company Name to Settings</button>
+                  <a href={`https://safer.fmcsa.dot.gov/query.asp?query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${fmcsaResult.dotNum}`} target="_blank" rel="noreferrer" style={{...S.ghost,textDecoration:"none",fontSize:11,padding:"10px 18px",display:"inline-block"}}>View Full FMCSA Profile ↗</a>
+                </div>
+              </div>
+            )}
+            <div style={{...S.card,marginTop:20,background:"#0a0f1a",border:"1px solid #1a1a3a"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8",marginBottom:10}}>FMCSA Forms Renewal Calendar</div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {[["MCS-150","Every 2 years from USDOT issuance date","Register/update at fmcsa.dot.gov/registration"],["UCR","Annual — renew by Dec 31 each year","Register at ucr.gov"],["IFTA","Quarterly filings + annual license renewal","File with your base state"],["IRP","Annual renewal","File with your base state DMV"],["Drug Clearinghouse","Annual query per driver","Login at clearinghouse.fmcsa.dot.gov"],["BOC-3","One-time, refile if agent changes","Use a registered process agent"],["Insurance (BMC-91)","Keep current — no lapse","Filed by your insurer to FMCSA"]].map(([form,freq,notes])=>(
+                  <div key={form} style={{display:"flex",gap:14,padding:"8px 0",borderBottom:"1px solid #1a1a2a"}}>
+                    <div style={{width:120,flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:accent}}>{form}</div>
+                    <div style={{flex:1}}><div style={{fontSize:11,color:"#c8c4bc"}}>{freq}</div><div style={{fontSize:10,color:"#444"}}>{notes}</div></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
+
+      {/* ══ FOOTER + BUG REPORT ════════════════════════════════════════ */}
+      {showBugReport&&(
+        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:500,padding:20}} onClick={()=>setShowBugReport(false)}>
+          <div style={{background:"#141414",border:"1px solid #2a2a2a",borderRadius:10,padding:"28px 32px",maxWidth:480,width:"100%"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#e8e4d8",marginBottom:4}}>Report a Bug / Contact</div>
+            <div style={{fontSize:11,color:"#555",marginBottom:16}}>Found something broken? Have a feature idea? Reach out directly.</div>
+            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
+              <div><label style={S.label}>Your Email (optional)</label><input value={bugForm.email} onChange={e=>setBugForm(p=>({...p,email:e.target.value}))} placeholder="so we can follow up" style={S.input}/></div>
+              <div><label style={S.label}>Subject</label><input value={bugForm.subject} onChange={e=>setBugForm(p=>({...p,subject:e.target.value}))} placeholder="Bug: ..., Feature request: ..." style={S.input}/></div>
+              <div><label style={S.label}>Description *</label><textarea value={bugForm.description} onChange={e=>setBugForm(p=>({...p,description:e.target.value}))} placeholder="Describe what happened, what screen you were on, and what you expected..." style={{...S.input,height:90,resize:"vertical"}}/></div>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <a href={`mailto:bostonrudi1993@gmail.com?subject=${encodeURIComponent(bugForm.subject||"ContractorOS Feedback")}&body=${encodeURIComponent((bugForm.email?"From: "+bugForm.email+"
+
+":"")+bugForm.description)}`} style={{...S.btn,textDecoration:"none",display:"inline-block",fontSize:12}} onClick={()=>setShowBugReport(false)}>Send Email →</a>
+              <button onClick={()=>setShowBugReport(false)} style={{...S.ghost,fontSize:11}}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* App Footer */}
+      <div style={{flexShrink:0,borderTop:"1px solid #141414",background:"#0a0a0a",padding:"10px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+        <div style={{fontSize:9,color:"#333",letterSpacing:"0.1em"}}>© {new Date().getFullYear()} CONTRACTOROS — ALL RIGHTS RESERVED. UNAUTHORIZED USE PROHIBITED.</div>
+        <div style={{display:"flex",gap:16,alignItems:"center"}}>
+          <button onClick={()=>setShowBugReport(true)} style={{background:"transparent",border:"none",color:"#444",fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em"}}>Report a Bug</button>
+          <a href="mailto:bostonrudi1993@gmail.com" style={{color:"#444",fontSize:10,textDecoration:"none",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em"}}>Contact</a>
+        </div>
+      </div>
+
     </div>
   );
 };
@@ -273,7 +400,7 @@ export default function ContractorOS() {
   // New feature UI state
   const [payrollSub, setPayrollSub] = useState("runs");
   const [payrollShowAdd, setPayrollShowAdd] = useState(false);
-  const [payrollForm, setPayrollForm] = useState({driverId:"",periodStart:"",periodEnd:"",miles:"",hours:"",stops:"",loadRevenue:"",manualAmount:"",notes:""});
+  const [payrollForm, setPayrollForm] = useState({driverId:"",periodStart:"",periodEnd:"",miles:"",hours:"",stops:"",days:"",loadRevenue:"",manualAmount:"",notes:""});
   const [payrollPreview, setPayrollPreview] = useState(null);
   const [payStub, setPayStub] = useState(null);
   const [fuelSub, setFuelSub] = useState("log");
@@ -291,6 +418,8 @@ export default function ContractorOS() {
   const [docShowAdd, setDocShowAdd] = useState(false);
   const [docForm, setDocForm] = useState({name:"",type:"Rate Confirmation",date:"",linkedTo:"",notes:"",fileName:""});
   const [docFileData, setDocFileData] = useState(null);
+  const [docEditId, setDocEditId] = useState(null);
+  const [docEditForm, setDocEditForm] = useState({});
   const [dispatchShowAdd, setDispatchShowAdd] = useState(false);
   const [dispatchFilter, setDispatchFilter] = useState("active");
   const [dispatchForm, setDispatchForm] = useState({driverId:"",vehicleName:"",routeName:"",origin:"",destination:"",date:"",pickupTime:"",notes:"",status:"assigned"});
@@ -303,6 +432,12 @@ export default function ContractorOS() {
   const [hosForm, setHosForm] = useState({driverId:"",date:"",hoursOnDuty:"",hoursDriving:"",hoursOffDuty:"",miles:"",notes:""});
   const [selectedOnboardDriver, setSelectedOnboardDriver] = useState("");
   const [dataSub, setDataSub] = useState("backup");
+  const [fmcsaDot, setFmcsaDot] = useState("");
+  const [fmcsaResult, setFmcsaResult] = useState(null);
+  const [fmcsaLoading, setFmcsaLoading] = useState(false);
+  const [fmcsaError, setFmcsaError] = useState("");
+  const [showBugReport, setShowBugReport] = useState(false);
+  const [bugForm, setBugForm] = useState({subject:"",description:"",email:""});
   const [incidentFollowUpId, setIncidentFollowUpId] = useState(null);
 
   // Persist all state
@@ -751,7 +886,7 @@ export default function ContractorOS() {
       fields: [
         ["name","Full Name","text"],["phone","Phone","text"],["hireDate","Hire Date","date"],
         ["route","Assigned Route","text"],
-        ["payType","Pay Type","select:per_mile|per_stop|percentage|hourly|salary"],
+        ["payType","Pay Type","select:per_mile|per_stop|per_day|percentage|hourly|salary"],
         ["payRate","Pay Rate","text"],["ytdPay","YTD Earnings ($)","text"],
         ["status","Status","select:active|on_leave|terminated"],
       ]
@@ -840,7 +975,7 @@ export default function ContractorOS() {
   }
 
   // ── SHARED COMPONENTS ──────────────────────────────────────────────
-  const navLabels = {dashboard:"Dashboard",analyze:"Analyze Load",boards:"Load Boards",compliance:"Compliance",brokers:"Brokers",fleet:"Fleet",finance:"Finance",routes:"Routes",drivers:"Drivers",contracts:"Contracts",reports:"Reports",trends:"P&L Trends",users:"Users",settings:"Settings",payroll:"Payroll",invoices:"Invoices",dispatch:"Dispatch",contacts:"Contacts",documents:"Documents",data:"Data & Backup"};
+  const navLabels = {dashboard:"Dashboard",analyze:"Analyze Load",boards:"Load Boards",compliance:"Compliance",brokers:"Brokers",fleet:"Fleet",finance:"Finance",routes:"Routes",drivers:"Drivers",contracts:"Contracts",reports:"Reports",trends:"P&L Trends",users:"Users",settings:"Settings",payroll:"Payroll",invoices:"Invoices",dispatch:"Dispatch",contacts:"Contacts",documents:"Documents",data:"Data & Backup",fmcsa:"FMCSA Lookup"};
   const SubNav = ({tabs,active,onSelect}) => <SubNavComp tabs={tabs} active={active} accent={accent} onSelect={onSelect}/>;
   const Stat = ({label,value,color,sub}) => <StatCard label={label} value={value} color={color||accent} sub={sub} card={S.card}/>;
   const ExpiryBadge = ({label,days}) => <ExpiryBadgeComp label={label} days={days}/>;
@@ -928,7 +1063,7 @@ export default function ContractorOS() {
           {seg.nav.map(id=>{
             const isActive=screen===id;
             const label=urgentItems.length>0&&id==="compliance"?"Compliance 🔴":navLabels[id]||id;
-            const NAV_ICONS={dashboard:"◈",analyze:"⚡",boards:"📋",compliance:"🛡",brokers:"🤝",fleet:"🚛",finance:"💰",routes:"🗺",drivers:"👤",contracts:"📄",reports:"📊",trends:"📈",users:"👥",settings:"⚙",payroll:"💵",invoices:"🧾",dispatch:"📡",contacts:"📞",documents:"📁",data:"💾"};
+            const NAV_ICONS={dashboard:"◈",analyze:"⚡",boards:"📋",compliance:"🛡",brokers:"🤝",fleet:"🚛",finance:"💰",routes:"🗺",drivers:"👤",contracts:"📄",reports:"📊",trends:"📈",users:"👥",settings:"⚙",payroll:"💵",invoices:"🧾",dispatch:"📡",contacts:"📞",documents:"📁",data:"💾",fmcsa:"🏛"};
             return(
               <button key={id} onClick={()=>handleNav(id)} style={{display:"flex",alignItems:"center",gap:12,width:"100%",padding:"11px 18px",background:isActive?accent+"18":"transparent",border:"none",borderLeft:isActive?`3px solid ${accent}`:"3px solid transparent",color:isActive?accent:"#666",fontSize:12,fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em",textTransform:"uppercase",cursor:"pointer",textAlign:"left",transition:"all 0.12s"}}>
                 <span style={{fontSize:14,width:20,textAlign:"center",flexShrink:0}}>{NAV_ICONS[id]||"·"}</span>
@@ -1560,7 +1695,7 @@ export default function ContractorOS() {
                       ))}
                       <div><label style={S.label}>Pay Type</label>
                         <select value={driverForm.payType} onChange={e=>setDriverForm(p=>({...p,payType:e.target.value}))} style={S.input}>
-                          <option value="per_mile">Per Mile</option><option value="per_stop">Per Stop</option><option value="percentage">% of Route</option><option value="hourly">Hourly</option><option value="salary">Salary</option>
+                          <option value="per_mile">Per Mile</option><option value="per_stop">Per Stop</option><option value="per_day">Per Day</option><option value="percentage">% of Route</option><option value="hourly">Hourly</option><option value="salary">Salary</option>
                         </select>
                       </div>
                       <div><label style={S.label}>Pay Rate</label><input value={driverForm.payRate} onChange={e=>setDriverForm(p=>({...p,payRate:e.target.value}))} placeholder="0.00" style={S.input}/></div>
@@ -1579,7 +1714,7 @@ export default function ContractorOS() {
                   {drivers.map(d=>(
                     <div key={d.id} style={{...S.card,display:"flex",alignItems:"center",gap:16}}>
                       <div style={{width:36,height:36,background:d.status==="active"?"#22c55e22":"#ef444422",border:`1px solid ${d.status==="active"?"#22c55e44":"#ef444444"}`,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:d.status==="active"?"#22c55e":"#ef4444",flexShrink:0}}>{d.name.charAt(0)}</div>
-                      <div style={{flex:1}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{d.name}</div><div style={{fontSize:10,color:"#555"}}>{d.route||"No route"} · {d.payType==="per_mile"?`$${d.payRate}/mi`:d.payType==="per_stop"?`$${d.payRate}/stop`:d.payType==="percentage"?`${d.payRate}% of route`:d.payType==="hourly"?`$${d.payRate}/hr`:`$${d.payRate}/yr`}</div></div>
+                      <div style={{flex:1}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{d.name}</div><div style={{fontSize:10,color:"#555"}}>{d.route||"No route"} · {d.payType==="per_mile"?`$${d.payRate}/mi`:d.payType==="per_stop"?`$${d.payRate}/stop`:d.payType==="per_day"?`$${d.payRate}/day`:d.payType==="percentage"?`${d.payRate}% of route`:d.payType==="hourly"?`$${d.payRate}/hr`:`$${d.payRate}/yr`}</div></div>
                       <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>YTD Pay</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e"}}>{fmt$(parseFloat(d.ytdPay||0))}</div></div>
                       <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Incidents</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:(d.incidents||[]).length>0?"#ef4444":"#22c55e"}}>{(d.incidents||[]).length}</div></div>
                       <button onClick={()=>openEdit("driver",d)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
@@ -1910,7 +2045,9 @@ export default function ContractorOS() {
                     <button className="hov" onClick={()=>{
                       const vehicleName = maintForm.truckName==="__other__" ? maintCustomVehicle.trim() : maintForm.truckName;
                       if(!vehicleName||!maintForm.type) return;
-                      setMaintenance(p=>[{...maintForm,truckName:vehicleName,id:Date.now()},...p]);
+                      const mEntry={...maintForm,truckName:vehicleName,id:Date.now()};
+                      setMaintenance(p=>[mEntry,...p]);
+                      if(parseFloat(mEntry.cost||0)>0){setExpenses(p=>[{id:Date.now()+1,date:mEntry.date,category:"maintenance",amount:mEntry.cost,description:`Maintenance — ${vehicleName||mEntry.truckName||""}${mEntry.type?" · "+mEntry.type:""}`,vehicle:vehicleName||mEntry.truckName,source:"maintenance_log"},...p]);}
                       setMaintForm({truckName:"",type:"",date:"",mileage:"",cost:"",notes:"",nextDueMiles:""});
                       setMaintCustomVehicle("");
                       setShowAddMaint(false);
@@ -1975,7 +2112,11 @@ export default function ContractorOS() {
                         <div><label style={S.label}>Card Type</label><select value={fuelForm.cardType} onChange={e=>setFuelForm(p=>({...p,cardType:e.target.value}))} style={S.input}>{["company","EFS / Comcheck","Comdata","Relay","Cash","Other"].map(t=><option key={t} value={t.toLowerCase().replace(/ /g,"_")}>{t}</option>)}</select></div>
                         <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes (truck stop, DEF added, etc.)</label><input value={fuelForm.notes} onChange={e=>setFuelForm(p=>({...p,notes:e.target.value}))} style={S.input}/></div>
                       </div>
-                      <button className="hov" onClick={()=>{const name=fuelForm.truckName==="__other__"?(fuelForm._customTruck||""):fuelForm.truckName;if(!name||!fuelForm.gallons||!fuelForm.date)return;setFuelLog(p=>[{...fuelForm,truckName:name,id:Date.now()},...p]);setFuelForm({truckName:"",date:"",gallons:"",pricePerGallon:"",totalCost:"",odometer:"",state:"",cardType:"company",notes:""});setFuelShowAdd(false);}} style={{...S.btn,marginTop:14}}>Save Fuel Entry</button>
+                      <button className="hov" onClick={()=>{const name=fuelForm.truckName==="__other__"?(fuelForm._customTruck||""):fuelForm.truckName;if(!name||!fuelForm.gallons||!fuelForm.date)return;const fuelEntry={...fuelForm,truckName:name,id:Date.now()};
+                    setFuelLog(p=>[fuelEntry,...p]);
+                    // Auto-sync to expenses
+                    if(fuelEntry.totalCost){setExpenses(p=>[{id:Date.now()+1,date:fuelEntry.date,category:"fuel",amount:fuelEntry.totalCost,description:`Fuel — ${name}${fuelEntry.gallons?` (${fuelEntry.gallons} gal)`:""}${fuelEntry.state?` · ${fuelEntry.state}`:""}`,vehicle:name,source:"fuel_log"},...p]);}
+                    setFuelForm({truckName:"",date:"",gallons:"",pricePerGallon:"",totalCost:"",odometer:"",state:"",cardType:"company",notes:""});setFuelShowAdd(false);}} style={{...S.btn,marginTop:14}}>Save Fuel Entry</button>
                     </div>
                   )}
                   {fuelLog.length===0&&!fuelShowAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No fuel entries yet.</div>}
@@ -2258,9 +2399,15 @@ export default function ContractorOS() {
                 <div style={{display:"flex",flexDirection:"column",gap:6}}>
                   {expenses.map(e=>(
                     <div key={e.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
-                      <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{e.category.replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase())} {e.description?`— ${e.description}`:""}</div><div style={{fontSize:10,color:"#555"}}>{e.date} {e.vehicle?`· ${e.vehicle}`:""}</div></div>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:12,color:"#c8c4bc",display:"flex",alignItems:"center",gap:8}}>
+                          {e.category.replace(/_/g," ").replace(/\w/g,l=>l.toUpperCase())} {e.description?`— ${e.description}`:""}
+                          {e.source&&<span style={{fontSize:8,color:"#555",border:"1px solid #2a2a2a",padding:"1px 5px",borderRadius:3,textTransform:"uppercase",letterSpacing:"0.08em"}}>{e.source==="fuel_log"?"⛽ fuel":e.source==="maintenance"?"🔧 maint":e.source==="payroll"?"💵 payroll":"auto"}</span>}
+                        </div>
+                        <div style={{fontSize:10,color:"#555"}}>{e.date} {e.vehicle?`· ${e.vehicle}`:""}</div>
+                      </div>
                       <div style={{fontSize:15,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ef4444",flexShrink:0}}>{fmt$(parseFloat(e.amount||0))}</div>
-                      <button onClick={()=>openEdit("expense",e)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace",flexShrink:0}}>Edit</button>
+                      {!e.source&&<button onClick={()=>openEdit("expense",e)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace",flexShrink:0}}>Edit</button>}
                       <button onClick={()=>setExpenses(p=>p.filter(x=>x.id!==e.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
                     </div>
                   ))}
@@ -2914,10 +3061,10 @@ export default function ContractorOS() {
 
       {/* ══ PAYROLL ════════════════════════════════════════════════════ */}
       {screen==="payroll"&&(()=>{
-        const calcRunPay=(driver,form)=>{const rate=parseFloat(driver.payRate||0);let gross=0,breakdown="";switch(driver.payType){case"per_mile":gross=rate*parseFloat(form.miles||0);breakdown=`${form.miles} mi × $${rate}/mi`;break;case"hourly":gross=rate*parseFloat(form.hours||0);breakdown=`${form.hours} hrs × $${rate}/hr`;break;case"percentage":gross=(rate/100)*parseFloat(form.loadRevenue||0);breakdown=`${rate}% of $${form.loadRevenue}`;break;case"salary":gross=rate/52;breakdown=`$${rate}/yr ÷ 52 weeks`;break;case"per_stop":gross=rate*parseFloat(form.stops||0);breakdown=`${form.stops} stops × $${rate}/stop`;break;default:gross=parseFloat(form.manualAmount||0);breakdown="Manual entry";}return{gross:parseFloat(gross.toFixed(2)),breakdown};};
+        const calcRunPay=(driver,form)=>{const rate=parseFloat(driver.payRate||0);let gross=0,breakdown="";switch(driver.payType){case"per_mile":gross=rate*parseFloat(form.miles||0);breakdown=`${form.miles} mi × $${rate}/mi`;break;case"hourly":gross=rate*parseFloat(form.hours||0);breakdown=`${form.hours} hrs × $${rate}/hr`;break;case"percentage":gross=(rate/100)*parseFloat(form.loadRevenue||0);breakdown=`${rate}% of $${form.loadRevenue}`;break;case"salary":gross=rate/52;breakdown=`$${rate}/yr ÷ 52 weeks`;break;case"per_stop":gross=rate*parseFloat(form.stops||0);breakdown=`${form.stops} stops × $${rate}/stop`;break;case"per_day":gross=rate*parseFloat(form.days||0);breakdown=`${form.days} days × $${rate}/day`;break;default:gross=parseFloat(form.manualAmount||0);breakdown="Manual entry";}return{gross:parseFloat(gross.toFixed(2)),breakdown};};
         const totalUnpaid=payroll.filter(r=>r.status==="unpaid").reduce((s,r)=>s+r.gross,0);
         const totalPaid=payroll.filter(r=>r.status==="paid").reduce((s,r)=>s+r.gross,0);
-        const PAY_FIELDS={per_mile:[["miles","Miles Driven","number"]],hourly:[["hours","Hours Worked","number"]],percentage:[["loadRevenue","Route/Load Revenue ($)","number"]],salary:[],per_stop:[["stops","Stops Completed","number"]]};
+        const PAY_FIELDS={per_mile:[["miles","Miles Driven","number"]],hourly:[["hours","Hours Worked","number"]],percentage:[["loadRevenue","Route/Load Revenue ($)","number"]],salary:[],per_stop:[["stops","Stops Completed","number"]],per_day:[["days","Days Worked","number"]]};
         const selDriver=drivers.find(d=>String(d.id)===String(payrollForm.driverId));
         const extraFields=selDriver?(PAY_FIELDS[selDriver.payType]||[["manualAmount","Pay Amount ($)","number"]]):[];
         return(
@@ -2951,7 +3098,9 @@ export default function ContractorOS() {
                     </div>
                     <div style={{display:"flex",gap:10,marginTop:14}}>
                       <button className="hov" onClick={()=>{if(!payrollForm.driverId)return;const d=drivers.find(x=>String(x.id)===String(payrollForm.driverId));if(!d)return;const{gross,breakdown}=calcRunPay(d,payrollForm);setPayrollPreview({driver:d,gross,breakdown});}} style={{...S.btn,background:"#6366f1"}}>Preview Pay</button>
-                      {payrollPreview&&<button className="hov" onClick={()=>{const d=drivers.find(x=>String(x.id)===String(payrollForm.driverId));if(!d)return;const{gross,breakdown}=calcRunPay(d,payrollForm);const run={id:Date.now(),driverId:d.id,driverName:d.name,periodStart:payrollForm.periodStart,periodEnd:payrollForm.periodEnd,gross,breakdown,notes:payrollForm.notes,date:new Date().toISOString().slice(0,10),payType:d.payType,payRate:d.payRate,status:"unpaid"};setPayroll(p=>[run,...p]);setPayrollForm({driverId:"",periodStart:"",periodEnd:"",miles:"",hours:"",stops:"",loadRevenue:"",manualAmount:"",notes:""});setPayrollPreview(null);setPayrollShowAdd(false);}} style={S.btn}>Save Pay Run</button>}
+                      {payrollPreview&&<button className="hov" onClick={()=>{const d=drivers.find(x=>String(x.id)===String(payrollForm.driverId));if(!d)return;const{gross,breakdown}=calcRunPay(d,payrollForm);const run={id:Date.now(),driverId:d.id,driverName:d.name,periodStart:payrollForm.periodStart,periodEnd:payrollForm.periodEnd,gross,breakdown,notes:payrollForm.notes,date:new Date().toISOString().slice(0,10),payType:d.payType,payRate:d.payRate,status:"unpaid"};setPayroll(p=>[run,...p]);
+                      setExpenses(p=>[{id:Date.now()+1,date:run.date,category:"driver_pay",amount:gross,description:`Pay — ${d.name}${payrollForm.periodStart?" ("+payrollForm.periodStart+(payrollForm.periodEnd?" → "+payrollForm.periodEnd:"")+")":" "}`,vehicle:"",source:"payroll"},...p]);
+                      setPayrollForm({driverId:"",periodStart:"",periodEnd:"",miles:"",hours:"",stops:"",days:"",loadRevenue:"",manualAmount:"",notes:""});setPayrollPreview(null);setPayrollShowAdd(false);}} style={S.btn}>Save Pay Run</button>}
                       <button onClick={()=>{setPayrollShowAdd(false);setPayrollPreview(null);}} style={S.ghost}>Cancel</button>
                     </div>
                     {payrollPreview&&(<div style={{marginTop:14,background:"#0a1a0a",border:"1px solid #1a3a1a",borderRadius:6,padding:"14px 18px"}}><div style={{fontSize:10,color:"#2d5a2d",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:8}}>Pay Preview — {payrollPreview.driver.name}</div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontSize:11,color:"#888"}}>{payrollPreview.breakdown}</div><div style={{fontSize:24,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#22c55e"}}>{fmt$(payrollPreview.gross)}</div></div></div>)}
@@ -3261,19 +3410,40 @@ export default function ContractorOS() {
             {filtered.length===0&&!docShowAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>{docFilter==="all"?"No documents tracked yet.":`No ${docFilter} documents yet.`}</div>}
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {filtered.map(doc=>(
-                <div key={doc.id} style={{...S.card,display:"flex",alignItems:"center",gap:14,borderLeft:`3px solid ${TYPE_COLORS[doc.type]||"#555"}`}}>
-                  <div style={{flex:1}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
-                      <div style={{fontSize:12,color:"#c8c4bc"}}>{doc.name}</div>
-                      <span style={{fontSize:9,color:TYPE_COLORS[doc.type]||"#555",border:`1px solid ${TYPE_COLORS[doc.type]||"#555"}33`,padding:"1px 7px",borderRadius:3}}>{doc.type}</span>
+                <div key={doc.id} style={{...S.card,borderLeft:`3px solid ${TYPE_COLORS[doc.type]||"#555"}`}}>
+                  {docEditId===doc.id?(
+                    <div>
+                      <div style={{fontSize:9,color:accent,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10}}>Editing Document</div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                        <div style={{gridColumn:"1/-1"}}><label style={S.label}>Name</label><input value={docEditForm.name||""} onChange={e=>setDocEditForm(p=>({...p,name:e.target.value}))} style={S.input}/></div>
+                        <div><label style={S.label}>Type</label><select value={docEditForm.type||""} onChange={e=>setDocEditForm(p=>({...p,type:e.target.value}))} style={S.input}>{DOC_TYPES.map(t=><option key={t}>{t}</option>)}</select></div>
+                        <div><label style={S.label}>Date</label><input type="date" value={docEditForm.date||""} onChange={e=>setDocEditForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
+                        <div><label style={S.label}>Linked To</label><input value={docEditForm.linkedTo||""} onChange={e=>setDocEditForm(p=>({...p,linkedTo:e.target.value}))} style={S.input}/></div>
+                        <div><label style={S.label}>File Name / Reference</label><input value={docEditForm.fileName||""} onChange={e=>setDocEditForm(p=>({...p,fileName:e.target.value}))} style={S.input}/></div>
+                        <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={docEditForm.notes||""} onChange={e=>setDocEditForm(p=>({...p,notes:e.target.value}))} style={S.input}/></div>
+                      </div>
+                      <div style={{display:"flex",gap:8}}>
+                        <button onClick={()=>{setDocuments(p=>p.map(d=>d.id===doc.id?{...d,...docEditForm}:d));setDocEditId(null);}} style={{...S.btn,fontSize:11,padding:"6px 16px"}}>Save</button>
+                        <button onClick={()=>setDocEditId(null)} style={{...S.ghost,fontSize:10,padding:"6px 12px"}}>Cancel</button>
+                      </div>
                     </div>
-                    <div style={{fontSize:10,color:"#555"}}>{fmtDate(doc.date||doc.createdDate)}{doc.linkedTo&&` · ${doc.linkedTo}`}{doc.fileName&&` · ${doc.fileName}`}{doc.notes&&` · ${doc.notes}`}</div>
-                  </div>
-                  <div style={{display:"flex",gap:8,flexShrink:0,alignItems:"center"}}>
-                    {doc.fileData&&<a href={doc.fileData} download={doc.fileName||doc.name} style={{...S.btn,background:"#22c55e",fontSize:10,padding:"5px 12px",textDecoration:"none",display:"inline-block"}}>↓ Download</a>}
-                    <div style={{fontSize:9,color:"#333",border:"1px solid #222",padding:"2px 8px",borderRadius:3}}>{doc.fileData?"📎 File":"📋 Ref"}</div>
-                    <button onClick={()=>setDocuments(p=>p.filter(x=>x.id!==doc.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
-                  </div>
+                  ):(
+                    <div style={{display:"flex",alignItems:"center",gap:14}}>
+                      <div style={{flex:1}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                          <div style={{fontSize:12,color:"#c8c4bc"}}>{doc.name}</div>
+                          <span style={{fontSize:9,color:TYPE_COLORS[doc.type]||"#555",border:`1px solid ${TYPE_COLORS[doc.type]||"#555"}33`,padding:"1px 7px",borderRadius:3}}>{doc.type}</span>
+                        </div>
+                        <div style={{fontSize:10,color:"#555"}}>{fmtDate(doc.date||doc.createdDate)}{doc.linkedTo&&` · ${doc.linkedTo}`}{doc.fileName&&` · ${doc.fileName}`}{doc.notes&&` · ${doc.notes}`}</div>
+                      </div>
+                      <div style={{display:"flex",gap:8,flexShrink:0,alignItems:"center"}}>
+                        {doc.fileData&&<a href={doc.fileData} download={doc.fileName||doc.name} style={{...S.btn,background:"#22c55e",fontSize:10,padding:"5px 12px",textDecoration:"none",display:"inline-block"}}>↓ Download</a>}
+                        <div style={{fontSize:9,color:"#333",border:"1px solid #222",padding:"2px 8px",borderRadius:3}}>{doc.fileData?"📎 File":"📋 Ref"}</div>
+                        <button onClick={()=>{setDocEditId(doc.id);setDocEditForm({name:doc.name,type:doc.type,date:doc.date||"",linkedTo:doc.linkedTo||"",fileName:doc.fileName||"",notes:doc.notes||""});}} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"4px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
+                        <button onClick={()=>setDocuments(p=>p.filter(x=>x.id!==doc.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
