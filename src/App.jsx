@@ -176,32 +176,67 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
         const lookupDOT = async () => {
           if(!fmcsaDot.trim()) return;
           setFmcsaLoading(true); setFmcsaError(""); setFmcsaResult(null);
+          const dot = fmcsaDot.trim().replace(/\D/g,"");
+          const apiKey = import.meta.env.VITE_FMCSA_API_KEY;
           try {
-            // FMCSA SAFER public API — free, no key needed for basic snapshot
-            const url = `https://safer.fmcsa.dot.gov/query.asp?query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${fmcsaDot.trim()}`;
-            // We use a CORS proxy since SAFER doesn't support cross-origin
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-            const res = await fetch(proxyUrl);
-            const data = await res.json();
-            const html = data.contents;
-            // Parse key fields from the HTML response
-            const extract = (label, src) => {
-              const regex = new RegExp(label + '[^<]*<[^>]+>([^<]+)', 'i');
-              const m = src.match(regex); return m ? m[1].trim() : null;
-            };
-            const legalName = html.match(/Legal Name[^<]*<\/td>\s*<td[^>]*>([^<]+)/i)?.[1]?.trim();
-            const dbaName = html.match(/DBA Name[^<]*<\/td>\s*<td[^>]*>([^<]+)/i)?.[1]?.trim();
-            const address = html.match(/Physical Address[^<]*<\/td>\s*<td[^>]*>([^<]+)/i)?.[1]?.trim();
-            const phone = html.match(/Phone[^<]*<\/td>\s*<td[^>]*>([^<]+)/i)?.[1]?.trim();
-            const mcNum = html.match(/Docket Number[^<]*<\/td>\s*<td[^>]*>([^<]+)/i)?.[1]?.trim();
-            const safetyRating = html.match(/Safety Rating[^<]*<\/td>\s*<td[^>]*>([^<]+)/i)?.[1]?.trim();
-            const powerUnits = html.match(/Power Units[^<]*<\/td>\s*<td[^>]*>([^<]+)/i)?.[1]?.trim();
-            const drivers = html.match(/Drivers[^<]*<\/td>\s*<td[^>]*>([^<]+)/i)?.[1]?.trim();
-            const opStatus = html.match(/Operating Status[^<]*<\/td>\s*<td[^>]*>([^<]+)/i)?.[1]?.trim();
-            if(!legalName && !address) { setFmcsaError("No carrier found for that DOT number. Double-check the number and try again."); }
-            else { setFmcsaResult({legalName,dbaName,address,phone,mcNum,safetyRating,powerUnits,drivers,opStatus,dotNum:fmcsaDot.trim()}); }
+            let result = null;
+
+            // ── Primary: Official FMCSA API (api.data.gov) ──────────────
+            if(apiKey) {
+              const apiUrl = `https://mobile.fmcsa.dot.gov/qc/services/carriers/${dot}?webKey=${apiKey}`;
+              const res = await fetch(apiUrl);
+              if(res.ok) {
+                const json = await res.json();
+                const c = json?.content?.carrier;
+                if(c) {
+                  result = {
+                    legalName: c.legalName || c.name || "—",
+                    dbaName: c.dbaName || null,
+                    address: [c.phyStreet, c.phyCity, c.phyState, c.phyZipcode].filter(Boolean).join(", ") || null,
+                    phone: c.telephone || null,
+                    mcNum: c.mcNumber ? `MC-${c.mcNumber}` : null,
+                    safetyRating: c.safetyRating || "Not Rated",
+                    powerUnits: c.totalPowerUnits?.toString() || null,
+                    drivers: c.totalDrivers?.toString() || null,
+                    opStatus: c.statusCode === "A" ? "Authorized" : c.statusCode === "I" ? "Inactive" : c.statusCode || null,
+                    entityType: c.carrierOperation?.carrierOperationDesc || null,
+                    dotNum: dot,
+                  };
+                }
+              }
+            }
+
+            // ── Fallback: allorigins CORS proxy → SAFER HTML scrape ──────
+            if(!result) {
+              const saferUrl = `https://safer.fmcsa.dot.gov/query.asp?query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${dot}`;
+              const proxyRes = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(saferUrl)}`);
+              const proxyJson = await proxyRes.json();
+              const html = proxyJson.contents || "";
+              const getVal = (label) => {
+                const re = new RegExp(`${label}[\s\S]{0,30}?<td[^>]*>([^<]{1,80})`, "i");
+                const m = html.match(re);
+                return m ? m[1].replace(/&amp;/g,"&").replace(/&nbsp;/g," ").trim() : null;
+              };
+              const legalName = getVal("Legal Name");
+              const opStatus = getVal("Operating Status") || getVal("Operating Authority Status");
+              if(html.length > 200 && (legalName || opStatus)) {
+                result = {
+                  legalName: legalName||"Unknown", dbaName: getVal("DBA Name"),
+                  address: getVal("Physical Address"), phone: getVal("Phone"),
+                  mcNum: getVal("Docket Number"), safetyRating: getVal("Safety Rating"),
+                  powerUnits: getVal("Power Units"), drivers: getVal("Drivers"),
+                  opStatus, entityType: getVal("Entity Type"), dotNum: dot,
+                };
+              }
+            }
+
+            if(result) {
+              setFmcsaResult(result);
+            } else {
+              setFmcsaError(`No carrier found for DOT# ${dot}. Double-check the number at safer.fmcsa.dot.gov`);
+            }
           } catch(err) {
-            setFmcsaError("Lookup failed — check your internet connection and try again.");
+            setFmcsaError("Lookup failed. Check your internet connection or visit safer.fmcsa.dot.gov directly.");
           }
           setFmcsaLoading(false);
         };
@@ -289,7 +324,7 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
 
       {/* App Footer */}
       <div style={{flexShrink:0,borderTop:"1px solid #141414",background:"#0a0a0a",padding:"10px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-        <div style={{fontSize:9,color:"#333",letterSpacing:"0.1em"}}>© {new Date().getFullYear()} CONTRACTOROS — ALL RIGHTS RESERVED. UNAUTHORIZED USE PROHIBITED.</div>
+        <div style={{fontSize:9,color:"#333",letterSpacing:"0.05em",lineHeight:1.8,maxWidth:760}}>© 2025–{new Date().getFullYear()} ContractorOS LLC. All rights reserved. ContractorOS LLC is a proprietary fleet management platform. Unauthorized reproduction, distribution, modification, or use of this software, its design, code, or content — in whole or in part — is strictly prohibited without express written permission. Built for independent contractors and fleet operators.</div>
         <div style={{display:"flex",gap:16,alignItems:"center"}}>
           <button onClick={()=>setShowBugReport(true)} style={{background:"transparent",border:"none",color:"#444",fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em"}}>Report a Bug</button>
           <a href="mailto:bostonrudi1993@gmail.com" style={{color:"#444",fontSize:10,textDecoration:"none",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em"}}>Contact</a>
@@ -349,6 +384,9 @@ export default function ContractorOS() {
   // Phase 2 — Notifications
   const [notifications, setNotifications] = useState([]);
   const [notifPermission, setNotifPermission] = useState("default");
+  const [showAlertSetup, setShowAlertSetup] = useState(false);
+  const [alertPhone, setAlertPhone] = useState(()=>{try{return localStorage.getItem("cos_alert_phone")||"";}catch{return "";}});
+  const [alertEmail, setAlertEmail] = useState(()=>{try{return localStorage.getItem("cos_alert_email")||"";}catch{return "";}});
 
   // Filings tracker
   const [filings, setFilings] = useState(DEFAULT_FILINGS); // cloud load merges in useEffect
@@ -643,13 +681,15 @@ export default function ContractorOS() {
     return notifs.sort((a,b)=>a.days-b.days);
   };
 
-  const requestPushPermission = async () => {
+  const requestPushPermission = () => { setShowAlertSetup(true); };
+  const confirmAlertSetup = async () => {
+    localStorage.setItem("cos_alert_phone", alertPhone);
+    localStorage.setItem("cos_alert_email", alertEmail);
+    setShowAlertSetup(false);
     if(!("Notification" in window)) return;
     const perm = await Notification.requestPermission();
     setNotifPermission(perm);
-    if(perm==="granted") {
-      new Notification("ContractorOS Alerts Enabled", {body:"You'll receive compliance and contract renewal reminders.",icon:"/icons/icon-192.png"});
-    }
+    if(perm==="granted"){new Notification("ContractorOS LLC Alerts Enabled",{body:"Compliance alerts enabled."+(alertPhone?" SMS: "+alertPhone:""),icon:"/icons/icon-192.png"});}
   };
 
   const sendTestNotif = () => {
@@ -1032,11 +1072,7 @@ export default function ContractorOS() {
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         .hov:hover{opacity:0.85} .cardhov:hover{border-color:#333!important;background:#181818!important}
         select option{background:#111;color:#e8e4d8}
-        @media(max-width:768px){
-          .mob-menu-btn{display:block !important}
-          .desk-nav{display:none !important}
-          .mob-screen-title{display:flex !important}
-        }
+        /* Hamburger nav universal — no responsive overrides needed */
         @keyframes drawerIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
       `}</style>
 
@@ -1076,31 +1112,22 @@ export default function ContractorOS() {
         </div>
       </div>
 
-      {/* TOP BAR */}
-      <div style={{display:"flex",alignItems:"center",height:50,borderBottom:"1px solid #1e1e1e",background:"#0d0d0d",padding:"0 16px",gap:4,flexShrink:0,position:"sticky",top:0,zIndex:100}}>
-        {/* Hamburger — mobile only */}
-        <button onClick={()=>setNavOpen(true)} style={{display:"none",background:"transparent",border:"none",color:"#888",fontSize:22,cursor:"pointer",padding:"4px 8px",lineHeight:1,marginRight:4,flexShrink:0}} className="mob-menu-btn" aria-label="Open menu">☰</button>
-
-        {/* Logo */}
-        <div style={{display:"flex",alignItems:"center",gap:8,marginRight:12,flexShrink:0}}>
-          <div style={{width:30,height:30,background:accent,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:4,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:13,color:"#0a0a0a",letterSpacing:"0.05em"}}>CO</div>
+      {/* TOP BAR — universal hamburger */}
+      <div style={{display:"flex",alignItems:"center",height:50,borderBottom:"1px solid #1e1e1e",background:"#0d0d0d",padding:"0 16px",gap:10,flexShrink:0,position:"sticky",top:0,zIndex:100}}>
+        <button onClick={()=>setNavOpen(true)} style={{background:"transparent",border:"none",color:"#888",fontSize:22,cursor:"pointer",padding:"4px 8px",lineHeight:1,flexShrink:0}} aria-label="Open menu">☰</button>
+        <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+          <div style={{width:30,height:30,background:accent,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:4,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:13,color:"#0a0a0a"}}>CO</div>
           <div>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#e8e4d8",lineHeight:1}}>CONTRACTOR<span style={{color:accent}}>OS</span></div>
             <div style={{fontSize:8,color:"#444",letterSpacing:"0.15em",textTransform:"uppercase"}}>{seg.icon} {seg.label}</div>
           </div>
         </div>
-
-        {/* Desktop nav — hidden on mobile */}
-        <div style={{display:"flex",flex:1,alignItems:"center",gap:0,overflowX:"auto"}} className="desk-nav">
-          <div style={{flex:1}}/>
-          <button onClick={()=>setSegment(null)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,padding:"5px 12px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em",marginRight:8,flexShrink:0}}>Switch Type</button>
-          {seg.nav.map(id=><NavBtn key={id} id={id} label={urgentItems.length>0&&id==="compliance"?`Compliance 🔴`:navLabels[id]||id} active={screen===id} accent={accent} onNav={handleNav}/>)}
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:16,color:"#e8e4d8",textTransform:"uppercase",letterSpacing:"0.08em"}}>{navLabels[screen]||screen}</span>
         </div>
-
-        {/* Mobile: show current screen name + urgent badge */}
-        <div style={{flex:1,display:"none",alignItems:"center",justifyContent:"center"}} className="mob-screen-title">
-          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,color:"#e8e4d8",textTransform:"uppercase",letterSpacing:"0.08em"}}>{navLabels[screen]||screen}</span>
-          {urgentItems.length>0&&<span style={{marginLeft:8,fontSize:10,color:"#ef4444"}}>🔴</span>}
+        <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+          {urgentItems.length>0&&<button onClick={()=>handleNav("compliance")} style={{background:"#1a0808",border:"1px solid #ef444433",color:"#ef4444",padding:"4px 10px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>🔴 {urgentItems.length}</button>}
+          <button onClick={()=>setSegment(null)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,padding:"5px 10px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>⇄</button>
         </div>
       </div>
 
@@ -2672,6 +2699,30 @@ export default function ContractorOS() {
               ))}
             </div>
 
+            {/* Alert setup modal */}
+            {showAlertSetup&&(
+              <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:500,padding:20}} onClick={()=>setShowAlertSetup(false)}>
+                <div style={{background:"#141414",border:`1px solid ${accent}44`,borderRadius:10,padding:"28px 32px",maxWidth:440,width:"100%",animation:"fadeUp 0.2s ease"}} onClick={e=>e.stopPropagation()}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#e8e4d8",marginBottom:4}}>Set Up Compliance Alerts</div>
+                  <div style={{fontSize:11,color:"#555",marginBottom:20,lineHeight:1.8}}>Enter your contact info to receive compliance deadline reminders. Browser push notifications will also be enabled.</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:20}}>
+                    <div>
+                      <label style={S.label}>Phone Number (SMS reminders)</label>
+                      <input value={alertPhone} onChange={e=>setAlertPhone(e.target.value)} placeholder="(864) 555-0100" style={S.input} type="tel"/>
+                      <div style={{fontSize:9,color:"#444",marginTop:4}}>Saved for your records. Automated SMS requires Twilio integration — can be added in a future update.</div>
+                    </div>
+                    <div>
+                      <label style={S.label}>Email for Alert Summaries</label>
+                      <input value={alertEmail} onChange={e=>setAlertEmail(e.target.value)} placeholder="your@email.com" style={S.input} type="email"/>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:10}}>
+                    <button className="hov" onClick={confirmAlertSetup} style={S.btn}>Save & Enable →</button>
+                    <button onClick={()=>setShowAlertSetup(false)} style={{...S.ghost,fontSize:11}}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Notifications section */}
             <div style={{...S.card,marginBottom:16}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
@@ -2680,11 +2731,11 @@ export default function ContractorOS() {
                   <div style={{fontSize:11,color:"#555"}}>Get alerts on your phone before compliance items expire</div>
                 </div>
                 <div style={{display:"flex",gap:8}}>
-                  {notifPermission!=="granted"&&<button className="hov" onClick={requestPushPermission} style={S.btn}>Enable Alerts</button>}
-                  {notifPermission==="granted"&&<button className="hov" onClick={sendTestNotif} style={{...S.btn,background:"#22c55e"}}>Send Test</button>}
+                  {notifPermission!=="granted"&&<button className="hov" onClick={()=>setShowAlertSetup(true)} style={S.btn}>Enable Alerts</button>}
+                  {notifPermission==="granted"&&<button onClick={()=>setShowAlertSetup(true)} style={{...S.ghost,fontSize:10}}>Edit Contact</button>}{notifPermission==="granted"&&<button className="hov" onClick={sendTestNotif} style={{...S.btn,background:"#22c55e"}}>Send Test</button>}
                 </div>
               </div>
-              {notifPermission==="granted"&&<div style={{fontSize:11,color:"#22c55e"}}>✓ Push notifications enabled — you'll receive compliance and contract renewal alerts</div>}
+              {notifPermission==="granted"&&<div><div style={{fontSize:11,color:"#22c55e",marginBottom:4}}>✓ Push notifications enabled</div>{alertPhone&&<div style={{fontSize:10,color:"#555"}}>📱 {alertPhone}</div>}{alertEmail&&<div style={{fontSize:10,color:"#555"}}>✉ {alertEmail}</div>}</div>}
               {notifPermission==="denied"&&<div style={{fontSize:11,color:"#ef4444"}}>Notifications blocked. Go to browser settings → Site Settings → Notifications to re-enable.</div>}
               {notifPermission==="default"&&<div style={{fontSize:11,color:"#555"}}>Click "Enable Alerts" to receive push notifications for compliance deadlines, incidents, and contract renewals.</div>}
             </div>
