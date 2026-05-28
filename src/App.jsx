@@ -1,5 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
-import { db } from "./supabase.js";
+import { makeDb } from "./supabase.js";
+import {
+  useUser,
+  useOrganization,
+  useOrganizationList,
+  useClerk,
+  SignIn,
+  SignUp,
+  OrganizationProfile,
+  CreateOrganization,
+} from "@clerk/clerk-react";
 
 // ─── STORAGE ─────────────────────────────────────────────────────────
 const KEYS = {
@@ -322,12 +332,25 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
         </div>
       )}
 
+      {/* Clerk Org Profile Modal */}
+      {showOrgProfile&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.9)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:600,padding:20}} onClick={()=>setShowOrgProfile(false)}>
+          <div style={{maxWidth:860,width:"100%",maxHeight:"90vh",overflow:"auto",borderRadius:10}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8"}}>Manage Team</div>
+              <button onClick={()=>setShowOrgProfile(false)} style={{background:"transparent",border:"none",color:"#555",fontSize:22,cursor:"pointer"}}>✕</button>
+            </div>
+            <OrganizationProfile routing="hash" appearance={{elements:{rootBox:{width:"100%"},card:{backgroundColor:"#141414",border:"1px solid #2a2a2a",boxShadow:"none"}}}}/>
+          </div>
+        </div>
+      )}
+
       {/* App Footer */}
-      <div style={{flexShrink:0,borderTop:"1px solid #141414",background:"#0a0a0a",padding:"10px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-        <div style={{fontSize:9,color:"#333",letterSpacing:"0.05em",lineHeight:1.8,maxWidth:760}}>© 2025–{new Date().getFullYear()} ContractorOS LLC. All rights reserved. ContractorOS LLC is a proprietary fleet management platform. Unauthorized reproduction, distribution, modification, or use of this software, its design, code, or content — in whole or in part — is strictly prohibited without express written permission. Built for independent contractors and fleet operators.</div>
+      <div style={{flexShrink:0,borderTop:"1px solid #2a2a2a",background:"#0d0d0d",padding:"12px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+        <div style={{fontSize:9,color:"#666",letterSpacing:"0.05em",lineHeight:1.8,maxWidth:760}}>© 2025–{new Date().getFullYear()} ContractorOS LLC. All rights reserved. ContractorOS LLC is a proprietary fleet management platform. Unauthorized reproduction, distribution, modification, or use of this software, its design, code, or content — in whole or in part — is strictly prohibited without express written permission. Built for independent contractors and fleet operators.</div>
         <div style={{display:"flex",gap:16,alignItems:"center"}}>
-          <button onClick={()=>setShowBugReport(true)} style={{background:"transparent",border:"none",color:"#444",fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em"}}>Report a Bug</button>
-          <a href="mailto:bostonrudi1993@gmail.com" style={{color:"#444",fontSize:10,textDecoration:"none",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em"}}>Contact</a>
+          <button onClick={()=>setShowBugReport(true)} style={{background:"transparent",border:"none",color:"#666",fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em"}}>Report a Bug</button>
+          <a href="mailto:bostonrudi1993@gmail.com" style={{color:"#666",fontSize:10,textDecoration:"none",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em"}}>Contact</a>
         </div>
       </div>
 
@@ -336,8 +359,104 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
 };
 
 // ════════════════════════════════════════════════════════════════════════
-export default function ContractorOS() {
+// ── Auth wrapper — shown before the main app ─────────────────────────────────
+function AuthGate() {
+  const { isLoaded: userLoaded, isSignedIn, user } = useUser();
+  const { organization, isLoaded: orgLoaded } = useOrganization();
+  const { userMemberships, isLoaded: listLoaded } = useOrganizationList({ userMemberships: true });
+  const [authView, setAuthView] = useState("signin"); // signin | signup | create_org | select_org
+
+  if (!userLoaded) return (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#0a0a0a",flexDirection:"column",gap:16}}>
+      <div style={{width:48,height:48,border:"3px solid #1e1e1e",borderTop:"3px solid #f59e0b",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+
+  // Not signed in — show sign in / sign up
+  if (!isSignedIn) return (
+    <div style={{minHeight:"100vh",background:"#0a0a0a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{marginBottom:24,textAlign:"center"}}>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:32,color:"#e8e4d8",letterSpacing:"0.05em"}}>
+          CONTRACTOR<span style={{color:"#f59e0b"}}>OS</span>
+        </div>
+        <div style={{fontSize:11,color:"#555",marginTop:4,letterSpacing:"0.15em",textTransform:"uppercase"}}>Fleet Operating System</div>
+      </div>
+      {authView === "signin"
+        ? <SignIn routing="hash" afterSignInUrl="/" signUpUrl="#signup"/>
+        : <SignUp routing="hash" afterSignUpUrl="/" signInUrl="#signin"/>
+      }
+      <button onClick={()=>setAuthView(authView==="signin"?"signup":"signin")}
+        style={{marginTop:16,background:"transparent",border:"none",color:"#555",fontSize:11,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>
+        {authView==="signin"?"Don't have an account? Sign up →":"Already have an account? Sign in →"}
+      </button>
+    </div>
+  );
+
+  // Signed in but no org — prompt to create or join one
+  if (orgLoaded && !organization) {
+    const hasMemberships = listLoaded && userMemberships?.data?.length > 0;
+    return (
+      <div style={{minHeight:"100vh",background:"#0a0a0a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20}}>
+        <div style={{marginBottom:24,textAlign:"center"}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:32,color:"#e8e4d8"}}>
+            CONTRACTOR<span style={{color:"#f59e0b"}}>OS</span>
+          </div>
+          <div style={{fontSize:11,color:"#555",marginTop:4}}>Welcome, {user?.firstName || user?.emailAddresses?.[0]?.emailAddress}</div>
+        </div>
+        <div style={{background:"#141414",border:"1px solid #2a2a2a",borderRadius:10,padding:"28px 32px",maxWidth:420,width:"100%",textAlign:"center"}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#e8e4d8",marginBottom:8}}>Set Up Your Company</div>
+          <div style={{fontSize:11,color:"#555",marginBottom:24,lineHeight:1.8}}>
+            ContractorOS organizes data by company. Create your company to get started, or ask your owner to invite you.
+          </div>
+          {hasMemberships ? (
+            <div style={{marginBottom:20}}>
+              <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10}}>Your Companies</div>
+              {userMemberships.data.map(m=>(
+                <button key={m.organization.id}
+                  onClick={()=>m.organization.setActive()}
+                  style={{display:"block",width:"100%",background:"#0f0f0f",border:"1px solid #2a2a2a",borderRadius:6,padding:"12px 16px",color:"#e8e4d8",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,marginBottom:8,textAlign:"left"}}>
+                  {m.organization.name}
+                  <span style={{fontSize:10,color:"#555",fontFamily:"'DM Mono',monospace",fontWeight:400,marginLeft:10}}>{m.role}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <CreateOrganization
+            routing="hash"
+            afterCreateOrganizationUrl="/"
+            appearance={{
+              elements: {
+                rootBox: { width: "100%" },
+                card: { backgroundColor: "transparent", border: "none", boxShadow: "none", padding: 0 },
+              }
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Signed in with org — render main app
+  return <ContractorOS />;
+}
+
+export default AuthGate;
+
+function ContractorOS() {
+  const { organization } = useOrganization();
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  // Use org ID as the data scope — all users in the same org share data
+  const db = makeDb(organization?.id);
   const [segment, setSegment] = useState(null);
+  // Derive role from Clerk org membership
+  // org:admin = owner, org:member with manager role = manager, else driver
+  const clerkRole = organization?.membership?.role; // "org:admin" or "org:member"
+  const clerkUserName = user?.firstName
+    ? `${user.firstName} ${user.lastName || ""}`.trim()
+    : user?.emailAddresses?.[0]?.emailAddress || "User";
+
   const [screen, setScreen] = useState("dashboard");
   const [navOpen, setNavOpen] = useState(false);
   const [settings, setSettings] = useState({mpg:8,dieselPrice:3.85,cpm:0.18,homeBase:"",companyName:""});
@@ -475,6 +594,7 @@ export default function ContractorOS() {
   const [showBugReport, setShowBugReport] = useState(false);
   const [bugForm, setBugForm] = useState({subject:"",description:"",email:""});
   const [incidentFollowUpId, setIncidentFollowUpId] = useState(null);
+  const [showOrgProfile, setShowOrgProfile] = useState(false);
 
   // Persist all state
   // ── Segment & settings stay in localStorage (tiny, sync, no cloud needed) ──
@@ -2952,7 +3072,40 @@ export default function ContractorOS() {
         <div style={{flex:1,overflowY:"auto",padding:24,animation:"fadeUp 0.3s ease"}}>
           <div style={{maxWidth:700,margin:"0 auto"}}>
             <div style={{...S.section,marginBottom:4}}>USERS & ROLES</div>
-            <p style={{fontSize:11,color:"#555",marginBottom:22,lineHeight:1.8}}>Control who can access ContractorOS and what they can do. Owner sees everything. Managers can edit. Drivers see read-only views of their own information.</p>
+            <p style={{fontSize:11,color:"#555",marginBottom:16,lineHeight:1.8}}>Invite drivers and managers to your company. Each person logs in with their own account and only sees your company's data.</p>
+
+            {/* Clerk org management */}
+            {organization&&(
+              <div style={{...S.card,marginBottom:20,border:`1px solid ${accent}33`,background:"#0a0f0a"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                  <div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8"}}>{organization.name}</div>
+                    <div style={{fontSize:10,color:"#555"}}>Organization ID: {organization.id?.slice(0,16)}...</div>
+                  </div>
+                  <div style={{fontSize:9,color:"#22c55e",border:"1px solid #22c55e44",padding:"2px 8px",borderRadius:3}}>ACTIVE ORG</div>
+                </div>
+                <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                  <button className="hov" onClick={()=>setShowOrgProfile(true)} style={{...S.btn,fontSize:11}}>Manage Members & Invites</button>
+                  <button onClick={()=>signOut()} style={{...S.ghost,fontSize:10}}>Sign Out</button>
+                </div>
+              </div>
+            )}
+
+            {/* How roles work */}
+            <div style={{...S.card,marginBottom:20,background:"#0a0a14",border:"1px solid #1a1a3a"}}>
+              <div style={{fontSize:10,color:"#4a4a8a",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:10}}>How Roles Work</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {[["👑 Owner (org:admin)","Full access — all screens, settings, billing, invite users","#f59e0b"],["👔 Manager (org:member)","Can edit routes, drivers, compliance, finance — cannot change billing or delete the org","#8888cc"],["🚛 Driver (org:member)","Read-only — sees their own dispatch, HOS log, and pay stubs only","#22c55e"]].map(([role,desc,col])=>(
+                  <div key={role} style={{display:"flex",gap:12,padding:"8px 0",borderBottom:"1px solid #1a1a2a"}}>
+                    <div style={{fontSize:12,color:col,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,width:180,flexShrink:0}}>{role}</div>
+                    <div style={{fontSize:11,color:"#555"}}>{desc}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{marginTop:12,fontSize:10,color:"#3a3a5a",lineHeight:1.7}}>
+                💡 To invite someone: click "Manage Members & Invites" → Invite → enter their email. They'll get a link to create an account and join your company automatically.
+              </div>
+            </div>
 
             {/* Current user */}
             <div style={{...S.card,marginBottom:20,border:`1px solid ${accent}44`,background:"#0f0f0a"}}>
