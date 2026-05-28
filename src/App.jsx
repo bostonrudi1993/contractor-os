@@ -340,7 +340,7 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8"}}>Manage Team</div>
               <button onClick={()=>setShowOrgProfile(false)} style={{background:"transparent",border:"none",color:"#555",fontSize:22,cursor:"pointer"}}>✕</button>
             </div>
-            <OrganizationProfile routing="hash" appearance={{elements:{rootBox:{width:"100%"},card:{backgroundColor:"#141414",border:"1px solid #2a2a2a",boxShadow:"none"}}}}/>
+            <OrganizationProfile routing="virtual" appearance={{elements:{rootBox:{width:"100%"},card:{backgroundColor:"#141414",border:"1px solid #2a2a2a",boxShadow:"none"}}}}/>
           </div>
         </div>
       )}
@@ -383,8 +383,16 @@ function AuthGate() {
         <div style={{fontSize:11,color:"#555",marginTop:4,letterSpacing:"0.15em",textTransform:"uppercase"}}>Fleet Operating System</div>
       </div>
       {authView === "signin"
-        ? <SignIn routing="hash" afterSignInUrl="/" signUpUrl="#signup"/>
-        : <SignUp routing="hash" afterSignUpUrl="/" signInUrl="#signin"/>
+        ? <SignIn
+          routing="virtual"
+          afterSignInUrl="/"
+          appearance={{elements:{rootBox:{width:"100%",maxWidth:400}}}}
+        />
+        : <SignUp
+          routing="virtual"
+          afterSignUpUrl="/"
+          appearance={{elements:{rootBox:{width:"100%",maxWidth:400}}}}
+        />
       }
       <button onClick={()=>setAuthView(authView==="signin"?"signup":"signin")}
         style={{marginTop:16,background:"transparent",border:"none",color:"#555",fontSize:11,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>
@@ -423,7 +431,7 @@ function AuthGate() {
             </div>
           ) : null}
           <CreateOrganization
-            routing="hash"
+            routing="virtual"
             afterCreateOrganizationUrl="/"
             appearance={{
               elements: {
