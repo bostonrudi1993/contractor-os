@@ -1,17 +1,20 @@
-const CACHE_NAME = 'contractor-os-v1';
-const ASSETS_TO_CACHE = [
+// ContractorOS Service Worker v2
+// Improved caching for reliable PWA install experience
+
+const CACHE_NAME = 'contractoros-v2';
+const STATIC_ASSETS = [
   '/',
   '/index.html',
+  '/manifest.json',
 ];
 
 // Install — cache core assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
+      return cache.addAll(STATIC_ASSETS);
+    }).then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 // Activate — clean up old caches
@@ -23,51 +26,56 @@ self.addEventListener('activate', (event) => {
           .filter((name) => name !== CACHE_NAME)
           .map((name) => caches.delete(name))
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-// Fetch — network first, fall back to cache
+// Fetch strategy: network-first for API calls, cache-first for static assets
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET and API requests (let them go to network)
   if (event.request.method !== 'GET') return;
-  if (event.request.url.includes('anthropic.com')) return;
-  if (event.request.url.includes('fonts.googleapis.com')) return;
 
+  const url = new URL(event.request.url);
+
+  // Always go to network for API calls
+  const isApi = url.hostname.includes('anthropic.com') ||
+    url.hostname.includes('supabase.co') ||
+    url.hostname.includes('clerk.') ||
+    url.hostname.includes('fmcsa.dot.gov') ||
+    url.hostname.includes('resend.com') ||
+    url.pathname.startsWith('/api/');
+
+  if (isApi) return;
+
+  // Network-first for HTML (so app always updates)
+  if (url.pathname === '/' || url.pathname.endsWith('.html')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Cache-first for fonts and static assets
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Cache successful responses
-        if (response && response.status === 200) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
+    caches.match(event.request).then((cached) => {
+      if (cached) return cached;
+      return fetch(event.request).then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         }
         return response;
-      })
-      .catch(() => {
-        // Network failed — try cache
-        return caches.match(event.request).then((cached) => {
-          if (cached) return cached;
-          // For navigation requests, return the app shell
-          if (event.request.mode === 'navigate') {
-            return caches.match('/index.html');
-          }
-        });
-      })
+      });
+    })
   );
 });
 
-// Background sync placeholder for future DB integration
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-data') {
-    console.log('Background sync triggered');
-  }
-});
-
-// Push notifications placeholder
+// Handle push notifications
 self.addEventListener('push', (event) => {
   const data = event.data?.json() || {};
   const title = data.title || 'ContractorOS Alert';
@@ -75,19 +83,29 @@ self.addEventListener('push', (event) => {
     body: data.body || 'You have a compliance item that needs attention.',
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-72.png',
-    tag: data.tag || 'cos-notification',
+    tag: 'contractoros-alert',
+    renotify: true,
     data: { url: data.url || '/' },
     actions: [
-      { action: 'view', title: 'View Now' },
-      { action: 'dismiss', title: 'Dismiss' }
-    ]
+      { action: 'open', title: 'Open ContractorOS' },
+      { action: 'dismiss', title: 'Dismiss' },
+    ],
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
+// Handle notification click
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  if (event.action === 'view') {
-    event.waitUntil(clients.openWindow(event.notification.data.url));
-  }
+  if (event.action === 'dismiss') return;
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes('contractoroshub.com') && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      return clients.openWindow('/');
+    })
+  );
 });

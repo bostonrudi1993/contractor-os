@@ -182,80 +182,7 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
         </div>
       </div>
       {/* ══ FMCSA LOOKUP ══════════════════════════════════════════════ */}
-      {screen==="fmcsa"&&(()=>{
-        const lookupDOT = async () => {
-          if(!fmcsaDot.trim()) return;
-          setFmcsaLoading(true); setFmcsaError(""); setFmcsaResult(null);
-          const dot = fmcsaDot.trim().replace(/\D/g,"");
-          const apiKey = import.meta.env.VITE_FMCSA_API_KEY;
-          try {
-            let result = null;
-
-            // ── Primary: Official FMCSA API (api.data.gov) ──────────────
-            if(apiKey) {
-              const apiUrl = `https://mobile.fmcsa.dot.gov/qc/services/carriers/${dot}?webKey=${apiKey}`;
-              const res = await fetch(apiUrl);
-              if(res.ok) {
-                const json = await res.json();
-                const c = json?.content?.carrier;
-                if(c) {
-                  result = {
-                    legalName: c.legalName || c.name || "—",
-                    dbaName: c.dbaName || null,
-                    address: [c.phyStreet, c.phyCity, c.phyState, c.phyZipcode].filter(Boolean).join(", ") || null,
-                    phone: c.telephone || null,
-                    mcNum: c.mcNumber ? `MC-${c.mcNumber}` : null,
-                    safetyRating: c.safetyRating || "Not Rated",
-                    powerUnits: c.totalPowerUnits?.toString() || null,
-                    drivers: c.totalDrivers?.toString() || null,
-                    opStatus: c.statusCode === "A" ? "Authorized" : c.statusCode === "I" ? "Inactive" : c.statusCode || null,
-                    entityType: c.carrierOperation?.carrierOperationDesc || null,
-                    dotNum: dot,
-                  };
-                }
-              }
-            }
-
-            // ── Fallback: allorigins CORS proxy → SAFER HTML scrape ──────
-            if(!result) {
-              const saferUrl = `https://safer.fmcsa.dot.gov/query.asp?query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${dot}`;
-              const proxyRes = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(saferUrl)}`);
-              const proxyJson = await proxyRes.json();
-              const html = proxyJson.contents || "";
-              const getVal = (label) => {
-                const re = new RegExp(`${label}[\s\S]{0,30}?<td[^>]*>([^<]{1,80})`, "i");
-                const m = html.match(re);
-                return m ? m[1].replace(/&amp;/g,"&").replace(/&nbsp;/g," ").trim() : null;
-              };
-              const legalName = getVal("Legal Name");
-              const opStatus = getVal("Operating Status") || getVal("Operating Authority Status");
-              if(html.length > 200 && (legalName || opStatus)) {
-                result = {
-                  legalName: legalName||"Unknown", dbaName: getVal("DBA Name"),
-                  address: getVal("Physical Address"), phone: getVal("Phone"),
-                  mcNum: getVal("Docket Number"), safetyRating: getVal("Safety Rating"),
-                  powerUnits: getVal("Power Units"), drivers: getVal("Drivers"),
-                  opStatus, entityType: getVal("Entity Type"), dotNum: dot,
-                };
-              }
-            }
-
-            if(result) {
-              setFmcsaResult(result);
-            } else {
-              setFmcsaError(`No carrier found for DOT# ${dot}. Double-check the number at safer.fmcsa.dot.gov`);
-            }
-          } catch(err) {
-            setFmcsaError("Lookup failed. Check your internet connection or visit safer.fmcsa.dot.gov directly.");
-          }
-          setFmcsaLoading(false);
-        };
-        const applyToSettings = () => {
-          if(!fmcsaResult) return;
-          setSettings(p=>({...p,companyName:fmcsaResult.legalName||p.companyName}));
-          alert("Company name applied to Settings. Go to Settings to review and save other details.");
-        };
-        return(
+      {screen==="fmcsa"&&(
         <div style={{flex:1,overflowY:"auto",padding:24}}>
           <div style={{maxWidth:700,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
             <div style={{...S.section,marginBottom:4}}>FMCSA CARRIER LOOKUP</div>
@@ -310,8 +237,7 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
             </div>
           </div>
         </div>
-        );
-      })()}
+      </>)
 
       {/* ══ FOOTER + BUG REPORT ════════════════════════════════════════ */}
       {showBugReport&&(
@@ -346,8 +272,8 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
       )}
 
       {/* App Footer */}
-      <div style={{flexShrink:0,borderTop:"1px solid #2a2a2a",background:"#0d0d0d",padding:"12px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-        <div style={{fontSize:9,color:"#666",letterSpacing:"0.05em",lineHeight:1.8,maxWidth:760}}>© 2025–{new Date().getFullYear()} ContractorOS LLC. All rights reserved. ContractorOS LLC is a proprietary fleet management platform. Unauthorized reproduction, distribution, modification, or use of this software, its design, code, or content — in whole or in part — is strictly prohibited without express written permission. Built for independent contractors and fleet operators.</div>
+      <div style={{flexShrink:0,borderTop:"2px solid #2a2a2a",background:"#111",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+        <div style={{fontSize:9,color:"#888",letterSpacing:"0.05em",lineHeight:1.8,maxWidth:760}}>© 2025–{new Date().getFullYear()} ContractorOS LLC. All rights reserved. ContractorOS LLC is a proprietary fleet management platform. Unauthorized reproduction, distribution, modification, or use of this software, its design, code, or content — in whole or in part — is strictly prohibited without express written permission. Built for independent contractors and fleet operators.</div>
         <div style={{display:"flex",gap:16,alignItems:"center"}}>
           <button onClick={()=>setShowBugReport(true)} style={{background:"transparent",border:"none",color:"#666",fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em"}}>Report a Bug</button>
           <a href="mailto:bostonrudi1993@gmail.com" style={{color:"#666",fontSize:10,textDecoration:"none",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em"}}>Contact</a>
@@ -458,6 +384,8 @@ function ContractorOS() {
   // Use org ID as the data scope — all users in the same org share data
   const db = makeDb(organization?.id);
   const [segment, setSegment] = useState(null);
+  const [onboardStep, setOnboardStep] = useState(0); // 0 = not started, 1-5 = steps, 6 = done
+  const [onboardDismissed, setOnboardDismissed] = useState(() => { try { return localStorage.getItem("cos_onboard_done") === "1"; } catch { return false; } });
   // Derive role from Clerk org membership
   // org:admin = owner, org:member with manager role = manager, else driver
   const clerkRole = organization?.membership?.role; // "org:admin" or "org:member"
@@ -1127,7 +1055,7 @@ function ContractorOS() {
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:14,maxWidth:900,width:"100%",animation:"fadeUp 0.5s 0.1s ease both"}}>
           {Object.values(SEGMENTS).map(s=>(
-            <button key={s.id} onClick={()=>setSegment(s.id)} style={{background:"#111",border:`1px solid #222`,borderRadius:10,padding:"24px 26px",textAlign:"left",cursor:"pointer",transition:"all 0.2s",outline:"none",}} onMouseEnter={e=>{e.currentTarget.style.borderColor=s.color;e.currentTarget.style.background="#161616";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="#222";e.currentTarget.style.background="#111";}}>
+            <button key={s.id} onClick={()=>{setSegment(s.id);if(!onboardDismissed)setOnboardStep(1);setScreen("dashboard");}} style={{background:"#111",border:`1px solid #222`,borderRadius:10,padding:"24px 26px",textAlign:"left",cursor:"pointer",transition:"all 0.2s",outline:"none",}} onMouseEnter={e=>{e.currentTarget.style.borderColor=s.color;e.currentTarget.style.background="#161616";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="#222";e.currentTarget.style.background="#111";}}>
               <div style={{fontSize:28,marginBottom:12}}>{s.icon}</div>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8",marginBottom:6}}>{s.label}</div>
               <div style={{fontSize:11,color:"#555",lineHeight:1.6,marginBottom:16}}>{s.tagline}</div>
@@ -1146,6 +1074,66 @@ function ContractorOS() {
   const Stat = ({label,value,color,sub}) => <StatCard label={label} value={value} color={color||accent} sub={sub} card={S.card}/>;
   const ExpiryBadge = ({label,days}) => <ExpiryBadgeComp label={label} days={days}/>;
   const Loader = ({msg}) => <LoaderComp msg={msg} accent={accent}/>;
+  // ── FMCSA lookup functions ──────────────────────────────────────────
+  const lookupDOT = async () => {
+    if(!fmcsaDot.trim()) return;
+    setFmcsaLoading(true); setFmcsaError(""); setFmcsaResult(null);
+    const dot = fmcsaDot.trim().replace(/\D/g,"");
+    const apiKey = import.meta.env.VITE_FMCSA_API_KEY;
+    try {
+      let result = null;
+      if(apiKey) {
+        const apiUrl = `https://mobile.fmcsa.dot.gov/qc/services/carriers/${dot}?webKey=${apiKey}`;
+        const res = await fetch(apiUrl);
+        if(res.ok) {
+          const json = await res.json();
+          const c = json?.content?.carrier;
+          if(c) {
+            result = {
+              legalName: c.legalName||c.name||"—",
+              dbaName: c.dbaName||null,
+              address: [c.phyStreet,c.phyCity,c.phyState,c.phyZipcode].filter(Boolean).join(", ")||null,
+              phone: c.telephone||null,
+              mcNum: c.mcNumber?`MC-${c.mcNumber}`:null,
+              safetyRating: c.safetyRating||"Not Rated",
+              powerUnits: c.totalPowerUnits?.toString()||null,
+              drivers: c.totalDrivers?.toString()||null,
+              opStatus: c.statusCode==="A"?"Authorized":c.statusCode==="I"?"Inactive":c.statusCode||null,
+              entityType: c.carrierOperation?.carrierOperationDesc||null,
+              dotNum: dot,
+            };
+          }
+        }
+      }
+      if(!result) {
+        const saferUrl = `https://safer.fmcsa.dot.gov/query.asp?query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${dot}`;
+        const proxyRes = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(saferUrl)}`);
+        const proxyJson = await proxyRes.json();
+        const html = proxyJson.contents||"";
+        const getVal = (label) => {
+          const re = new RegExp(`${label}[\s\S]{0,30}?<td[^>]*>([^<]{1,80})`,"i");
+          const m = html.match(re);
+          return m?m[1].replace(/&amp;/g,"&").replace(/&nbsp;/g," ").trim():null;
+        };
+        const legalName=getVal("Legal Name");
+        const opStatus=getVal("Operating Status")||getVal("Operating Authority Status");
+        if(html.length>200&&(legalName||opStatus)){
+          result={legalName:legalName||"Unknown",dbaName:getVal("DBA Name"),address:getVal("Physical Address"),phone:getVal("Phone"),mcNum:getVal("Docket Number"),safetyRating:getVal("Safety Rating"),powerUnits:getVal("Power Units"),drivers:getVal("Drivers"),opStatus,entityType:getVal("Entity Type"),dotNum:dot};
+        }
+      }
+      if(result){setFmcsaResult(result);}
+      else{setFmcsaError(`No carrier found for DOT# ${dot}. Verify at safer.fmcsa.dot.gov`);}
+    } catch(err) {
+      setFmcsaError("Lookup failed. Check your internet connection or visit safer.fmcsa.dot.gov directly.");
+    }
+    setFmcsaLoading(false);
+  };
+  const applyToSettings = () => {
+    if(!fmcsaResult) return;
+    setSettings(p=>({...p,companyName:fmcsaResult.legalName||p.companyName}));
+    alert("Company name applied to Settings.");
+  };
+
   const handleNav = (id) => { setScreen(id); setSubScreen(null); setAiResult(null); setAnalyzeStep("paste"); setNavOpen(false); };
 
   // ── RENDER ─────────────────────────────────────────────────────────
@@ -1161,6 +1149,46 @@ function ContractorOS() {
   return (
     <div style={{minHeight:"100vh",background:"#0a0a0a",fontFamily:"'DM Mono','Courier New',monospace",color:"#d4d0c8",display:"flex",flexDirection:"column"}}>
       <EditModalComp modal={modal} editForm={editForm} setEditForm={setEditForm} saveEdit={saveEdit} closeModal={closeModal} accent={accent} S={S} MODAL_CONFIGS={MODAL_CONFIGS}/>
+
+      {/* ══ ONBOARDING MODAL ════════════════════════════════════════ */}
+      {onboardStep > 0 && onboardStep <= 5 && !onboardDismissed && (()=>{
+        const steps = [
+          { num:1, title:"Add Your First Truck", icon:"🚛", desc:"Let's get your fleet set up. Add your truck so compliance tracking and fuel logs work correctly.", action:"Go to Fleet", screen:"fleet" },
+          { num:2, title:"Add Your First Driver", icon:"👤", desc:"Add yourself or your first driver. This unlocks payroll, HOS logs, and onboarding checklists.", action:"Go to Drivers", screen:"drivers" },
+          { num:3, title:"Set Compliance Dates", icon:"🛡", desc:"Enter your DOT inspection, registration, and insurance expiry dates. The app will alert you before they expire.", action:"Go to Compliance", screen:"compliance" },
+          { num:4, title:"Log Your First Expense", icon:"💰", desc:"Add a fuel fill-up or maintenance cost. This starts building your profit & loss picture automatically.", action:"Go to Finance", screen:"finance" },
+          { num:5, title:"Explore Your Dashboard", icon:"◈", desc:"You're all set! Your dashboard now shows your fleet health at a glance. Check back daily.", action:"Go to Dashboard", screen:"dashboard" },
+        ];
+        const step = steps[onboardStep - 1];
+        const pct = (onboardStep / 5) * 100;
+        return (
+          <div style={{position:"fixed",bottom:20,right:20,width:320,background:"#141414",border:`1px solid ${accent}44`,borderRadius:10,padding:"20px 22px",zIndex:400,boxShadow:"0 8px 32px rgba(0,0,0,0.6)",animation:"fadeUp 0.3s ease"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.15em"}}>Getting Started — Step {onboardStep} of 5</div>
+              <button onClick={()=>{setOnboardDismissed(true);localStorage.setItem("cos_onboard_done","1");}} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:14,lineHeight:1}}>✕</button>
+            </div>
+            <div style={{height:3,background:"#1e1e1e",borderRadius:2,marginBottom:16}}>
+              <div style={{height:"100%",width:`${pct}%`,background:accent,borderRadius:2,transition:"width 0.4s ease"}}/>
+            </div>
+            <div style={{fontSize:24,marginBottom:8}}>{step.icon}</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#e8e4d8",marginBottom:6}}>{step.title}</div>
+            <div style={{fontSize:11,color:"#666",lineHeight:1.7,marginBottom:16}}>{step.desc}</div>
+            <div style={{display:"flex",gap:8}}>
+              <button className="hov" onClick={()=>{handleNav(step.screen);setOnboardStep(s=>s+1);}} style={{...S.btn,fontSize:12,flex:1}}>{step.action} →</button>
+              {onboardStep < 5 && <button onClick={()=>setOnboardStep(s=>s+1)} style={{...S.ghost,fontSize:10,padding:"10px 12px"}}>Skip</button>}
+            </div>
+          </div>
+        );
+      })()}
+
+      {onboardStep === 6 && !onboardDismissed && (
+        <div style={{position:"fixed",bottom:20,right:20,width:320,background:"#0a150a",border:"1px solid #22c55e44",borderRadius:10,padding:"20px 22px",zIndex:400,boxShadow:"0 8px 32px rgba(0,0,0,0.6)",animation:"fadeUp 0.3s ease"}}>
+          <div style={{fontSize:24,marginBottom:8}}>🎉</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#22c55e",marginBottom:6}}>Setup Complete!</div>
+          <div style={{fontSize:11,color:"#666",lineHeight:1.7,marginBottom:16}}>ContractorOS is ready to run your operation. Your data saves automatically to the cloud.</div>
+          <button className="hov" onClick={()=>{setOnboardDismissed(true);localStorage.setItem("cos_onboard_done","1");}} style={{...S.btn,background:"#22c55e",width:"100%",fontSize:12}}>Let's Go →</button>
+        </div>
+      )}
 
       {/* ── PIN ENTRY MODAL ── */}
       {pinEntry&&(
@@ -2863,7 +2891,26 @@ function ContractorOS() {
                   {notifPermission==="granted"&&<button onClick={()=>setShowAlertSetup(true)} style={{...S.ghost,fontSize:10}}>Edit Contact</button>}{notifPermission==="granted"&&<button className="hov" onClick={sendTestNotif} style={{...S.btn,background:"#22c55e"}}>Send Test</button>}
                 </div>
               </div>
-              {notifPermission==="granted"&&<div><div style={{fontSize:11,color:"#22c55e",marginBottom:4}}>✓ Push notifications enabled</div>{alertPhone&&<div style={{fontSize:10,color:"#555"}}>📱 {alertPhone}</div>}{alertEmail&&<div style={{fontSize:10,color:"#555"}}>✉ {alertEmail}</div>}</div>}
+              {notifPermission==="granted"&&(
+                  <div>
+                    <div style={{fontSize:11,color:"#22c55e",marginBottom:6}}>✓ Push notifications enabled</div>
+                    {alertPhone&&<div style={{fontSize:10,color:"#555",marginBottom:3}}>📱 {alertPhone}</div>}
+                    {alertEmail&&<div style={{fontSize:10,color:"#555",marginBottom:10}}>✉ {alertEmail}</div>}
+                    {alertEmail&&urgentItems.length>0&&(
+                      <button onClick={async()=>{
+                        try {
+                          const res = await fetch("/api/send-reminder",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({alertEmail,companyName:settings.companyName||"Your Fleet",urgentItems:urgentItems.slice(0,10).map(i=>({label:i.label,days:i.days}))})});
+                          const data = await res.json();
+                          if(data.success) alert("✓ Compliance reminder sent to "+alertEmail);
+                          else alert("Email failed: "+(data.error||"Unknown error"));
+                        } catch(e) { alert("Could not send email — check your internet connection"); }
+                      }} style={{...S.btn,fontSize:10,padding:"6px 14px",background:"#22c55e"}}>
+                        Send Email Alert Now ({urgentItems.length} items)
+                      </button>
+                    )}
+                    {alertEmail&&urgentItems.length===0&&<div style={{fontSize:10,color:"#22c55e"}}>✓ No urgent items — nothing to alert about right now</div>}
+                  </div>
+                )}
               {notifPermission==="denied"&&<div style={{fontSize:11,color:"#ef4444"}}>Notifications blocked. Go to browser settings → Site Settings → Notifications to re-enable.</div>}
               {notifPermission==="default"&&<div style={{fontSize:11,color:"#555"}}>Click "Enable Alerts" to receive push notifications for compliance deadlines, incidents, and contract renewals.</div>}
             </div>
@@ -3607,7 +3654,38 @@ function ContractorOS() {
                   <div><label style={S.label}>Type</label><select value={docForm.type} onChange={e=>setDocForm(p=>({...p,type:e.target.value}))} style={S.input}>{DOC_TYPES.map(t=><option key={t}>{t}</option>)}</select></div>
                   <div><label style={S.label}>Date</label><input type="date" value={docForm.date} onChange={e=>setDocForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
                   <div><label style={S.label}>Linked To (truck / driver / load)</label><input value={docForm.linkedTo} onChange={e=>setDocForm(p=>({...p,linkedTo:e.target.value}))} placeholder="Unit 1, John Smith, Load #5678..." style={S.input}/></div>
-                  <div><label style={S.label}>File (optional, max 2MB)</label><input type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.csv,.xlsx" onChange={handleFileUpload} style={{...S.input,padding:"7px 14px"}}/></div>
+                  <div>
+                    <label style={S.label}>File (optional, max 2MB)</label>
+                    <input type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.csv,.xlsx" onChange={async(e)=>{
+                      handleFileUpload(e);
+                      // OCR: if it's an image/pdf, try to extract key fields using Claude
+                      const file = e.target.files?.[0];
+                      if(!file||(file.type!=="image/jpeg"&&file.type!=="image/png"&&file.type!=="application/pdf")) return;
+                      if(file.size > 2*1024*1024) return;
+                      try {
+                        const reader = new FileReader();
+                        reader.onload = async(ev) => {
+                          const base64 = ev.target.result.split(",")[1];
+                          const mediaType = file.type === "application/pdf" ? "application/pdf" : file.type;
+                          const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+                          if(!apiKey) return;
+                          const res = await fetch("https://api.anthropic.com/v1/messages", {
+                            method:"POST",
+                            headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+                            body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,messages:[{role:"user",content:[{type:mediaType==="application/pdf"?"document":"image",source:{type:"base64",media_type:mediaType,data:base64}},{type:"text",text:"Extract these fields from this document if present. Return ONLY a JSON object with these keys (null if not found): documentName, documentType (Rate Confirmation/BOL/Delivery Confirmation/Invoice/Other), date (YYYY-MM-DD), linkedTo (truck or driver name), referenceNumber, notes (any important info like load#, PO#, rate amount). No other text."}]}]})
+                          });
+                          const data = await res.json();
+                          try {
+                            const text = data.content?.[0]?.text || "{}";
+                            const parsed = JSON.parse(text.replace(/```json|```/g,"").trim());
+                            if(parsed.documentName) setDocForm(p=>({...p,name:parsed.documentName||p.name,type:parsed.documentType||p.type,date:parsed.date||p.date,linkedTo:parsed.linkedTo||p.linkedTo,fileName:file.name,notes:parsed.notes||p.notes}));
+                          } catch{}
+                        };
+                        reader.readAsDataURL(file);
+                      } catch{}
+                    }} style={{...S.input,padding:"7px 14px"}}/>
+                    <div style={{fontSize:9,color:"#444",marginTop:4}}>💡 Images and PDFs are automatically scanned to fill in document details</div>
+                  </div>
                   <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={docForm.notes} onChange={e=>setDocForm(p=>({...p,notes:e.target.value}))} placeholder="Confirmation #, broker contact, expiry..." style={S.input}/></div>
                 </div>
                 {docFileData&&<div style={{marginTop:8,fontSize:10,color:"#22c55e"}}>✓ {docFileData.name} ({(docFileData.size/1024).toFixed(0)}KB) — will be stored in browser</div>}
@@ -3689,6 +3767,34 @@ function ContractorOS() {
                 );})}
               </div>
             </div>
+            {/* Restore from backup */}
+            <div style={{...S.card,marginBottom:20,background:"#0a0f1a",border:"1px solid #1a1a3a"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8"}}>Restore from Backup</div>
+                  <div style={{fontSize:11,color:"#555",marginTop:4}}>Upload a previously exported JSON backup to restore all your data.</div>
+                </div>
+              </div>
+              <input type="file" accept=".json" onChange={async(e)=>{
+                const file = e.target.files[0];
+                if(!file) return;
+                try {
+                  const text = await file.text();
+                  const data = JSON.parse(text);
+                  if(!data.version?.includes("ContractorOS")) { alert("This doesn't look like a ContractorOS backup file."); return; }
+                  if(!window.confirm("Restore this backup? This will replace ALL current data. Make sure to export a backup of your current data first.")) return;
+                  // Restore each data slice
+                  const restoreMap = {revenue:setRevenue,expenses:setExpenses,drivers:setDrivers,vehicles:setVehicles,maintenance:setMaintenance,compliance:setCompliance,contracts:setContracts,incidents:setIncidents,brokers:setBrokers,loads:setLoads,routes:setRoutes,payroll:setPayroll,fuelLog:setFuelLog,invoices:setInvoices,odometer:setOdometer,tires:setTires,contacts:setContacts,dispatches:setDispatches,hosLog:setHosLog};
+                  Object.entries(restoreMap).forEach(([key,setter])=>{ if(data[key]) setter(data[key]); });
+                  if(data.settings) setSettings(data.settings);
+                  if(data.segment) setSegment(data.segment);
+                  alert("✓ Backup restored successfully! Your data has been updated.");
+                } catch(err) { alert("Failed to read backup file. Make sure it's a valid ContractorOS JSON export."); }
+                e.target.value = "";
+              }} style={{...S.input,padding:"8px 14px",cursor:"pointer"}}/>
+              <div style={{marginTop:8,fontSize:10,color:"#3a3a6a",lineHeight:1.7}}>⚠ Restoring a backup replaces all current data. Always export a fresh backup before restoring.</div>
+            </div>
+
             {/* Full backup */}
             <div style={{...S.card,marginBottom:20}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
