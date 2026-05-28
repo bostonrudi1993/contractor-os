@@ -237,7 +237,7 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
             </div>
           </div>
         </div>
-      </>)
+      )}
 
       {/* ══ FOOTER + BUG REPORT ════════════════════════════════════════ */}
       {showBugReport&&(
