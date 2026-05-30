@@ -422,12 +422,22 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
         </div>
       )}
 
+      {/* Validation Toast */}
+      {validationMsg&&(
+        <div style={{position:"fixed",bottom:80,left:"50%",transform:"translateX(-50%)",background:"#1a0808",border:"1px solid #ef444466",color:"#f87171",padding:"10px 20px",borderRadius:6,fontSize:11,zIndex:600,animation:"fadeUp 0.2s ease",whiteSpace:"nowrap",fontFamily:"'DM Mono',monospace",letterSpacing:"0.05em"}}>
+          ⚠ {validationMsg}
+        </div>
+      )}
+
       {/* App Footer */}
-      <div style={{flexShrink:0,borderTop:"2px solid #2a2a2a",background:"#111",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-        <div style={{fontSize:9,color:"#888",letterSpacing:"0.05em",lineHeight:1.8,maxWidth:760}}>© 2025–{new Date().getFullYear()} ContractorOS LLC. All rights reserved. ContractorOS LLC is a proprietary fleet management platform. Unauthorized reproduction, distribution, modification, or use of this software, its design, code, or content — in whole or in part — is strictly prohibited without express written permission. Built for independent contractors and fleet operators.</div>
-        <div style={{display:"flex",gap:16,alignItems:"center"}}>
-          <button onClick={()=>setShowBugReport(true)} style={{background:"transparent",border:"none",color:"#fff",fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em"}}>Report a Bug</button>
-          <a href="mailto:bostonrudi1993@gmail.com" style={{color:"#fff",fontSize:10,textDecoration:"none",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em"}}>Contact</a>
+      <div style={{flexShrink:0,borderTop:"2px solid #333",background:"#0d0d0d",padding:"16px 24px"}}>
+        <div style={{fontSize:10,color:"#ffffff",lineHeight:1.9,marginBottom:10}}>
+          © 2025–{new Date().getFullYear()} <strong>ContractorOS LLC</strong>. All rights reserved. ContractorOS LLC is a proprietary fleet management platform. Unauthorized reproduction, distribution, modification, or use of this software, its design, code, or content — in whole or in part — is strictly prohibited without express written permission. Built for independent contractors and fleet operators.
+        </div>
+        <div style={{display:"flex",gap:20,alignItems:"center"}}>
+          <button onClick={()=>setShowBugReport(true)} style={{background:"transparent",border:"1px solid #444",color:"#ffffff",fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em",padding:"4px 12px",borderRadius:4}}>Report a Bug</button>
+          <a href="mailto:bostonrudi1993@gmail.com" style={{color:"#ffffff",fontSize:10,textDecoration:"none",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em"}}>Contact Us</a>
+          <div style={{marginLeft:"auto",fontSize:9,color:"#555"}}>contractoroshub.com</div>
         </div>
       </div>
 
@@ -436,6 +446,38 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
 };
 
 // ════════════════════════════════════════════════════════════════════════
+// ── Error Boundary ────────────────────────────────────────────────────────────
+import React from "react";
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error("ContractorOS Error:", error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#0a0a0a",padding:24,flexDirection:"column",gap:16,fontFamily:"'DM Mono',monospace"}}>
+          <div style={{fontSize:32}}>⚠</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#e8e4d8"}}>Something went wrong</div>
+          <div style={{fontSize:12,color:"#555",textAlign:"center",maxWidth:400,lineHeight:1.8}}>
+            ContractorOS hit an unexpected error. Your data is safe — it's saved in the cloud.<br/>
+            Refresh the page to continue.
+          </div>
+          <div style={{fontSize:10,color:"#333",background:"#141414",border:"1px solid #2a2a2a",borderRadius:6,padding:"10px 16px",maxWidth:500,wordBreak:"break-all"}}>
+            {this.state.error?.message}
+          </div>
+          <button onClick={()=>window.location.reload()} style={{background:"#f59e0b",color:"#0a0a0a",border:"none",padding:"12px 28px",borderRadius:6,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,cursor:"pointer",letterSpacing:"0.05em"}}>
+            Refresh Page →
+          </button>
+          <button onClick={()=>this.setState({hasError:false,error:null})} style={{background:"transparent",border:"1px solid #2a2a2a",color:"#555",padding:"8px 20px",borderRadius:6,fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer"}}>
+            Try Without Refreshing
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // ── Auth wrapper — shown before the main app ─────────────────────────────────
 function AuthGate() {
   const { isLoaded: userLoaded, isSignedIn, user } = useUser();
@@ -526,7 +568,14 @@ function AuthGate() {
   return <ContractorOS />;
 }
 
-export default AuthGate;
+function AppWithErrorBoundary() {
+  return (
+    <ErrorBoundary>
+      <AuthGate />
+    </ErrorBoundary>
+  );
+}
+export default AppWithErrorBoundary;
 
 function ContractorOS() {
   const { organization } = useOrganization();
@@ -534,9 +583,48 @@ function ContractorOS() {
   const { signOut } = useClerk();
   // Use org ID as the data scope — all users in the same org share data
   const db = makeDb(organization?.id);
+
+  // Send Day 0 onboarding email on first login
+  useEffect(()=>{
+    if(!user) return;
+    const sentKey = `cos_onboard_email_${user.id}`;
+    if(localStorage.getItem(sentKey)) return;
+    const email = user.emailAddresses?.[0]?.emailAddress;
+    const name = user.firstName ? `${user.firstName} ${user.lastName||""}`.trim() : "";
+    if(!email) return;
+    localStorage.setItem(sentKey, "1");
+    fetch("/api/onboarding-email", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({email, name, day:0, companyName: organization?.name||""})
+    }).catch(()=>{}); // Fire and forget — don't block the app
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[user?.id]);
   const [segment, setSegment] = useState(() => { try { return localStorage.getItem("cos_segment_locked") || null; } catch { return null; } });
   const [onboardStep, setOnboardStep] = useState(0); // 0 = not started, 1-5 = steps, 6 = done
   const [onboardDismissed, setOnboardDismissed] = useState(() => { try { return localStorage.getItem("cos_onboard_done") === "1"; } catch { return false; } });
+
+  // Schedule Day 3 and Day 7 emails
+  useEffect(()=>{
+    if(!user) return;
+    const email = user.emailAddresses?.[0]?.emailAddress;
+    if(!email) return;
+    const signupDateKey = `cos_signup_date_${user.id}`;
+    if(!localStorage.getItem(signupDateKey)) {
+      localStorage.setItem(signupDateKey, Date.now().toString());
+    }
+    const signupDate = parseInt(localStorage.getItem(signupDateKey)||"0");
+    const daysSince = (Date.now() - signupDate) / (1000*60*60*24);
+    const sendEmail = (day) => {
+      const sentKey = `cos_onboard_email_day${day}_${user.id}`;
+      if(localStorage.getItem(sentKey)) return;
+      localStorage.setItem(sentKey,"1");
+      fetch("/api/onboarding-email",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,name:user.firstName||"",day,companyName:organization?.name||"",hasDrivers:drivers.length>0,hasTrucks:compliance?.trucks?.length>0})}).catch(()=>{});
+    };
+    if(daysSince >= 3) sendEmail(3);
+    if(daysSince >= 7) sendEmail(7);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[user?.id, drivers.length, compliance?.trucks?.length]);
   // Derive role from Clerk org membership
   // org:admin = owner, org:member with manager role = manager, else driver
   const clerkRole = organization?.membership?.role; // "org:admin" or "org:member"
@@ -686,6 +774,8 @@ function ContractorOS() {
   const [scorecardData, setScorecardData] = useState(() => { try { return JSON.parse(localStorage.getItem("cos_scorecard")||"[]"); } catch { return []; } });
   const [bugForm, setBugForm] = useState({subject:"",description:"",email:""});
   const [incidentFollowUpId, setIncidentFollowUpId] = useState(null);
+  const [validationMsg, setValidationMsg] = useState("");
+  const showValidation = (msg) => { setValidationMsg(msg); setTimeout(()=>setValidationMsg(""), 3000); };
   const [showOrgProfile, setShowOrgProfile] = useState(false);
 
   // Persist all state
@@ -1917,7 +2007,7 @@ function ContractorOS() {
                         <div key={f}><label style={S.label}>{lbl}</label><input type={ph==="date"?"date":"text"} value={vehicleForm[f]||""} onChange={e=>setVehicleForm(p=>({...p,[f]:e.target.value}))} placeholder={ph!=="date"?ph:""} style={S.input}/></div>
                       ))}
                     </div>
-                    <button className="hov" onClick={()=>{ if(!vehicleForm.name)return; setCompliance(p=>({...p,trucks:[...p.trucks,{...vehicleForm,id:Date.now()}]})); setVehicleForm({name:"",nickname:"",vin:"",year:"",make:"",plate:"",dotInspection:"",ifta:"",irp:"",registration:"",insuranceExpiry:""}); setShowAddVehicle(false); }} style={{...S.btn,marginTop:14}}>Save Vehicle</button>
+                    <button className="hov" onClick={()=>{ if(!vehicleForm.name){showValidation("Truck name is required");return;} setCompliance(p=>({...p,trucks:[...p.trucks,{...vehicleForm,id:Date.now()}]})); setVehicleForm({name:"",nickname:"",vin:"",year:"",make:"",plate:"",dotInspection:"",ifta:"",irp:"",registration:"",insuranceExpiry:""}); setShowAddVehicle(false); }} style={{...S.btn,marginTop:14}}>Save Vehicle</button>
                   </div>
                 )}
                 {compliance.trucks.length===0&&!showAddVehicle&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No vehicles added yet.</div>}
@@ -2062,7 +2152,7 @@ function ContractorOS() {
                         </select>
                       </div>
                     </div>
-                    <button className="hov" onClick={()=>{ if(!driverForm.name)return; setDrivers(p=>[...p,{...driverForm,id:Date.now(),incidents:[],scores:[]}]); setDriverForm({name:"",route:"",payType:"per_mile",payRate:"",ytdPay:"",phone:"",hireDate:"",status:"active"}); setShowAddDriver(false); }} style={{...S.btn,background:"#60a5fa",marginTop:14}}>Save Driver</button>
+                    <button className="hov" onClick={()=>{ if(!driverForm.name){showValidation("Driver name is required");return;} if(!driverForm.payRate){showValidation("Pay rate is required");return;} setDrivers(p=>[...p,{...driverForm,id:Date.now(),incidents:[],scores:[]}]); setDriverForm({name:"",route:"",payType:"per_mile",payRate:"",ytdPay:"",phone:"",hireDate:"",status:"active"}); setShowAddDriver(false); }} style={{...S.btn,background:"#60a5fa",marginTop:14}}>Save Driver</button>
                   </div>
                 )}
                 {drivers.length===0&&!showAddDriver&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No drivers added yet.</div>}
@@ -2603,7 +2693,7 @@ function ContractorOS() {
                   </div>
                   <div style={{gridColumn:"1/-1"}}><label style={S.label}>Key Notes / Performance Requirements</label><textarea value={contractForm.notes} onChange={e=>setContractForm(p=>({...p,notes:e.target.value}))} placeholder="Performance metrics, compliance requirements, escalation contacts..." style={{...S.input,height:80,resize:"vertical"}}/></div>
                 </div>
-                <button className="hov" onClick={()=>{ if(!contractForm.name)return; setContracts(p=>[...p,{...contractForm,id:Date.now()}]); setContractForm({name:"",company:"",startDate:"",renewalDate:"",value:"",status:"active",notes:""}); setShowAddContract(false); }} style={{...S.btn,background:"#8888cc",marginTop:14}}>Save Contract</button>
+                <button className="hov" onClick={()=>{ if(!contractForm.name){showValidation("Contract name is required");return;} setContracts(p=>[...p,{...contractForm,id:Date.now()}]); setContractForm({name:"",company:"",startDate:"",renewalDate:"",value:"",status:"active",notes:""}); setShowAddContract(false); }} style={{...S.btn,background:"#8888cc",marginTop:14}}>Save Contract</button>
               </div>
             )}
             {contracts.length===0&&!showAddContract&&(
@@ -2707,7 +2797,7 @@ function ContractorOS() {
                         </select>
                       </div>
                     </div>
-                    <button className="hov" onClick={()=>{ if(!revenueForm.amount)return; setRevenue(p=>[{...revenueForm,id:Date.now()},...p]); setRevenueForm({date:"",description:"",amount:"",vehicle:""}); setShowAddRevenue(false); }} style={{...S.btn,marginTop:14}}>Save Revenue</button>
+                    <button className="hov" onClick={()=>{ if(!revenueForm.amount){showValidation("Amount is required");return;} if(!revenueForm.date){showValidation("Date is required");return;} setRevenue(p=>[{...revenueForm,id:Date.now()},...p]); setRevenueForm({date:"",description:"",amount:"",vehicle:""}); setShowAddRevenue(false); }} style={{...S.btn,marginTop:14}}>Save Revenue</button>
                   </div>
                 )}
                 {revenue.length===0&&!showAddRevenue&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No revenue logged yet.</div>}
@@ -2748,7 +2838,7 @@ function ContractorOS() {
                       </div>
                       <div style={{gridColumn:"1/-1"}}><label style={S.label}>Description</label><input value={expenseForm.description} onChange={e=>setExpenseForm(p=>({...p,description:e.target.value}))} placeholder="Optional notes" style={S.input}/></div>
                     </div>
-                    <button className="hov" onClick={()=>{ if(!expenseForm.amount)return; setExpenses(p=>[{...expenseForm,id:Date.now()},...p]); setExpenseForm({date:"",category:"fuel",amount:"",description:"",vehicle:""}); setShowAddExpense(false); }} style={{...S.btn,background:"#ef4444",marginTop:14}}>Save Expense</button>
+                    <button className="hov" onClick={()=>{ if(!expenseForm.amount){showValidation("Amount is required");return;} if(!expenseForm.date){showValidation("Date is required");return;} setExpenses(p=>[{...expenseForm,id:Date.now()},...p]); setExpenseForm({date:"",category:"fuel",amount:"",description:"",vehicle:""}); setShowAddExpense(false); }} style={{...S.btn,background:"#ef4444",marginTop:14}}>Save Expense</button>
                   </div>
                 )}
                 {expenses.length===0&&!showAddExpense&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No expenses logged yet.</div>}
@@ -2986,7 +3076,7 @@ function ContractorOS() {
                       </div>
                       <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><textarea value={brokerForm.notes} onChange={e=>setBrokerForm(p=>({...p,notes:e.target.value}))} placeholder="Pay issues, good loads, contacts..." style={{...S.input,height:70,resize:"vertical"}}/></div>
                     </div>
-                    <button className="hov" onClick={()=>{ if(!brokerForm.name)return; setBrokers(p=>[...p,{...brokerForm,id:Date.now()}]); setBrokerForm({name:"",paySpeed:"",rating:3,notes:"",blacklisted:false}); setSubScreen("scores"); }} style={{...S.btn,marginTop:14}}>Save Broker</button>
+                    <button className="hov" onClick={()=>{ if(!brokerForm.name){showValidation("Broker name is required");return;} setBrokers(p=>[...p,{...brokerForm,id:Date.now()}]); setBrokerForm({name:"",paySpeed:"",rating:3,notes:"",blacklisted:false}); setSubScreen("scores"); }} style={{...S.btn,marginTop:14}}>Save Broker</button>
                   </div>
                 </div>
               )}
@@ -3533,7 +3623,7 @@ function ContractorOS() {
                       <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes (bonus, deduction, etc.)</label><input value={payrollForm.notes} onChange={e=>setPayrollForm(p=>({...p,notes:e.target.value}))} style={S.input}/></div>
                     </div>
                     <div style={{display:"flex",gap:10,marginTop:14}}>
-                      <button className="hov" onClick={()=>{if(!payrollForm.driverId)return;const d=drivers.find(x=>String(x.id)===String(payrollForm.driverId));if(!d)return;const{gross,breakdown}=calcRunPay(d,payrollForm);setPayrollPreview({driver:d,gross,breakdown});}} style={{...S.btn,background:"#6366f1"}}>Preview Pay</button>
+                      <button className="hov" onClick={()=>{if(!payrollForm.driverId){showValidation("Please select a driver");return;}const d=drivers.find(x=>String(x.id)===String(payrollForm.driverId));if(!d){showValidation("Driver not found");return;}const{gross,breakdown}=calcRunPay(d,payrollForm);setPayrollPreview({driver:d,gross,breakdown});}} style={{...S.btn,background:"#6366f1"}}>Preview Pay</button>
                       {payrollPreview&&<button className="hov" onClick={()=>{const d=drivers.find(x=>String(x.id)===String(payrollForm.driverId));if(!d)return;const{gross,breakdown}=calcRunPay(d,payrollForm);const run={id:Date.now(),driverId:d.id,driverName:d.name,periodStart:payrollForm.periodStart,periodEnd:payrollForm.periodEnd,gross,breakdown,notes:payrollForm.notes,date:new Date().toISOString().slice(0,10),payType:d.payType,payRate:d.payRate,status:"unpaid"};setPayroll(p=>[run,...p]);
                       setExpenses(p=>[{id:Date.now()+1,date:run.date,category:"driver_pay",amount:gross,description:`Pay — ${d.name}${payrollForm.periodStart?" ("+payrollForm.periodStart+(payrollForm.periodEnd?" → "+payrollForm.periodEnd:"")+")":" "}`,vehicle:"",source:"payroll"},...p]);
                       setPayrollForm({driverId:"",periodStart:"",periodEnd:"",miles:"",hours:"",stops:"",days:"",loadRevenue:"",manualAmount:"",notes:""});setPayrollPreview(null);setPayrollShowAdd(false);}} style={S.btn}>Save Pay Run</button>}
@@ -3713,7 +3803,7 @@ function ContractorOS() {
                     <div><label style={S.label}>Description / Load #</label><input value={invoiceForm.description} onChange={e=>setInvoiceForm(p=>({...p,description:e.target.value}))} placeholder="Load ref, route, BOL #..." style={S.input}/></div>
                     <div><label style={S.label}>Notes</label><input value={invoiceForm.notes} onChange={e=>setInvoiceForm(p=>({...p,notes:e.target.value}))} placeholder="Payment terms, PO #..." style={S.input}/></div>
                   </div>
-                  <button className="hov" onClick={()=>{if(!invoiceForm.clientName||!invoiceForm.amount)return;setInvoices(p=>[{...invoiceForm,id:Date.now(),invoiceNum:invoiceForm.invoiceNum||nextNum(),createdDate:new Date().toISOString().slice(0,10)},...p]);setInvoiceForm({invoiceNum:"",clientName:"",amount:"",issueDate:"",dueDate:"",description:"",status:"open",notes:""});setInvoiceShowAdd(false);}} style={{...S.btn,marginTop:14}}>Save Invoice</button>
+                  <button className="hov" onClick={()=>{if(!invoiceForm.clientName){showValidation("Client name is required");return;}if(!invoiceForm.amount){showValidation("Amount is required");return;}setInvoices(p=>[{...invoiceForm,id:Date.now(),invoiceNum:invoiceForm.invoiceNum||nextNum(),createdDate:new Date().toISOString().slice(0,10)},...p]);setInvoiceForm({invoiceNum:"",clientName:"",amount:"",issueDate:"",dueDate:"",description:"",status:"open",notes:""});setInvoiceShowAdd(false);}} style={{...S.btn,marginTop:14}}>Save Invoice</button>
                 </div>
               )}
               {shown.length===0&&!invoiceShowAdd&&<div style={{...S.card,textAlign:"center",color:invoiceSub==="open"?"#22c55e":"#555",fontSize:12,padding:40}}>{invoiceSub==="open"?"✓ No open invoices — all caught up!":"No invoices in this category."}</div>}
@@ -3761,7 +3851,6 @@ function ContractorOS() {
                       </div>
                     )}
                   </div>
-                  )}
                 );})}
               </div>
             </div>
@@ -3793,7 +3882,7 @@ function ContractorOS() {
                   {(contactForm.type==="Broker"||contactForm.type==="Client")&&<><div><label style={S.label}>Pay Speed (days)</label><input type="number" value={contactForm.paySpeed} onChange={e=>setContactForm(p=>({...p,paySpeed:e.target.value}))} placeholder="30" style={S.input}/></div><div><label style={S.label}>Rating (1–5)</label><input type="number" min={1} max={5} value={contactForm.rating} onChange={e=>setContactForm(p=>({...p,rating:e.target.value}))} placeholder="5" style={S.input}/></div></>}
                   <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><textarea value={contactForm.notes} onChange={e=>setContactForm(p=>({...p,notes:e.target.value}))} placeholder="Payment terms, dock hours, store code..." style={{...S.input,height:70,resize:"vertical"}}/></div>
                 </div>
-                <button className="hov" onClick={()=>{if(!contactForm.name)return;setContacts(p=>[{...contactForm,id:Date.now(),createdDate:new Date().toISOString().slice(0,10)},...p]);setContactForm({name:"",company:"",type:"Client",phone:"",email:"",address:"",notes:"",paySpeed:"",rating:""});setContactShowAdd(false);}} style={{...S.btn,marginTop:14}}>Save Contact</button>
+                <button className="hov" onClick={()=>{if(!contactForm.name){showValidation("Contact name is required");return;}setContacts(p=>[{...contactForm,id:Date.now(),createdDate:new Date().toISOString().slice(0,10)},...p]);setContactForm({name:"",company:"",type:"Client",phone:"",email:"",address:"",notes:"",paySpeed:"",rating:""});setContactShowAdd(false);}} style={{...S.btn,marginTop:14}}>Save Contact</button>
               </div>
             )}
             <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap"}}>
@@ -3887,7 +3976,7 @@ function ContractorOS() {
                   <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={docForm.notes} onChange={e=>setDocForm(p=>({...p,notes:e.target.value}))} placeholder="Confirmation #, broker contact, expiry..." style={S.input}/></div>
                 </div>
                 {docFileData&&<div style={{marginTop:8,fontSize:10,color:"#22c55e"}}>✓ {docFileData.name} ({(docFileData.size/1024).toFixed(0)}KB) — will be stored in browser</div>}
-                <button className="hov" onClick={()=>{if(!docForm.name)return;const doc={...docForm,id:Date.now(),createdDate:new Date().toISOString().slice(0,10),fileData:docFileData?.dataUrl||null,fileSize:docFileData?.size||null};setDocuments(p=>[doc,...p]);setDocForm({name:"",type:"Rate Confirmation",date:"",linkedTo:"",notes:"",fileName:""});setDocFileData(null);setDocShowAdd(false);}} style={{...S.btn,marginTop:14}}>Save Document</button>
+                <button className="hov" onClick={()=>{if(!docForm.name){showValidation("Document name is required");return;}const doc={...docForm,id:Date.now(),createdDate:new Date().toISOString().slice(0,10),fileData:docFileData?.dataUrl||null,fileSize:docFileData?.size||null};setDocuments(p=>[doc,...p]);setDocForm({name:"",type:"Rate Confirmation",date:"",linkedTo:"",notes:"",fileName:""});setDocFileData(null);setDocShowAdd(false);}} style={{...S.btn,marginTop:14}}>Save Document</button>
               </div>
             )}
             <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
