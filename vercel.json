@@ -1,6 +1,28 @@
 {
   "rewrites": [
-    { "source": "/app", "destination": "/app.html" },
-    { "source": "/app/(.*)", "destination": "/app.html" }
+    {
+      "source": "/app",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/app/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/sign-in",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/sign-in/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/sign-up",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/sign-up/:path*",
+      "destination": "/app.html"
+    }
   ]
 }
