@@ -569,6 +569,8 @@ function ContractorOS() {
   const [segment, setSegment] = useState(() => { try { return localStorage.getItem("cos_segment_locked") || null; } catch { return null; } });
   const [onboardStep, setOnboardStep] = useState(0); // 0 = not started, 1-5 = steps, 6 = done
   const [onboardDismissed, setOnboardDismissed] = useState(() => { try { return localStorage.getItem("cos_onboard_done") === "1"; } catch { return false; } });
+  const [compliance, setCompliance] = useState({trucks:[],drivers:[]});
+  const [drivers, setDrivers] = useState([]);
 
   // Schedule Day 3 and Day 7 emails
   useEffect(()=>{
@@ -601,9 +603,7 @@ function ContractorOS() {
   const [screen, setScreen] = useState("dashboard");
   const [navOpen, setNavOpen] = useState(false);
   const [settings, setSettings] = useState({mpg:8,dieselPrice:3.85,cpm:0.18,homeBase:"",companyName:""});
-  const [compliance, setCompliance] = useState({trucks:[],drivers:[]});
   const [vehicles, setVehicles] = useState([]);
-  const [drivers, setDrivers] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [revenue, setRevenue] = useState([]);
