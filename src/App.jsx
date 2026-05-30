@@ -524,7 +524,7 @@ function AuthGate() {
           ) : null}
           <CreateOrganization
             routing="virtual"
-            afterCreateOrganizationUrl="/"
+            afterCreateOrganizationUrl="/app"
             appearance={{
               elements: {
                 rootBox: { width: "100%" },
