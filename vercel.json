@@ -1,8 +1,28 @@
 {
-  "rewrites": [
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "^/$",
+      "dest": "/landing.html"
+    },
+    {
+      "src": "^/app$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/app/(.*)$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "^/(.*\\.(js|css|png|jpg|svg|ico|json|woff|woff2|ttf))",
+      "dest": "/$1"
+    },
+    {
+      "src": "^/(.*)",
+      "dest": "/index.html"
     }
   ]
 }

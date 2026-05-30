@@ -477,12 +477,12 @@ function AuthGate() {
       {authView === "signin"
         ? <SignIn
           routing="virtual"
-          afterSignInUrl="/"
+          afterSignInUrl="/app"
           appearance={{elements:{rootBox:{width:"100%",maxWidth:400}}}}
         />
         : <SignUp
           routing="virtual"
-          afterSignUpUrl="/"
+          afterSignUpUrl="/app"
           appearance={{elements:{rootBox:{width:"100%",maxWidth:400}}}}
         />
       }
