@@ -1,36 +1,8 @@
 {
-  "routes": [
+  "rewrites": [
     {
-      "src": "^/$",
-      "dest": "/landing.html"
-    },
-    {
-      "src": "^/app$",
-      "dest": "/index.html"
-    },
-    {
-      "src": "^/app/(.*)$",
-      "dest": "/index.html"
-    },
-    {
-      "src": "^/sign-in(.*)$",
-      "dest": "/index.html"
-    },
-    {
-      "src": "^/sign-up(.*)$",
-      "dest": "/index.html"
-    },
-    {
-      "src": "^/assets/(.*)",
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "^/(.*\\.(js|css|png|jpg|svg|ico|json|woff|woff2|ttf))",
-      "dest": "/$1"
-    },
-    {
-      "src": "^/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }

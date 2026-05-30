@@ -455,7 +455,7 @@ function AuthGate() {
   const { isLoaded: userLoaded, isSignedIn, user } = useUser();
   const { organization, isLoaded: orgLoaded } = useOrganization();
   const { userMemberships, isLoaded: listLoaded } = useOrganizationList({ userMemberships: true });
-  const [authView, setAuthView] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("signup") === "1" ? "signup" : "signin"); // signin | signup | create_org | select_org
+  const [authView, setAuthView] = useState(() => { try { return new URLSearchParams(window.location.search).get("signup") === "1" ? "signup" : "signin"; } catch { return "signin"; } }); // signin | signup | create_org | select_org
 
   if (!userLoaded) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#0a0a0a",flexDirection:"column",gap:16}}>
@@ -464,7 +464,7 @@ function AuthGate() {
     </div>
   );
 
-  // Not signed in — show sign in / sign up
+  // Not signed in — show login page (dark themed, matches app)
   if (!isSignedIn) return (
     <div style={{minHeight:"100vh",background:"#0a0a0a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20}}>
       <div style={{marginBottom:24,textAlign:"center"}}>
@@ -472,16 +472,17 @@ function AuthGate() {
           CONTRACTOR<span style={{color:"#f59e0b"}}>OS</span>
         </div>
         <div style={{fontSize:11,color:"#555",marginTop:4,letterSpacing:"0.15em",textTransform:"uppercase"}}>Fleet Operating System</div>
+        <a href="/landing.html" style={{display:"block",marginTop:8,fontSize:10,color:"#444",textDecoration:"none",fontFamily:"'DM Mono',monospace"}}>← Back to home</a>
       </div>
       {authView === "signin"
         ? <SignIn
           routing="virtual"
-          afterSignInUrl="/app"
+          afterSignInUrl="/"
           appearance={{elements:{rootBox:{width:"100%",maxWidth:400}}}}
         />
         : <SignUp
           routing="virtual"
-          afterSignUpUrl="/app"
+          afterSignUpUrl="/"
           appearance={{elements:{rootBox:{width:"100%",maxWidth:400}}}}
         />
       }
