@@ -1,28 +1,24 @@
 {
   "rewrites": [
     {
+      "source": "/",
+      "destination": "/landing.html"
+    },
+    {
       "source": "/app",
-      "destination": "/app.html"
+      "destination": "/index.html"
     },
     {
       "source": "/app/:path*",
-      "destination": "/app.html"
-    },
-    {
-      "source": "/sign-in",
-      "destination": "/app.html"
+      "destination": "/index.html"
     },
     {
       "source": "/sign-in/:path*",
-      "destination": "/app.html"
-    },
-    {
-      "source": "/sign-up",
-      "destination": "/app.html"
+      "destination": "/index.html"
     },
     {
       "source": "/sign-up/:path*",
-      "destination": "/app.html"
+      "destination": "/index.html"
     }
   ]
 }
