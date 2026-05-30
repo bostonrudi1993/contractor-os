@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { makeDb } from "./supabase.js";
 import {
   useUser,
@@ -447,7 +447,6 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
 
 // ════════════════════════════════════════════════════════════════════════
 // ── Error Boundary ────────────────────────────────────────────────────────────
-import React from "react";
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null }; }
   static getDerivedStateFromError(error) { return { hasError: true, error }; }
@@ -465,7 +464,7 @@ class ErrorBoundary extends React.Component {
           <div style={{fontSize:10,color:"#333",background:"#141414",border:"1px solid #2a2a2a",borderRadius:6,padding:"10px 16px",maxWidth:500,wordBreak:"break-all"}}>
             {this.state.error?.message}
           </div>
-          <button onClick={()=>window.location.reload()} style={{background:"#f59e0b",color:"#0a0a0a",border:"none",padding:"12px 28px",borderRadius:6,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,cursor:"pointer",letterSpacing:"0.05em"}}>
+          <button onClick={()=>{window.location.href=window.location.href;}} style={{background:"#f59e0b",color:"#0a0a0a",border:"none",padding:"12px 28px",borderRadius:6,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,cursor:"pointer",letterSpacing:"0.05em"}}>
             Refresh Page →
           </button>
           <button onClick={()=>this.setState({hasError:false,error:null})} style={{background:"transparent",border:"1px solid #2a2a2a",color:"#555",padding:"8px 20px",borderRadius:6,fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer"}}>
@@ -483,7 +482,7 @@ function AuthGate() {
   const { isLoaded: userLoaded, isSignedIn, user } = useUser();
   const { organization, isLoaded: orgLoaded } = useOrganization();
   const { userMemberships, isLoaded: listLoaded } = useOrganizationList({ userMemberships: true });
-  const [authView, setAuthView] = useState("signin"); // signin | signup | create_org | select_org
+  const [authView, setAuthView] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("signup") === "1" ? "signup" : "signin"); // signin | signup | create_org | select_org
 
   if (!userLoaded) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#0a0a0a",flexDirection:"column",gap:16}}>
@@ -504,12 +503,12 @@ function AuthGate() {
       {authView === "signin"
         ? <SignIn
           routing="virtual"
-          afterSignInUrl="/"
+          afterSignInUrl="/app"
           appearance={{elements:{rootBox:{width:"100%",maxWidth:400}}}}
         />
         : <SignUp
           routing="virtual"
-          afterSignUpUrl="/"
+          afterSignUpUrl="/app"
           appearance={{elements:{rootBox:{width:"100%",maxWidth:400}}}}
         />
       }
