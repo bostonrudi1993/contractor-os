@@ -4,35 +4,28 @@ import {
 
 // ════════════════════════════════════════════════════════════════════════
 // ── Error Boundary ────────────────────────────────────────────────────────────
-class ErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
-  static getDerivedStateFromError(error) { return { hasError: true, error }; }
-  componentDidCatch(error, info) { console.error("ContractorOS Error:", error, info); }
-  render() {
-    if (this.state.hasError) {
+// Simple error boundary using React.Component (required for getDerivedStateFromError)
+const ErrorBoundary = (() => {
+  class EB extends React.Component {
+    constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+    static getDerivedStateFromError(err) { return { hasError: true, error: err }; }
+    componentDidCatch(err, info) { console.error("ContractorOS:", err, info); }
+    render() {
+      if (!this.state.hasError) return this.props.children;
       return (
         <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#0a0a0a",padding:24,flexDirection:"column",gap:16,fontFamily:"'DM Mono',monospace"}}>
           <div style={{fontSize:32}}>⚠</div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#e8e4d8"}}>Something went wrong</div>
-          <div style={{fontSize:12,color:"#555",textAlign:"center",maxWidth:400,lineHeight:1.8}}>
-            ContractorOS hit an unexpected error. Your data is safe — it's saved in the cloud.<br/>
-            Refresh the page to continue.
-          </div>
-          <div style={{fontSize:10,color:"#333",background:"#141414",border:"1px solid #2a2a2a",borderRadius:6,padding:"10px 16px",maxWidth:500,wordBreak:"break-all"}}>
-            {this.state.error?.message}
-          </div>
-          <button onClick={()=>{window.location.href=window.location.href;}} style={{background:"#f59e0b",color:"#0a0a0a",border:"none",padding:"12px 28px",borderRadius:6,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,cursor:"pointer",letterSpacing:"0.05em"}}>
-            Refresh Page →
-          </button>
-          <button onClick={()=>this.setState({hasError:false,error:null})} style={{background:"transparent",border:"1px solid #2a2a2a",color:"#555",padding:"8px 20px",borderRadius:6,fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer"}}>
-            Try Without Refreshing
-          </button>
+          <div style={{fontSize:12,color:"#555",textAlign:"center",maxWidth:400,lineHeight:1.8}}>ContractorOS hit an unexpected error. Your data is safe — it's saved in the cloud.<br/>Refresh the page to continue.</div>
+          <div style={{fontSize:10,color:"#444",background:"#141414",border:"1px solid #2a2a2a",borderRadius:6,padding:"10px 16px",maxWidth:500,wordBreak:"break-all"}}>{this.state.error?.message}</div>
+          <button onClick={()=>window.location.reload()} style={{background:"#f59e0b",color:"#0a0a0a",border:"none",padding:"12px 28px",borderRadius:6,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,cursor:"pointer"}}>Refresh Page →</button>
+          <button onClick={()=>this.setState({hasError:false,error:null})} style={{background:"transparent",border:"1px solid #2a2a2a",color:"#555",padding:"8px 20px",borderRadius:6,fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer"}}>Try Without Refreshing</button>
         </div>
       );
     }
-    return this.props.children;
   }
-}
+  return EB;
+})();
 
   useUser,
   useOrganization,
