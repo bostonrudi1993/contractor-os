@@ -3571,7 +3571,7 @@ function ContractorOS() {
                 {Object.values(SEGMENTS).map(s=>(
                   <div key={s.id} style={{background:segment===s.id?s.color+"22":"#0f0f0f",border:`1px solid ${segment===s.id?s.color+"44":"#1e1e1e"}`,borderRadius:6,padding:"10px 14px",textAlign:"left",color:segment===s.id?s.color:"#666",fontSize:11,fontFamily:"'DM Mono',monospace"}}>
                     {s.icon} {s.label}
-                  </button>
+                  </div>
                 ))}
               </div>
             </div>
