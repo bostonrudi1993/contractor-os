@@ -3759,14 +3759,29 @@ function ContractorOS() {
             <div style={{...S.card,marginBottom:16}}>
               <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Contractor Type</div>
               <div style={{fontSize:11,color:"#888",marginBottom:12}}>Currently: {seg.icon} {seg.label}</div>
-              <div style={{fontSize:10,color:"#555",marginBottom:10,lineHeight:1.7}}>Contractor type is locked after initial setup to prevent accidental data changes. Contact support to change it.</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                {Object.values(SEGMENTS).map(s=>(
-                  <div key={s.id} style={{background:segment===s.id?s.color+"22":"#0f0f0f",border:`1px solid ${segment===s.id?s.color+"44":"#1e1e1e"}`,borderRadius:6,padding:"10px 14px",textAlign:"left",color:segment===s.id?s.color:"#666",fontSize:11,fontFamily:"'DM Mono',monospace"}}>
-                    {s.icon} {s.label}
+              {user?.emailAddresses?.[0]?.emailAddress==="bostonrudi1993@gmail.com"?(
+                <>
+                  <div style={{fontSize:10,color:"#f59e0b",marginBottom:10,lineHeight:1.7}}>👑 Site Admin — click any type to switch</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                    {Object.values(SEGMENTS).map(s=>(
+                      <button key={s.id} className="hov" onClick={()=>{setSegment(s.id);localStorage.setItem("cos_segment_locked",s.id);setScreen("dashboard");showValidation(`Switched to ${s.label}`);}} style={{background:segment===s.id?s.color+"22":"#0f0f0f",border:`1px solid ${segment===s.id?s.color+"44":"#1e1e1e"}`,borderRadius:6,padding:"10px 14px",textAlign:"left",color:segment===s.id?s.color:"#888",fontSize:11,fontFamily:"'DM Mono',monospace",cursor:"pointer"}}>
+                        {s.icon} {s.label}
+                      </button>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              ):(
+                <>
+                  <div style={{fontSize:10,color:"#555",marginBottom:10,lineHeight:1.7}}>Contractor type is locked after initial setup to prevent accidental data changes. Contact support to change it.</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                    {Object.values(SEGMENTS).map(s=>(
+                      <div key={s.id} style={{background:segment===s.id?s.color+"22":"#0f0f0f",border:`1px solid ${segment===s.id?s.color+"44":"#1e1e1e"}`,borderRadius:6,padding:"10px 14px",textAlign:"left",color:segment===s.id?s.color:"#666",fontSize:11,fontFamily:"'DM Mono',monospace"}}>
+                        {s.icon} {s.label}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
             <div style={{padding:"12px 16px",background:"#0d0d14",border:"1px solid #1a1a2a",borderRadius:6}}>
               <div style={{fontSize:9,color:"#3a3a6a",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:4}}>Auto-Saved</div>
