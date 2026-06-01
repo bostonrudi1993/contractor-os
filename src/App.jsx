@@ -27,6 +27,7 @@ const KEYS = {
   payroll: "cos_payroll", fuelLog: "cos_fuel_log", invoices: "cos_invoices",
   odometer: "cos_odometer", tires: "cos_tires", documents: "cos_documents",
   dispatches: "cos_dispatches", contacts: "cos_contacts", hosLog: "cos_hos_log",
+  settlements: "cos_settlements",
 };
 const stor = { get: (k,fb) => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):fb; } catch { return fb; } }, set: (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch {} } };
 
@@ -48,7 +49,7 @@ const SEGMENTS = {
     id: "otr", label: "OTR / Owner Operator", icon: "🚛",
     tagline: "Load board hauling with your own authority",
     color: "#f59e0b", darkColor: "#92400e",
-    nav: ["dashboard","analyze","boards","compliance","brokers","fleet","finance","payroll","invoices","dispatch","contacts","documents","reports","trends","users","settings","fmcsa","data"],
+    nav: ["dashboard","analyze","settlements","boards","compliance","brokers","fleet","finance","payroll","invoices","dispatch","contacts","documents","reports","trends","users","settings","fmcsa","data"],
     features: { loadAnalysis:true, brokerScorecard:true, loadBoards:true, routeProfit:false, contractTracker:false, dspMetrics:false, stopMetrics:false },
   },
   fedex: {
@@ -725,6 +726,15 @@ function ContractorOS() {
   const [bugForm, setBugForm] = useState({subject:"",description:"",email:""});
   const [incidentFollowUpId, setIncidentFollowUpId] = useState(null);
   const [validationMsg, setValidationMsg] = useState("");
+  // OTR Settlements
+  const [settlements, setSettlements] = useState([]);
+  const [settlementSub, setSettlementSub] = useState("outstanding");
+  const [settlementShowAdd, setSettlementShowAdd] = useState(false);
+  const [settlementForm, setSettlementForm] = useState({loadNum:"",broker:"",origin:"",destination:"",miles:"",rate:"",invoiceDate:"",podSubmitted:false,factoringUsed:false,factoringFee:"",paidDate:"",detentionHours:"",detentionRate:"65",notes:""});
+  // OTR Load Calculator
+  const [calcForm, setCalcForm] = useState({origin:"",destination:"",miles:"",offeredRate:"",deadheadMiles:"",commodity:"",brokerName:"",detention:"0"});
+  const [calcResult, setCalcResult] = useState(null);
+  const [taxReservePct, setTaxReservePct] = useState(()=>{try{return localStorage.getItem("cos_tax_reserve_pct")||"27";}catch{return "27";}});
   const showValidation = (msg) => { setValidationMsg(msg); setTimeout(()=>setValidationMsg(""), 3000); };
   const [showOrgProfile, setShowOrgProfile] = useState(false);
 
@@ -743,7 +753,7 @@ function ContractorOS() {
         _compliance, _vehicles, _drivers, _maintenance, _expenses, _revenue,
         _routes, _contracts, _incidents, _brokers, _loads, _users, _currentUser,
         _notifications, _filings, _payroll, _fuelLog, _invoices, _odometer,
-        _tires, _documents, _dispatches, _contacts, _hosLog,
+        _tires, _documents, _dispatches, _contacts, _hosLog, _settlements,
       ] = await Promise.all([
         db.get(D.compliance,  {trucks:[],drivers:[]}),
         db.get(D.vehicles,    []),
@@ -769,6 +779,7 @@ function ContractorOS() {
         db.get(D.dispatches,  []),
         db.get(D.contacts,    []),
         db.get(D.hosLog,      []),
+        db.get(D.settlements, []),
       ]);
       if(cancelled) return;
       setCompliance(_compliance);
@@ -801,6 +812,7 @@ function ContractorOS() {
       setDispatches(_dispatches);
       setContacts(_contacts);
       setHosLog(_hosLog);
+      setSettlements(_settlements||[]);
       setDbLoaded(true);
     })();
     return ()=>{ cancelled=true; };
@@ -832,6 +844,7 @@ function ContractorOS() {
   useEffect(()=>{if(dbLoaded)db.set(KEYS.dispatches,dispatches);},[dispatches,dbLoaded]);
   useEffect(()=>{if(dbLoaded)db.set(KEYS.contacts,contacts);},[contacts,dbLoaded]);
   useEffect(()=>{if(dbLoaded)db.set(KEYS.hosLog,hosLog);},[hosLog,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.settlements,settlements);},[settlements,dbLoaded]);
 
   const seg = segment ? SEGMENTS[segment] : null;
   const S = seg ? mkStyles(seg.color) : mkStyles("#f59e0b");
@@ -1235,7 +1248,7 @@ function ContractorOS() {
   }
 
   // ── SHARED COMPONENTS ──────────────────────────────────────────────
-  const navLabels = {dashboard:"Dashboard",analyze:"Analyze Load",boards:"Load Boards",compliance:"Compliance",brokers:"Brokers",fleet:"Fleet",finance:"Finance",routes:"Routes",drivers:"Drivers",contracts:"Contracts",reports:"Reports",trends:"P&L Trends",users:"Users",settings:"Settings",payroll:"Payroll",invoices:"Invoices",dispatch:"Dispatch",contacts:"Contacts",documents:"Documents",data:"Data & Backup",fmcsa:"FMCSA Lookup",scorecard:"Scorecard"};
+  const navLabels = {dashboard:"Dashboard",analyze:"Analyze Load",settlements:"Settlements",boards:"Load Boards",compliance:"Compliance",brokers:"Brokers",fleet:"Fleet",finance:"Finance",routes:"Routes",drivers:"Drivers",contracts:"Contracts",reports:"Reports",trends:"P&L Trends",users:"Users",settings:"Settings",payroll:"Payroll",invoices:"Invoices",dispatch:"Dispatch",contacts:"Contacts",documents:"Documents",data:"Data & Backup",fmcsa:"FMCSA Lookup",scorecard:"Scorecard"};
   const SubNav = ({tabs,active,onSelect}) => <SubNavComp tabs={tabs} active={active} accent={accent} onSelect={onSelect}/>;
   const Stat = ({label,value,color,sub}) => <StatCard label={label} value={value} color={color||accent} sub={sub} card={S.card}/>;
   const ExpiryBadge = ({label,days}) => <ExpiryBadgeComp label={label} days={days}/>;
@@ -1529,10 +1542,271 @@ function ContractorOS() {
 
       {/* ══ OTR: ANALYZE LOAD ══════════════════════════════════════════ */}
       {screen==="analyze"&&seg.features.loadAnalysis&&(
-        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:40}}>
-          <div style={{textAlign:"center",maxWidth:400}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:48,fontWeight:900,color:"#1e1e1e",letterSpacing:"0.05em",marginBottom:12}}>COMING SOON</div>
-            <div style={{fontSize:13,color:"#555",lineHeight:1.9}}>Load analysis is under development and will be available in an upcoming update.</div>
+        <div style={{flex:1,overflowY:"auto",padding:24}}>
+          <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+            <div style={{...S.section,marginBottom:4}}>LOAD PROFITABILITY CALCULATOR</div>
+            <p style={{fontSize:11,color:"#555",marginBottom:20,lineHeight:1.8}}>Enter load details to calculate true net RPM and decide whether to take it. Uses your truck MPG and diesel price from Settings.</p>
+            <div style={{...S.card,marginBottom:20}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+                {[["origin","Origin","Chicago, IL"],["destination","Destination","Nashville, TN"],["miles","Loaded Miles","487"],["deadheadMiles","Deadhead Miles","0"],["offeredRate","Offered Rate ($)","1450"],["commodity","Commodity","General freight"],["brokerName","Broker","Coyote Logistics"],["detention","Detention Hours (if any)","0"]].map(([f,lbl,ph])=>(
+                  <div key={f}>
+                    <label style={S.label}>{lbl}</label>
+                    <input value={calcForm[f]} onChange={e=>setCalcForm(p=>({...p,[f]:e.target.value}))} placeholder={ph} style={S.input} type={["miles","deadheadMiles","offeredRate","detention"].includes(f)?"number":"text"}/>
+                  </div>
+                ))}
+              </div>
+              <button className="hov" onClick={()=>{
+                const miles=parseFloat(calcForm.miles)||0;
+                const dead=parseFloat(calcForm.deadheadMiles)||0;
+                const rate=parseFloat(calcForm.offeredRate)||0;
+                const detention=parseFloat(calcForm.detention)||0;
+                const totalMiles=miles+dead;
+                const fuelCost=(totalMiles/parseFloat(settings.mpg||8))*parseFloat(settings.dieselPrice||3.85);
+                const cpmCost=totalMiles*parseFloat(settings.cpm||0.18);
+                const detentionPay=detention*65;
+                const grossRate=rate+detentionPay;
+                const totalCost=fuelCost+cpmCost;
+                const netRevenue=grossRate-totalCost;
+                const netRPM=miles>0?netRevenue/miles:0;
+                const grossRPM=miles>0?grossRate/miles:0;
+                const grade=netRPM>=1.8?"A":netRPM>=1.4?"B":netRPM>=1.0?"C":"D";
+                const verdict=netRPM>=1.8?"TAKE IT":netRPM>=1.4?"SOLID LOAD":netRPM>=1.0?"MARGINAL":"PASS";
+                const vColor=netRPM>=1.4?"green":netRPM>=1.0?"yellow":"red";
+                setCalcResult({miles,dead,rate,fuelCost,cpmCost,detentionPay,grossRate,totalCost,netRevenue,netRPM,grossRPM,grade,verdict,vColor});
+              }} disabled={!calcForm.miles||!calcForm.offeredRate} style={{...S.btn,opacity:calcForm.miles&&calcForm.offeredRate?1:0.4}}>Calculate →</button>
+            </div>
+            {calcResult&&(()=>{
+              const vBg={green:"#051a0a",yellow:"#1a1505",red:"#1a0505"};
+              const vBd={green:"#0d3a1a",yellow:"#3a2a0a",red:"#3a0a0a"};
+              const gc={A:"#22c55e",B:"#84cc16",C:"#f59e0b",D:"#ef4444"};
+              return (
+                <div style={{animation:"fadeUp 0.3s ease"}}>
+                  <div style={{background:vBg[calcResult.vColor]||"#111",border:`1px solid ${vBd[calcResult.vColor]||"#222"}`,borderRadius:8,padding:"20px 24px",display:"flex",alignItems:"center",gap:20,marginBottom:16}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:64,fontWeight:900,color:gc[calcResult.grade]||"#555",lineHeight:1}}>{calcResult.grade}</div>
+                    <div style={{flex:1}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:calcResult.vColor==="green"?"#22c55e":calcResult.vColor==="yellow"?"#f59e0b":"#ef4444"}}>{calcResult.verdict}</div>
+                      <div style={{fontSize:11,color:"#666",marginTop:4}}>{calcForm.origin&&calcForm.destination?`${calcForm.origin} → ${calcForm.destination} · `:""}{calcResult.miles} loaded mi + {calcResult.dead} dead mi{calcForm.brokerName?` · ${calcForm.brokerName}`:""}</div>
+                    </div>
+                    <div style={{textAlign:"right",flexShrink:0}}>
+                      <div style={{fontSize:9,color:"#555",marginBottom:2,textTransform:"uppercase",letterSpacing:"0.1em"}}>Net RPM</div>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:36,fontWeight:900,color:calcResult.vColor==="green"?"#22c55e":calcResult.vColor==="yellow"?"#f59e0b":"#ef4444"}}>${calcResult.netRPM.toFixed(2)}</div>
+                    </div>
+                  </div>
+                  <div style={{...S.card,marginBottom:14}}>
+                    <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>Rate Breakdown</div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+                      {[["Offered Rate",`$${calcResult.rate.toFixed(2)}`,"#c8c4bc"],["Gross RPM",`$${calcResult.grossRPM.toFixed(2)}/mi`,"#c8c4bc"],["Fuel Cost",`-$${calcResult.fuelCost.toFixed(2)}`,"#ef4444"],["Truck CPM",`-$${calcResult.cpmCost.toFixed(2)}`,"#ef4444"],["Detention Pay",calcResult.detentionPay>0?`+$${calcResult.detentionPay.toFixed(2)}`:"$0.00","#22c55e"],["Net Revenue",`$${calcResult.netRevenue.toFixed(2)}`,calcResult.netRevenue>0?"#22c55e":"#ef4444"]].map(([lbl,val,col])=>(
+                        <div key={lbl} style={{padding:"8px 0",borderTop:"1px solid #1e1e1e"}}>
+                          <div style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{lbl}</div>
+                          <div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{val}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{...S.card,marginBottom:14,background:"#0a0f1a",border:"1px solid #1a1a3a"}}>
+                    <div style={{fontSize:11,color:"#888",lineHeight:1.8}}>
+                      <strong style={{color:"#c8c4bc"}}>Break-even rate:</strong> ${((calcResult.fuelCost+calcResult.cpmCost)/Math.max(calcResult.miles,1)).toFixed(2)}/mi · ${(calcResult.fuelCost+calcResult.cpmCost).toFixed(2)} total
+                    </div>
+                    <div style={{fontSize:10,color:"#555",marginTop:4,lineHeight:1.8}}>
+                      Using: {settings.mpg||8} MPG · ${settings.dieselPrice||3.85}/gal · ${settings.cpm||0.18}/mi CPM — <span style={{color:accent,cursor:"pointer"}} onClick={()=>setScreen("settings")}>Update in Settings →</span>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+                    <button className="hov" onClick={()=>{
+                      setLoads(p=>[{id:Date.now(),date:new Date().toLocaleDateString(),origin:calcForm.origin,destination:calcForm.destination,miles:calcResult.miles,rate:calcResult.rate,netRPM:calcResult.netRPM,grade:calcResult.grade,verdict:calcResult.verdict,broker:calcForm.brokerName,commodity:calcForm.commodity},...p].slice(0,100));
+                      showValidation("Load saved to history");
+                    }} style={S.btn}>Save to History</button>
+                    <button onClick={()=>{setCalcForm({origin:"",destination:"",miles:"",offeredRate:"",deadheadMiles:"",commodity:"",brokerName:"",detention:"0"});setCalcResult(null);}} style={S.ghost}>Clear</button>
+                  </div>
+                  {loads.length>0&&(
+                    <div style={{...S.card,marginTop:20}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>Recent Loads</div>
+                      {loads.slice(0,8).map(l=>(
+                        <div key={l.id} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 0",borderBottom:"1px solid #1a1a1a"}}>
+                          <div style={{width:28,height:28,background:(l.grade==="A"||l.grade==="B")?"#052a0a":"#1a0505",border:`1px solid ${(l.grade==="A"||l.grade==="B")?"#22c55e44":"#ef444444"}`,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:{A:"#22c55e",B:"#84cc16",C:"#f59e0b",D:"#ef4444"}[l.grade]||"#555",flexShrink:0}}>{l.grade||"?"}</div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:11,color:"#c8c4bc",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.origin&&l.destination?`${l.origin} → ${l.destination}`:"Load"}{l.broker?` · ${l.broker}`:""}</div>
+                            <div style={{fontSize:10,color:"#555"}}>{l.date}{l.commodity?` · ${l.commodity}`:""}</div>
+                          </div>
+                          <div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:(l.grade==="A"||l.grade==="B")?"#22c55e":l.grade==="C"?"#f59e0b":"#ef4444",flexShrink:0}}>${(l.netRPM||0).toFixed(2)}/mi</div>
+                          <button onClick={()=>setLoads(p=>p.filter(x=>x.id!==l.id))} style={{background:"transparent",border:"none",color:"#333",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* ══ OTR: SETTLEMENTS ═══════════════════════════════════════════ */}
+      {screen==="settlements"&&seg.id==="otr"&&(
+        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          <SubNav tabs={[["outstanding","Outstanding"],["paid","Paid"],["factoring","Factoring"],["add","+ Log Settlement"]]} active={settlementSub} onSelect={setSettlementSub}/>
+          <div style={{flex:1,overflowY:"auto",padding:24}}>
+            <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+              {settlementSub==="outstanding"&&(()=>{
+                const unpaid=settlements.filter(s=>!s.paidDate);
+                const total=unpaid.reduce((a,s)=>a+parseFloat(s.rate||0),0);
+                return (
+                  <div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+                      <Stat label="Outstanding" value={fmt$(total)} color="#f59e0b"/>
+                      <Stat label="Loads Unpaid" value={unpaid.length} color="#c8c4bc"/>
+                      <Stat label="Avg Days Out" value={(()=>{if(!unpaid.length)return"—";const avg=unpaid.reduce((a,s)=>{const d=s.invoiceDate?Math.floor((Date.now()-new Date(s.invoiceDate))/(864e5)):0;return a+d;},0)/unpaid.length;return Math.round(avg)+"d";})()}/>
+                    </div>
+                    {!unpaid.length?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No outstanding settlements. Use "+ Log Settlement" to add one.</div>:unpaid.map(s=>{
+                      const age=s.invoiceDate?Math.floor((Date.now()-new Date(s.invoiceDate))/(864e5)):null;
+                      return (
+                        <div key={s.id} style={{...S.card,marginBottom:10}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                            <div>
+                              <div style={{fontSize:13,color:"#e8e4d8",fontWeight:600}}>{s.broker||"Unknown Broker"}{s.loadNum?` · #${s.loadNum}`:""}</div>
+                              <div style={{fontSize:10,color:"#555",marginTop:2}}>{s.origin&&s.destination?`${s.origin} → ${s.destination}`:""}{s.miles?` · ${s.miles} mi`:""}</div>
+                            </div>
+                            <div style={{textAlign:"right",flexShrink:0}}>
+                              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:700,color:"#f59e0b"}}>{fmt$(s.rate)}</div>
+                              {age!==null&&<div style={{fontSize:9,color:age>30?"#ef4444":age>14?"#f59e0b":"#555",marginTop:2}}>Invoice {age}d ago</div>}
+                            </div>
+                          </div>
+                          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
+                            {s.podSubmitted&&<span style={{fontSize:9,padding:"2px 6px",background:"#0d3a1a",color:"#22c55e",borderRadius:3}}>POD Submitted</span>}
+                            {!s.podSubmitted&&<span style={{fontSize:9,padding:"2px 6px",background:"#3a0a0a",color:"#ef4444",borderRadius:3}}>POD Pending</span>}
+                            {s.factoringUsed&&<span style={{fontSize:9,padding:"2px 6px",background:"#1a1505",color:"#f59e0b",borderRadius:3}}>Factored</span>}
+                            {age>30&&<span style={{fontSize:9,padding:"2px 6px",background:"#3a0a0a",color:"#ef4444",borderRadius:3}}>AGING 30+</span>}
+                          </div>
+                          <div style={{display:"flex",gap:8}}>
+                            <button className="hov" onClick={()=>setSettlements(p=>p.map(x=>x.id===s.id?{...x,paidDate:new Date().toISOString().slice(0,10)}:x))} style={{...S.btn,padding:"6px 14px",fontSize:11}}>Mark Paid</button>
+                            <button onClick={()=>setSettlements(p=>p.filter(x=>x.id!==s.id))} style={{...S.ghost,padding:"6px 14px",fontSize:11}}>Delete</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+              {settlementSub==="paid"&&(()=>{
+                const paid=settlements.filter(s=>s.paidDate);
+                const grossTotal=paid.reduce((a,s)=>a+parseFloat(s.rate||0),0);
+                const factoringFees=paid.filter(s=>s.factoringUsed).reduce((a,s)=>a+parseFloat(s.factoringFee||0)/100*parseFloat(s.rate||0),0);
+                const taxPct=parseFloat(taxReservePct)||27;
+                const taxReserve=(grossTotal-factoringFees)*(taxPct/100);
+                return (
+                  <div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+                      <Stat label="Gross Collected" value={fmt$(grossTotal)} color="#22c55e"/>
+                      <Stat label="Factoring Fees" value={fmt$(factoringFees)} color="#ef4444"/>
+                      <Stat label="Net Received" value={fmt$(grossTotal-factoringFees)} color="#c8c4bc"/>
+                      <Stat label={`Tax Reserve (${taxPct}%)`} value={fmt$(taxReserve)} color="#f59e0b"/>
+                    </div>
+                    {!paid.length?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No paid settlements yet.</div>:paid.map(s=>(
+                      <div key={s.id} style={{...S.card,marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <div>
+                          <div style={{fontSize:12,color:"#c8c4bc"}}>{s.broker||"Broker"}{s.loadNum?` · #${s.loadNum}`:""}</div>
+                          <div style={{fontSize:10,color:"#555"}}>{s.paidDate} · {s.origin&&s.destination?`${s.origin} → ${s.destination}`:""}</div>
+                        </div>
+                        <div style={{textAlign:"right"}}>
+                          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#22c55e"}}>{fmt$(s.rate)}</div>
+                          {s.factoringUsed&&<div style={{fontSize:9,color:"#f59e0b"}}>-{fmt$(parseFloat(s.factoringFee||0)/100*parseFloat(s.rate||0))} factoring</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+              {settlementSub==="factoring"&&(()=>{
+                const factored=settlements.filter(s=>s.factoringUsed);
+                const gross=factored.reduce((a,s)=>a+parseFloat(s.rate||0),0);
+                const fees=factored.reduce((a,s)=>a+parseFloat(s.factoringFee||0)/100*parseFloat(s.rate||0),0);
+                const net=gross-fees;
+                const effectiveRate=gross>0?fees/gross*100:0;
+                return (
+                  <div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+                      <Stat label="Factored Loads" value={factored.length} color="#c8c4bc"/>
+                      <Stat label="Gross Factored" value={fmt$(gross)} color="#c8c4bc"/>
+                      <Stat label="Total Fees Paid" value={fmt$(fees)} color="#ef4444"/>
+                      <Stat label="Effective Rate" value={effectiveRate.toFixed(2)+"%"} color="#f59e0b"/>
+                    </div>
+                    <div style={{...S.card,marginBottom:16,background:"#0a0f1a",border:"1px solid #1a1a3a"}}>
+                      <div style={{fontSize:11,color:"#888",lineHeight:1.9}}>Net after fees: <strong style={{color:"#22c55e"}}>{fmt$(net)}</strong>. If your factoring rate is above 3%, consider shopping alternatives — DAT Freight, OTR Solutions, RTS Financial, and Triumph Business Capital are common options in the owner-operator space.</div>
+                    </div>
+                    {!factored.length?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No factored loads yet. Log settlements with "Factoring Used" checked.</div>:factored.map(s=>(
+                      <div key={s.id} style={{...S.card,marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <div>
+                          <div style={{fontSize:12,color:"#c8c4bc"}}>{s.broker||"Broker"}{s.loadNum?` · #${s.loadNum}`:""}</div>
+                          <div style={{fontSize:10,color:"#555"}}>{s.origin&&s.destination?`${s.origin} → ${s.destination}`:""}</div>
+                        </div>
+                        <div style={{textAlign:"right"}}>
+                          <div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#c8c4bc"}}>{fmt$(s.rate)}</div>
+                          <div style={{fontSize:10,color:"#ef4444"}}>-{fmt$(parseFloat(s.factoringFee||0)/100*parseFloat(s.rate||0))} ({s.factoringFee||0}%)</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+              {settlementSub==="add"&&(
+                <div style={{maxWidth:600}}>
+                  <div style={{...S.section,marginBottom:16}}>LOG NEW SETTLEMENT</div>
+                  <div style={{...S.card}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+                      {[["loadNum","Load / Reference #",""],["broker","Broker Name",""],["origin","Origin",""],["destination","Destination",""],["miles","Miles",""],["rate","Gross Rate ($)",""]].map(([f,lbl,ph])=>(
+                        <div key={f}>
+                          <label style={S.label}>{lbl}</label>
+                          <input value={settlementForm[f]} onChange={e=>setSettlementForm(p=>({...p,[f]:e.target.value}))} placeholder={ph} style={S.input} type={["miles","rate"].includes(f)?"number":"text"}/>
+                        </div>
+                      ))}
+                      <div>
+                        <label style={S.label}>Invoice Date</label>
+                        <input value={settlementForm.invoiceDate} onChange={e=>setSettlementForm(p=>({...p,invoiceDate:e.target.value}))} type="date" style={S.input}/>
+                      </div>
+                      <div>
+                        <label style={S.label}>Paid Date (leave blank if unpaid)</label>
+                        <input value={settlementForm.paidDate} onChange={e=>setSettlementForm(p=>({...p,paidDate:e.target.value}))} type="date" style={S.input}/>
+                      </div>
+                      <div>
+                        <label style={S.label}>Detention Hours</label>
+                        <input value={settlementForm.detentionHours} onChange={e=>setSettlementForm(p=>({...p,detentionHours:e.target.value}))} placeholder="0" style={S.input} type="number"/>
+                      </div>
+                      <div>
+                        <label style={S.label}>Detention Rate ($/hr)</label>
+                        <input value={settlementForm.detentionRate} onChange={e=>setSettlementForm(p=>({...p,detentionRate:e.target.value}))} placeholder="65" style={S.input} type="number"/>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:24,marginBottom:12}}>
+                      <label style={{display:"flex",alignItems:"center",gap:8,fontSize:12,color:"#888",cursor:"pointer"}}>
+                        <input type="checkbox" checked={settlementForm.podSubmitted} onChange={e=>setSettlementForm(p=>({...p,podSubmitted:e.target.checked}))} style={{width:14,height:14}}/>
+                        POD Submitted
+                      </label>
+                      <label style={{display:"flex",alignItems:"center",gap:8,fontSize:12,color:"#888",cursor:"pointer"}}>
+                        <input type="checkbox" checked={settlementForm.factoringUsed} onChange={e=>setSettlementForm(p=>({...p,factoringUsed:e.target.checked}))} style={{width:14,height:14}}/>
+                        Factoring Used
+                      </label>
+                    </div>
+                    {settlementForm.factoringUsed&&(
+                      <div style={{marginBottom:12}}>
+                        <label style={S.label}>Factoring Fee (%)</label>
+                        <input value={settlementForm.factoringFee} onChange={e=>setSettlementForm(p=>({...p,factoringFee:e.target.value}))} placeholder="3" style={{...S.input,maxWidth:120}} type="number" step="0.1"/>
+                      </div>
+                    )}
+                    <div style={{marginBottom:14}}>
+                      <label style={S.label}>Notes</label>
+                      <input value={settlementForm.notes} onChange={e=>setSettlementForm(p=>({...p,notes:e.target.value}))} placeholder="Any notes..." style={S.input}/>
+                    </div>
+                    <button className="hov" onClick={()=>{
+                      if(!settlementForm.rate){showValidation("Rate is required");return;}
+                      setSettlements(p=>[{...settlementForm,id:Date.now()},...p]);
+                      setSettlementForm({loadNum:"",broker:"",origin:"",destination:"",miles:"",rate:"",invoiceDate:"",podSubmitted:false,factoringUsed:false,factoringFee:"",paidDate:"",detentionHours:"",detentionRate:"65",notes:""});
+                      setSettlementSub("outstanding");
+                      showValidation("Settlement logged");
+                    }} style={S.btn}>Save Settlement</button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -2236,7 +2510,7 @@ function ContractorOS() {
       {/* ══ FLEET / MAINTENANCE ════════════════════════════════════════ */}
       {screen==="fleet"&&(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["log","Maintenance Log"],["schedule","Upcoming Service"],["fuel","Fuel Log"],["odometer","Odometer / Miles"],["tires","Tires"]]} active={subScreen||"log"} onSelect={setSubScreen}/>
+          <SubNav tabs={[["log","Maintenance Log"],["schedule","Upcoming Service"],["fuel","Fuel Log"],["odometer","Odometer / Miles"],["tires","Tires"],...(seg.id==="otr"?[["ifta","IFTA Summary"]]:[] )]} active={subScreen||"log"} onSelect={setSubScreen}/>
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             {(!subScreen||subScreen==="log")&&(
               <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -2463,6 +2737,71 @@ function ContractorOS() {
               </div>
             )}
 
+            {subScreen==="ifta"&&seg.id==="otr"&&(()=>{
+              const stateMap={};
+              fuelLog.forEach(f=>{
+                const st=(f.state||"??").toUpperCase();
+                if(!stateMap[st])stateMap[st]={miles:0,gallons:0,cost:0};
+                stateMap[st].gallons+=parseFloat(f.gallons||0);
+                stateMap[st].cost+=parseFloat(f.totalCost||0);
+              });
+              odometer.forEach(o=>{
+                const st=(o.state||"??").toUpperCase();
+                if(!stateMap[st])stateMap[st]={miles:0,gallons:0,cost:0};
+                stateMap[st].miles+=parseFloat(o.miles||0);
+              });
+              const states=Object.entries(stateMap).sort((a,b)=>b[1].miles-a[1].miles);
+              const totGal=states.reduce((a,[,v])=>a+v.gallons,0);
+              const totMi=states.reduce((a,[,v])=>a+v.miles,0);
+              const totCost=states.reduce((a,[,v])=>a+v.cost,0);
+              const fleetMPG=totGal>0?totMi/totGal:0;
+              const quarters=[{q:"Q1 (Jan–Mar)","due":"Apr 30"},{"q":"Q2 (Apr–Jun)","due":"Jul 31"},{"q":"Q3 (Jul–Sep)","due":"Oct 31"},{"q":"Q4 (Oct–Dec)","due":"Jan 31"}];
+              return (
+                <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                  <div style={{...S.section,marginBottom:4}}>IFTA FUEL TAX SUMMARY</div>
+                  <p style={{fontSize:11,color:"#555",marginBottom:20,lineHeight:1.8}}>Aggregated from your Fuel Log and Odometer entries. Use this for quarterly IFTA filing with your base state.</p>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+                    <Stat label="Total Miles (logged)" value={totMi.toFixed(0)+"mi"} color="#c8c4bc"/>
+                    <Stat label="Total Gallons" value={totGal.toFixed(1)+"gal"} color="#c8c4bc"/>
+                    <Stat label="Fleet MPG" value={fleetMPG>0?fleetMPG.toFixed(2):"—"} color="#22c55e"/>
+                  </div>
+                  {!states.length?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No fuel or odometer entries yet. Log fill-ups in Fuel Log and odometer readings to generate IFTA data.</div>:(
+                    <div style={{...S.card,marginBottom:20}}>
+                      <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>State Breakdown</div>
+                      <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr 1fr 1fr",gap:8,padding:"8px 0",borderBottom:"1px solid #222",marginBottom:4}}>
+                        {["State","Miles","Gallons","Fuel Cost","$/Gal"].map(h=><div key={h} style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase"}}>{h}</div>)}
+                      </div>
+                      {states.map(([st,v])=>(
+                        <div key={st} style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr 1fr 1fr",gap:8,padding:"8px 0",borderBottom:"1px solid #111"}}>
+                          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:accent}}>{st}</div>
+                          <div style={{fontSize:12,color:"#c8c4bc"}}>{v.miles>0?v.miles.toFixed(0)+"mi":"—"}</div>
+                          <div style={{fontSize:12,color:"#c8c4bc"}}>{v.gallons>0?v.gallons.toFixed(1)+"gal":"—"}</div>
+                          <div style={{fontSize:12,color:"#c8c4bc"}}>{v.cost>0?fmt$(v.cost):"—"}</div>
+                          <div style={{fontSize:12,color:"#c8c4bc"}}>{v.gallons>0&&v.cost>0?"$"+(v.cost/v.gallons).toFixed(2):"—"}</div>
+                        </div>
+                      ))}
+                      <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr 1fr 1fr",gap:8,padding:"10px 0",marginTop:4}}>
+                        <div style={{fontSize:10,color:"#555",textTransform:"uppercase"}}>Total</div>
+                        <div style={{fontSize:13,fontWeight:700,color:"#e8e4d8"}}>{totMi.toFixed(0)}mi</div>
+                        <div style={{fontSize:13,fontWeight:700,color:"#e8e4d8"}}>{totGal.toFixed(1)}gal</div>
+                        <div style={{fontSize:13,fontWeight:700,color:"#e8e4d8"}}>{fmt$(totCost)}</div>
+                        <div style={{fontSize:13,fontWeight:700,color:"#22c55e"}}>{totGal>0&&totCost>0?"$"+(totCost/totGal).toFixed(2):"—"}</div>
+                      </div>
+                    </div>
+                  )}
+                  <div style={{...S.card}}>
+                    <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>IFTA Filing Deadlines</div>
+                    {quarters.map(({q,due})=>(
+                      <div key={q} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #1a1a1a",fontSize:11,color:"#888"}}>
+                        <span>{q}</span><span style={{color:accent}}>Due {due}</span>
+                      </div>
+                    ))}
+                    <div style={{fontSize:10,color:"#555",marginTop:12,lineHeight:1.8}}>File with your base state. IFTA license renewal is January 1 annually. Keep fuel receipts for 4 years.</div>
+                  </div>
+                </div>
+              );
+            })()}
+
 
       {/* ══ CONTRACTS ══════════════════════════════════════════════════ */}
       {screen==="contracts"&&(
@@ -2535,7 +2874,7 @@ function ContractorOS() {
       {/* ══ FINANCE ════════════════════════════════════════════════════ */}
       {screen==="finance"&&(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["pl","P&L Dashboard"],["revenue","Revenue"],["expenses","Expenses"],["import","Import from Excel/QB"]]} active={subScreen||"pl"} onSelect={setSubScreen}/>
+          <SubNav tabs={[["pl","P&L Dashboard"],["revenue","Revenue"],["expenses","Expenses"],["import","Import from Excel/QB"],...(seg.id==="otr"?[["taxreserve","Tax Reserve"]]:[] )]} active={subScreen||"pl"} onSelect={setSubScreen}/>
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             {(!subScreen||subScreen==="pl")&&(
               <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -2775,6 +3114,63 @@ function ContractorOS() {
                 </div>
               </div>
             )}
+
+            {subScreen==="taxreserve"&&seg.id==="otr"&&(()=>{
+              const gross=settlements.length>0?settlements.filter(s=>s.paidDate).reduce((a,s)=>a+parseFloat(s.rate||0),0):revenue.reduce((a,r)=>a+parseFloat(r.amount||0),0);
+              const taxPct=parseFloat(taxReservePct)||27;
+              const reserve=gross*(taxPct/100);
+              const perQ=reserve/4;
+              const year=new Date().getFullYear();
+              const deadlines=[{q:"Q1",label:"Apr 15",date:`${year}-04-15`},{q:"Q2",label:"Jun 15",date:`${year}-06-15`},{q:"Q3",label:"Sep 15",date:`${year}-09-15`},{q:"Q4",label:"Jan 15",date:`${year+1}-01-15`}];
+              const deductions=["Per-mile fuel costs (fuel receipts by state)","Truck payments / lease payments","Insurance premiums (primary liability, cargo, physical damage)","Maintenance and repairs","Tires","Permits (IFTA, IRP, UCR)","Scales and tolls","ELD subscription","Cell phone (business use portion)","Home office (if applicable)","Health insurance premiums","Retirement contributions (SEP-IRA up to 25% of net)","Mileage for non-truck vehicle used for business","Meals while away from home (80% deductible)"];
+              return (
+                <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                  <div style={{...S.section,marginBottom:4}}>TAX RESERVE CALCULATOR</div>
+                  <p style={{fontSize:11,color:"#555",marginBottom:20,lineHeight:1.8}}>As a 1099 owner-operator you pay self-employment tax (~15.3%) plus federal income tax. Set aside 25–30% of gross revenue to avoid a painful tax bill.</p>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+                    <Stat label={settlements.length>0?"Gross (from settlements)":"Gross Revenue"} value={fmt$(gross)} color="#c8c4bc"/>
+                    <Stat label={`Reserve (${taxPct}%)`} value={fmt$(reserve)} color="#f59e0b"/>
+                    <Stat label="Per Quarter" value={fmt$(perQ)} color="#f59e0b"/>
+                  </div>
+                  <div style={{...S.card,marginBottom:16}}>
+                    <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>Reserve Percentage</div>
+                    <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                      <input type="range" min={15} max={40} value={taxReservePct} onChange={e=>{setTaxReservePct(e.target.value);try{localStorage.setItem("cos_tax_reserve_pct",e.target.value);}catch{}}} style={{flex:1,accentColor:accent}}/>
+                      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:700,color:accent,width:52,textAlign:"right"}}>{taxReservePct}%</span>
+                    </div>
+                    <div style={{fontSize:10,color:"#555",marginTop:8,lineHeight:1.8}}>Recommended: 27–30% for most owner-operators. Higher if you're in a high-income-tax state. Lower if you have heavy deductions.</div>
+                  </div>
+                  <div style={{...S.card,marginBottom:16}}>
+                    <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>2025 Estimated Tax Deadlines</div>
+                    {deadlines.map(d=>{
+                      const days=Math.ceil((new Date(d.date)-Date.now())/(864e5));
+                      return (
+                        <div key={d.q} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #1a1a1a"}}>
+                          <div>
+                            <div style={{fontSize:12,color:"#c8c4bc"}}>{d.q} Estimated Tax</div>
+                            <div style={{fontSize:10,color:"#555"}}>Due {d.label}</div>
+                          </div>
+                          <div style={{textAlign:"right"}}>
+                            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:accent}}>{fmt$(perQ)}</div>
+                            <div style={{fontSize:9,color:days<14?"#ef4444":days<30?"#f59e0b":"#555"}}>{days<0?"PAST DUE":days===0?"DUE TODAY":`${days}d away`}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{...S.card}}>
+                    <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>Key Deductions — Keep Receipts</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                      {deductions.map(d=>(
+                        <div key={d} style={{fontSize:11,color:"#888",padding:"5px 0",borderBottom:"1px solid #111",display:"flex",gap:8,alignItems:"flex-start"}}>
+                          <span style={{color:accent,flexShrink:0}}>✓</span>{d}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
