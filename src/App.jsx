@@ -82,16 +82,6 @@ const SEGMENTS = {
 };
 
 // ─── AI PROMPTS ───────────────────────────────────────────────────────
-const ANALYZE_PROMPT = `You are a freight rate analyst for OTR owner-operators. Respond ONLY with this JSON (no markdown):
-{"grossRate":0,"grossRPM":0,"fuelCost":0,"deadheadCost":0,"truckCost":0,"netRevenue":0,"netRPM":0,"grade":"A","verdict":"TAKE IT","verdictColor":"green","summary":"...","strengths":["..."],"concerns":["..."],"marketContext":"...","counterOffer":{"suggestedRate":0,"script":"..."}}`;
-
-const PARSE_PROMPT = `Extract load details from pasted text. Respond ONLY with JSON (no markdown):
-{"origin":"City, ST","destination":"City, ST","miles":null,"offeredRate":null,"commodity":"Unknown","pickupDate":"Unknown","brokerName":"Unknown","deadheadMiles":null}`;
-
-const COMPLIANCE_PROMPT = `You are a DOT/FMCSA compliance expert for contract carriers. Answer practically — specific regulation, what's needed, where to file, deadline, penalty. Plain English a fleet owner can act on today.`;
-
-const ROUTE_AI_PROMPT = `You are a route profitability analyst for contract delivery operations. Given route data, analyze profitability and give actionable recommendations. Respond ONLY with JSON (no markdown):
-{"profitabilityScore":"A|B|C|D","verdict":"PROFITABLE|MARGINAL|LOSING","netPerStop":0,"netPerMile":0,"summary":"...","strengths":["..."],"concerns":["..."],"recommendations":["..."]}`;
 
 // ─── HELPERS ──────────────────────────────────────────────────────────
 const fmt$ = n => `$${(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
@@ -674,14 +664,8 @@ function ContractorOS() {
   const [vehicleForm, setVehicleForm] = useState({name:"",nickname:"",vin:"",year:"",make:"",plate:"",dotInspection:"",ifta:"",irp:"",registration:"",insuranceExpiry:""});
   const [showAddCompDriver, setShowAddCompDriver] = useState(false);
   const [compDriverForm, setCompDriverForm] = useState({name:"",cdlExpiry:"",medCardExpiry:"",mvrDue:"",drugTest:"",annualReview:""});
-  const [aiResult, setAiResult] = useState(null);
-  const [aiError, setAiError] = useState("");
-  const [dotAnswer, setDotAnswer] = useState(null);
-  const [dotQ, setDotQ] = useState("");
-  const [pasteText, setPasteText] = useState("");
-  const [parsedLoad, setParsedLoad] = useState(null);
+
   const [loadForm, setLoadForm] = useState({origin:"",destination:"",miles:"",offeredRate:"",deadheadMiles:"",commodity:"",pickupDate:"",brokerName:""});
-  const [analyzeStep, setAnalyzeStep] = useState("paste");
   const [dbLoaded, setDbLoaded] = useState(false);
 
   // ── v10: New feature state ──────────────────────────────────────────
@@ -865,52 +849,6 @@ function ContractorOS() {
     try { return JSON.parse(text.replace(/```json|```/g,"").trim()); } catch { return null; }
   };
 
-  const analyzeLoad = async () => {
-    if(!loadForm.origin||!loadForm.destination||!loadForm.offeredRate) return;
-    setAiLoading(true); setAiResult(null);
-    const miles=parseFloat(loadForm.miles)||0, dead=parseFloat(loadForm.deadheadMiles)||0;
-    const fuelEst=((miles+dead)/settings.mpg)*settings.dieselPrice;
-    const result = await callAI(ANALYZE_PROMPT, `Origin:${loadForm.origin} Dest:${loadForm.destination} Miles:${miles} Dead:${dead} Rate:$${loadForm.offeredRate} Commodity:${loadForm.commodity||"?"} Broker:${loadForm.brokerName||"?"} MPG:${settings.mpg} Diesel:$${settings.dieselPrice} FuelEst:$${fuelEst.toFixed(2)} TruckCPM:$${settings.cpm}`);
-    if(result) { setAiResult(result); setLoads(p=>[{id:Date.now(),date:new Date().toLocaleDateString(),load:{...loadForm},result},...p].slice(0,100)); }
-    setAnalyzeStep("result"); setAiLoading(false);
-  };
-
-  const parseLoad = async () => {
-    if(!pasteText.trim()) return;
-    setAiLoading(true);
-    const parsed = await callAI(PARSE_PROMPT, pasteText);
-    if(parsed) setLoadForm({origin:parsed.origin||"",destination:parsed.destination||"",miles:parsed.miles||"",offeredRate:parsed.offeredRate||"",deadheadMiles:parsed.deadheadMiles||"",commodity:parsed.commodity||"",pickupDate:parsed.pickupDate||"",brokerName:parsed.brokerName||""});
-    setAnalyzeStep("confirm"); setAiLoading(false);
-  };
-
-  const analyzeRoute = async (route) => {
-    setAiLoading(true);
-    const result = await callAI(ROUTE_AI_PROMPT, `Route:${route.name} Stops:${route.stops} Miles:${route.miles} ContractedRate:$${route.rate} FuelCost:$${((route.miles/settings.mpg)*settings.dieselPrice).toFixed(2)} TruckCPM:$${settings.cpm} DriverPay:$${route.driverPay||0} OtherCosts:$${route.otherCosts||0}`);
-    if(result) { setRoutes(p=>p.map(r=>r.id===route.id?{...r,analysis:result}:r)); }
-    setAiLoading(false);
-  };
-
-  const askDot = async () => {
-    if(!dotQ.trim()) return;
-    setAiLoading(true); setDotAnswer(""); setAiError("");
-    try {
-      const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-      if(!apiKey) { setAiError("Anthropic API key not configured. Add VITE_ANTHROPIC_API_KEY to Vercel environment variables."); setAiLoading(false); return; }
-      const res = await fetch("https://api.anthropic.com/v1/messages",{
-        method:"POST",
-        headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,messages:[{role:"user",content:`You are a DOT/FMCSA compliance expert for US commercial trucking. Answer this question clearly and practically for an owner-operator or fleet manager. Be specific, cite relevant regulations where applicable, and flag any time-sensitive deadlines. Question: ${dotQ}`}]})
-      });
-      if(!res.ok) { const err = await res.json(); throw new Error(err.error?.message||`API error ${res.status}`); }
-      const data = await res.json();
-      const answer = data.content?.[0]?.text;
-      if(!answer) throw new Error("No response from AI");
-      setDotAnswer(answer);
-    } catch(err) {
-      setAiError(`DOT AI error: ${err.message}. Try again or check your API key.`);
-    }
-    setAiLoading(false);
-  };;
 
   const importExcelPL = async (file) => {
     setExcelImporting(true); setExcelResult(null);
@@ -1362,7 +1300,7 @@ function ContractorOS() {
     alert("Company name applied to Settings.");
   };
 
-  const handleNav = (id) => { setScreen(id); setSubScreen(null); setAiResult(null); setAnalyzeStep("paste"); setNavOpen(false); };
+  const handleNav = (id) => { setScreen(id); setSubScreen(null); setNavOpen(false); };
 
   // ── RENDER ─────────────────────────────────────────────────────────
   // Show loading screen while data loads from Supabase
@@ -1591,86 +1529,10 @@ function ContractorOS() {
 
       {/* ══ OTR: ANALYZE LOAD ══════════════════════════════════════════ */}
       {screen==="analyze"&&seg.features.loadAnalysis&&(
-        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <div style={{display:"flex",borderBottom:"1px solid #1e1e1e",background:"#0d0d0d",padding:"0 24px"}}>
-            {[["paste","Paste Load"],["confirm","Confirm"],["result","Score"]].map(([id,lbl],i)=>{
-              const active=(analyzeStep===id);
-              const done=(i===0&&analyzeStep!=="paste")||(i===1&&analyzeStep==="result");
-              return <div key={id} style={{padding:"12px 16px",fontSize:10,color:active?accent:done?"#555":"#333",borderBottom:active?`2px solid ${accent}`:"2px solid transparent",letterSpacing:"0.1em",textTransform:"uppercase"}}><span style={{color:done?"#22c55e":active?accent:"#2a2a2a",marginRight:5}}>{done?"✓":`0${i+1}`}</span>{lbl}</div>;
-            })}
-          </div>
-          <div style={{flex:1,overflowY:"auto",padding:24,maxWidth:800,margin:"0 auto",width:"100%"}}>
-            {aiLoading&&<Loader msg="Analyzing rate..."/>}
-
-            {analyzeStep==="paste"&&!aiLoading&&(
-              <div style={{animation:"fadeUp 0.3s ease"}}>
-                <div style={{...S.section,marginBottom:8}}>PASTE YOUR LOAD</div>
-                <p style={{fontSize:11,color:"#555",marginBottom:16,lineHeight:1.8}}>Copy from DAT, Truckstop, broker email or text. Paste everything — AI extracts what it needs.</p>
-                <textarea value={pasteText} onChange={e=>setPasteText(e.target.value)} placeholder={"Chicago, IL to Nashville, TN\n487 miles | 42,000 lbs\nRate: $1,450\nPickup: Tomorrow 7am\nBroker: Coyote Logistics"} style={{...S.input,height:160,resize:"vertical",lineHeight:1.7}}/>
-                <div style={{display:"flex",gap:12,marginTop:14}}>
-                  <button className="hov" onClick={parseLoad} disabled={!pasteText.trim()} style={{...S.btn,opacity:pasteText.trim()?1:0.4}}>Parse Load →</button>
-                  <button onClick={()=>setAnalyzeStep("confirm")} style={S.ghost}>Enter manually</button>
-                </div>
-              </div>
-            )}
-
-            {aiError&&!aiLoading&&analyzeStep!=="result"&&(<div style={{...S.card,background:"#1a0808",border:"1px solid #3a1010",color:"#f87171",fontSize:11,padding:16,marginBottom:12,animation:"fadeUp 0.3s ease"}}>⚠ {aiError}<br/><span style={{fontSize:9,color:"#7a4040"}}>Check your VITE_ANTHROPIC_API_KEY in Vercel, or try again.</span></div>)}
-            {analyzeStep==="confirm"&&!aiLoading&&(
-              <div style={{animation:"fadeUp 0.3s ease"}}>
-                <div style={{...S.section,marginBottom:8}}>CONFIRM DETAILS</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-                  {[["origin","Origin *","City, ST"],["destination","Destination *","City, ST"],["miles","Loaded Miles","487"],["deadheadMiles","Deadhead Miles","0"],["offeredRate","Offered Rate ($) *","1450"],["commodity","Commodity","General freight"],["pickupDate","Pickup Date",""],["brokerName","Broker Name",""]].map(([f,lbl,ph])=>(
-                    <div key={f}><label style={S.label}>{lbl}</label><input value={loadForm[f]} onChange={e=>setLoadForm(p=>({...p,[f]:e.target.value}))} placeholder={ph} style={S.input}/></div>
-                  ))}
-                </div>
-                <div style={{display:"flex",gap:12}}>
-                  <button className="hov" onClick={analyzeLoad} disabled={!loadForm.origin||!loadForm.destination||!loadForm.offeredRate} style={{...S.btn,opacity:(loadForm.origin&&loadForm.destination&&loadForm.offeredRate)?1:0.4}}>Score This Load →</button>
-                  <button onClick={()=>setAnalyzeStep("paste")} style={S.ghost}>← Back</button>
-                </div>
-              </div>
-            )}
-
-            {analyzeStep!=="paste"&&!aiLoading&&!aiResult&&aiError&&(<div style={{...S.card,background:"#1a0808",border:"1px solid #3a1010",color:"#f87171",fontSize:12,padding:20,marginBottom:16,animation:"fadeUp 0.3s ease"}}>⚠ {aiError}<br/><span style={{fontSize:10,color:"#7a4040"}}>Check your API key in Vercel environment variables, or try again in a moment.</span></div>)}
-            {analyzeStep==="result"&&aiResult&&!aiLoading&&(()=>{
-              const vBg={green:"#051a0a",yellow:"#1a1505",red:"#1a0505"};
-              const vBd={green:"#0d3a1a",yellow:"#3a2a0a",red:"#3a0a0a"};
-              return (
-                <div style={{animation:"fadeUp 0.3s ease"}}>
-                  <div style={{background:vBg[aiResult.verdictColor]||"#111",border:`1px solid ${vBd[aiResult.verdictColor]||"#222"}`,borderRadius:8,padding:"20px 24px",display:"flex",alignItems:"center",gap:20,marginBottom:16}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:64,fontWeight:900,color:gradeColor(aiResult.grade),lineHeight:1}}>{aiResult.grade}</div>
-                    <div style={{flex:1}}>
-                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:aiResult.verdictColor==="green"?"#22c55e":aiResult.verdictColor==="yellow"?"#f59e0b":"#ef4444"}}>{aiResult.verdict}</div>
-                      <div style={{fontSize:12,color:"#888",lineHeight:1.7,marginTop:4}}>{aiResult.summary}</div>
-                    </div>
-                    <div style={{textAlign:"right",flexShrink:0}}>
-                      <div style={{fontSize:10,color:"#555",marginBottom:2}}>NET RPM</div>
-                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:36,fontWeight:900,color:aiResult.verdictColor==="green"?"#22c55e":aiResult.verdictColor==="yellow"?"#f59e0b":"#ef4444"}}>${(aiResult.netRPM||0).toFixed(2)}</div>
-                    </div>
-                  </div>
-                  <div style={{...S.card,marginBottom:14}}>
-                    <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>Rate Breakdown</div>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
-                      {[["Gross Rate",fmt$(aiResult.grossRate),"#c8c4bc"],["Gross RPM",`$${(aiResult.grossRPM||0).toFixed(2)}/mi`,"#c8c4bc"],["Fuel Cost",`-${fmt$(aiResult.fuelCost)}`,"#ef4444"],["Deadhead",`-${fmt$(aiResult.deadheadCost)}`,"#ef4444"],["Truck Cost",`-${fmt$(aiResult.truckCost)}`,"#ef4444"],["Net Revenue",fmt$(aiResult.netRevenue),"#22c55e"]].map(([lbl,val,col])=>(
-                        <div key={lbl} style={{padding:"8px 0",borderTop:"1px solid #1e1e1e"}}><div style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{lbl}</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{val}</div></div>
-                      ))}
-                    </div>
-                  </div>
-                  {aiResult.counterOffer&&(
-                    <div style={{background:"#110f00",border:"1px solid #2a2500",borderRadius:8,padding:"16px 20px",marginBottom:14}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                        <div><div style={{fontSize:9,color:"#5a5000",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:3}}>Negotiation Script</div><div style={{fontSize:15,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#f59e0b"}}>Counter: {fmt$(aiResult.counterOffer.suggestedRate)}</div></div>
-                        <button onClick={()=>navigator.clipboard.writeText(aiResult.counterOffer.script)} style={{background:"#1a1500",border:"1px solid #2a2000",color:"#f59e0b",padding:"5px 12px",fontSize:9,cursor:"pointer",borderRadius:4,fontFamily:"'DM Mono',monospace"}}>Copy</button>
-                      </div>
-                      <div style={{background:"#0a0900",border:"1px solid #1a1800",borderRadius:4,padding:"12px 14px",fontSize:12,color:"#c8c080",lineHeight:1.8,fontStyle:"italic"}}>"{aiResult.counterOffer.script}"</div>
-                    </div>
-                  )}
-                  <div style={{display:"flex",gap:12}}>
-                    <button className="hov" onClick={()=>{setAnalyzeStep("paste");setPasteText("");setAiResult(null);setLoadForm({origin:"",destination:"",miles:"",offeredRate:"",deadheadMiles:"",commodity:"",pickupDate:"",brokerName:""});}} style={S.btn}>→ Analyze Another</button>
-                    <button onClick={()=>setScreen("dashboard")} style={S.ghost}>Dashboard</button>
-                  </div>
-                </div>
-              );
-            })()}
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:40}}>
+          <div style={{textAlign:"center",maxWidth:400}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:48,fontWeight:900,color:"#1e1e1e",letterSpacing:"0.05em",marginBottom:12}}>COMING SOON</div>
+            <div style={{fontSize:13,color:"#555",lineHeight:1.9}}>Load analysis is under development and will be available in an upcoming update.</div>
           </div>
         </div>
       )}
@@ -1734,9 +1596,7 @@ function ContractorOS() {
                           <div style={{fontSize:10,color:"#555"}}>{r.stops} stops · {r.miles} mi · {r.frequency||"Daily"}</div>
                         </div>
                         <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                          {r.analysis&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:gradeColor(r.analysis.profitabilityScore)}}>{r.analysis.verdict}</div>}
                           <button onClick={()=>openEdit("route",r)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
-                          <button className="hov" onClick={()=>analyzeRoute(r)} style={{...S.btn,padding:"6px 14px",fontSize:11}}>Analyze</button>
                           <button onClick={()=>setRoutes(p=>p.filter(x=>x.id!==r.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
                         </div>
                       </div>
@@ -1799,23 +1659,6 @@ function ContractorOS() {
               </div>
             )}
 
-            {subScreen==="performance"&&(
-              <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                <div style={{...S.section,marginBottom:20}}>ROUTE PERFORMANCE</div>
-                {routes.filter(r=>r.analysis).length===0?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No routes analyzed yet. Go to My Routes and click Analyze on each route.</div>:
-                <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                  {routes.filter(r=>r.analysis).sort((a,b)=>parseFloat(b.rate||0)-parseFloat(a.rate||0)).map((r,i)=>(
-                    <div key={r.id} style={{...S.card,display:"flex",alignItems:"center",gap:16}}>
-                      <div style={{width:28,fontSize:12,color:"#555",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>#{i+1}</div>
-                      <div style={{flex:1}}><div style={{fontSize:13,color:"#e8e4d8"}}>{r.name}</div><div style={{fontSize:10,color:"#555"}}>{r.stops} stops · {r.miles} mi</div></div>
-                      <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Net/Stop</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:accent}}>{fmt$(r.analysis.netPerStop)}</div></div>
-                      <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Net/Mile</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e"}}>{fmt$(r.analysis.netPerMile)}</div></div>
-                      <div style={{width:32,height:32,background:gradeColor(r.analysis.profitabilityScore)+"22",border:`1px solid ${gradeColor(r.analysis.profitabilityScore)}44`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:gradeColor(r.analysis.profitabilityScore),borderRadius:4}}>{r.analysis.profitabilityScore}</div>
-                    </div>
-                  ))}
-                </div>}
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -2067,21 +1910,9 @@ function ContractorOS() {
             )}
 
             {subScreen==="ask"&&(
-              <div style={{maxWidth:700,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                <div style={{...S.section,marginBottom:4}}>ASK DOT AI</div>
-                <p style={{fontSize:11,color:"#555",marginBottom:18,lineHeight:1.8}}>Plain-English answers to any compliance question.</p>
-                <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
-                  {["What goes in a driver qualification file?","When do I pull an MVR?","What is UCR and when to renew?","What triggers a DOT audit?","How to register with Drug Clearinghouse?","What is MCS-150?","How long keep HOS logs?","Documents required in vehicle?"].map(q=>(
-                    <button key={q} onClick={()=>setDotQ(q)} style={{background:"#111",border:"1px solid #222",color:"#666",padding:"5px 10px",fontSize:10,borderRadius:4,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>{q}</button>
-                  ))}
-                </div>
-                <div style={{display:"flex",gap:10,marginBottom:18}}>
-                  <input value={dotQ} onChange={e=>setDotQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&askDot()} placeholder="Ask any DOT/FMCSA compliance question..." style={{...S.input,flex:1}}/>
-                  <button className="hov" onClick={askDot} disabled={!dotQ.trim()||aiLoading} style={{...S.danger,opacity:dotQ.trim()&&!aiLoading?1:0.4}}>{aiLoading?"...":"Ask →"}</button>
-                </div>
-                {aiLoading&&<Loader msg="Consulting FMCSA regulations..."/>}
-                {aiError&&!aiLoading&&screen==="compliance"&&<div style={{...S.card,background:"#1a0808",border:"1px solid #3a1010",color:"#f87171",fontSize:11,marginBottom:12}}>{aiError}</div>}
-                {dotAnswer&&!aiLoading&&<div style={{background:"#110f00",border:"1px solid #2a2000",borderRadius:8,padding:"18px 22px",animation:"fadeUp 0.3s ease"}}><div style={{fontSize:9,color:"#5a4a00",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:10}}>DOT AI Answer</div><div style={{fontSize:12,color:"#c8c4a0",lineHeight:1.9,whiteSpace:"pre-wrap"}}>{dotAnswer}</div><div style={{marginTop:14,fontSize:10,color:"#3a3000",borderTop:"1px solid #2a1800",paddingTop:10}}>⚠ Informational only. Verify with your state DOT and a compliance professional.</div></div>}
+              <div style={{maxWidth:700,margin:"0 auto",animation:"fadeUp 0.3s ease",textAlign:"center",paddingTop:60}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:48,fontWeight:900,color:"#1e1e1e",letterSpacing:"0.05em",marginBottom:12}}>COMING SOON</div>
+                <div style={{fontSize:13,color:"#555",lineHeight:1.9}}>DOT AI is under development and will be available in an upcoming update.</div>
               </div>
             )}
           </div>
@@ -3909,35 +3740,7 @@ function ContractorOS() {
                   <div><label style={S.label}>Linked To (truck / driver / load)</label><input value={docForm.linkedTo} onChange={e=>setDocForm(p=>({...p,linkedTo:e.target.value}))} placeholder="Unit 1, John Smith, Load #5678..." style={S.input}/></div>
                   <div>
                     <label style={S.label}>File (optional, max 2MB)</label>
-                    <input type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.csv,.xlsx" onChange={async(e)=>{
-                      handleFileUpload(e);
-                      // OCR: if it's an image/pdf, try to extract key fields using Claude
-                      const file = e.target.files?.[0];
-                      if(!file||(file.type!=="image/jpeg"&&file.type!=="image/png"&&file.type!=="application/pdf")) return;
-                      if(file.size > 2*1024*1024) return;
-                      try {
-                        const reader = new FileReader();
-                        reader.onload = async(ev) => {
-                          const base64 = ev.target.result.split(",")[1];
-                          const mediaType = file.type === "application/pdf" ? "application/pdf" : file.type;
-                          const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-                          if(!apiKey) return;
-                          const res = await fetch("https://api.anthropic.com/v1/messages", {
-                            method:"POST",
-                            headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-                            body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,messages:[{role:"user",content:[{type:mediaType==="application/pdf"?"document":"image",source:{type:"base64",media_type:mediaType,data:base64}},{type:"text",text:"Extract these fields from this document if present. Return ONLY a JSON object with these keys (null if not found): documentName, documentType (Rate Confirmation/BOL/Delivery Confirmation/Invoice/Other), date (YYYY-MM-DD), linkedTo (truck or driver name), referenceNumber, notes (any important info like load#, PO#, rate amount). No other text."}]}]})
-                          });
-                          const data = await res.json();
-                          try {
-                            const text = data.content?.[0]?.text || "{}";
-                            const parsed = JSON.parse(text.replace(/```json|```/g,"").trim());
-                            if(parsed.documentName) setDocForm(p=>({...p,name:parsed.documentName||p.name,type:parsed.documentType||p.type,date:parsed.date||p.date,linkedTo:parsed.linkedTo||p.linkedTo,fileName:file.name,notes:parsed.notes||p.notes}));
-                          } catch{}
-                        };
-                        reader.readAsDataURL(file);
-                      } catch{}
-                    }} style={{...S.input,padding:"7px 14px"}}/>
-                    <div style={{fontSize:9,color:"#444",marginTop:4}}>💡 Images and PDFs are automatically scanned to fill in document details</div>
+                    <input type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.csv,.xlsx" onChange={e=>handleFileUpload(e)} style={{...S.input,padding:"7px 14px"}}/>
                   </div>
                   <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={docForm.notes} onChange={e=>setDocForm(p=>({...p,notes:e.target.value}))} placeholder="Confirmation #, broker contact, expiry..." style={S.input}/></div>
                 </div>
