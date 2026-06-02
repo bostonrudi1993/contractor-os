@@ -1,10 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { makeDb } from "./supabase.js";
 import {
-
-// ════════════════════════════════════════════════════════════════════════
-
-
   useUser,
   useOrganization,
   useOrganizationList,
@@ -27,7 +23,11 @@ const KEYS = {
   payroll: "cos_payroll", fuelLog: "cos_fuel_log", invoices: "cos_invoices",
   odometer: "cos_odometer", tires: "cos_tires", documents: "cos_documents",
   dispatches: "cos_dispatches", contacts: "cos_contacts", hosLog: "cos_hos_log",
-  settlements: "cos_settlements",
+  // ── v20: FedEx-specific keys ──
+  hiringCandidates: "cos_hiring_candidates",
+  safetyEvents: "cos_safety_events",
+  stopCostLog: "cos_stop_cost_log",
+  deliveryFailures: "cos_delivery_failures",
 };
 const stor = { get: (k,fb) => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):fb; } catch { return fb; } }, set: (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch {} } };
 
@@ -49,7 +49,7 @@ const SEGMENTS = {
     id: "otr", label: "OTR / Owner Operator", icon: "🚛",
     tagline: "Load board hauling with your own authority",
     color: "#f59e0b", darkColor: "#92400e",
-    nav: ["dashboard","analyze","settlements","boards","compliance","brokers","fleet","finance","payroll","invoices","dispatch","contacts","documents","reports","trends","users","settings","fmcsa","data"],
+    nav: ["dashboard","analyze","boards","compliance","brokers","fleet","finance","payroll","invoices","dispatch","contacts","documents","reports","trends","users","settings","fmcsa","data"],
     features: { loadAnalysis:true, brokerScorecard:true, loadBoards:true, routeProfit:false, contractTracker:false, dspMetrics:false, stopMetrics:false },
   },
   fedex: {
@@ -83,6 +83,16 @@ const SEGMENTS = {
 };
 
 // ─── AI PROMPTS ───────────────────────────────────────────────────────
+const ANALYZE_PROMPT = `You are a freight rate analyst for OTR owner-operators. Respond ONLY with this JSON (no markdown):
+{"grossRate":0,"grossRPM":0,"fuelCost":0,"deadheadCost":0,"truckCost":0,"netRevenue":0,"netRPM":0,"grade":"A","verdict":"TAKE IT","verdictColor":"green","summary":"...","strengths":["..."],"concerns":["..."],"marketContext":"...","counterOffer":{"suggestedRate":0,"script":"..."}}`;
+
+const PARSE_PROMPT = `Extract load details from pasted text. Respond ONLY with JSON (no markdown):
+{"origin":"City, ST","destination":"City, ST","miles":null,"offeredRate":null,"commodity":"Unknown","pickupDate":"Unknown","brokerName":"Unknown","deadheadMiles":null}`;
+
+const COMPLIANCE_PROMPT = `You are a DOT/FMCSA compliance expert for contract carriers. Answer practically — specific regulation, what's needed, where to file, deadline, penalty. Plain English a fleet owner can act on today.`;
+
+const ROUTE_AI_PROMPT = `You are a route profitability analyst for contract delivery operations. Given route data, analyze profitability and give actionable recommendations. Respond ONLY with JSON (no markdown):
+{"profitabilityScore":"A|B|C|D","verdict":"PROFITABLE|MARGINAL|LOSING","netPerStop":0,"netPerMile":0,"summary":"...","strengths":["..."],"concerns":["..."],"recommendations":["..."]}`;
 
 // ─── HELPERS ──────────────────────────────────────────────────────────
 const fmt$ = n => `$${(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
@@ -244,8 +254,10 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
         },0) / metrics.length;
 
         return(
-        <div style={{flex:1,overflowY:"auto",padding:24}}>
-          <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          {isFedex&&<SubNavComp tabs={[["metrics","Metrics"],["safety","Safety"]]} active={scorecardSub} accent={accent} onSelect={setScorecardSub}/>}
+          <div style={{flex:1,overflowY:"auto",padding:24}}>
+          {(!isFedex||scorecardSub==="metrics")&&<div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
               <div>
                 <div style={{...S.section}}>{segLabel.toUpperCase()} SCORECARD</div>
@@ -318,6 +330,74 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
               {isLastMile&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• Always call ahead for large item deliveries (appliances, lumber) — it's contractually required<br/>• Log every delivery attempt with timestamp even if no one is home<br/>• Damage claims over 0.5% of stops triggers Lowe's contract review<br/>• White glove delivery requires two-person team — log both drivers</div>}
               {isUsps&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• HCR routes must be completed regardless of volume — no partial days<br/>• Substitute drivers must be pre-approved by your postmaster before running routes<br/>• Vehicle inspection forms must be completed daily and kept 90 days<br/>• Mail security incidents must be reported within 1 hour — no exceptions</div>}
             </div>
+          </div>}
+          {isFedex&&scorecardSub==="safety"&&(()=>{
+            const safetyColor=(val,thresholds,colors)=>{for(let i=0;i<thresholds.length;i++){if(val<=thresholds[i])return colors[i];}return colors[colors.length-1];};
+            return(
+            <div style={{maxWidth:900,margin:"0 auto",padding:24,animation:"fadeUp 0.3s ease"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+                <div style={{...S.section}}>SAFETY SCORECARD</div>
+                <button className="hov" onClick={()=>setShowSafetyAdd(!showSafetyAdd)} style={S.btn}>{showSafetyAdd?"Cancel":"+ Log Safety Week"}</button>
+              </div>
+              {showSafetyAdd&&(
+                <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    <div><label style={S.label}>Driver</label><select value={safetyForm.driverId} onChange={e=>setSafetyForm(p=>({...p,driverId:e.target.value}))} style={S.input}><option value="">Select driver...</option>{(drivers||[]).map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
+                    <div><label style={S.label}>Week (date)</label><input type="date" value={safetyForm.week} onChange={e=>setSafetyForm(p=>({...p,week:e.target.value}))} style={S.input}/></div>
+                    <div><label style={S.label}>Harsh Braking Events</label><input type="number" value={safetyForm.harshBraking} onChange={e=>setSafetyForm(p=>({...p,harshBraking:e.target.value}))} style={S.input} min={0}/></div>
+                    <div><label style={S.label}>Speeding Events</label><input type="number" value={safetyForm.speeding} onChange={e=>setSafetyForm(p=>({...p,speeding:e.target.value}))} style={S.input} min={0}/></div>
+                    <div><label style={S.label}>Seatbelt %</label><input type="number" value={safetyForm.seatbelt} onChange={e=>setSafetyForm(p=>({...p,seatbelt:e.target.value}))} style={S.input} min={0} max={100}/></div>
+                    <div><label style={S.label}>Dashcam Flags</label><input type="number" value={safetyForm.dashcamFlags} onChange={e=>setSafetyForm(p=>({...p,dashcamFlags:e.target.value}))} style={S.input} min={0}/></div>
+                    <div style={{gridColumn:"1/-1"}}><label style={S.label}>Coaching Notes</label><input value={safetyForm.coachingNotes} onChange={e=>setSafetyForm(p=>({...p,coachingNotes:e.target.value}))} style={S.input}/></div>
+                  </div>
+                  <button className="hov" onClick={()=>{if(!safetyForm.driverId||!safetyForm.week){showValidation("Driver and week are required");return;}setSafetyEvents(p=>[...p,{...safetyForm,id:Date.now(),harshBraking:parseFloat(safetyForm.harshBraking||0),speeding:parseFloat(safetyForm.speeding||0),seatbelt:parseFloat(safetyForm.seatbelt||100),dashcamFlags:parseFloat(safetyForm.dashcamFlags||0)}]);setSafetyForm({driverId:"",week:"",harshBraking:0,speeding:0,seatbelt:100,dashcamFlags:0,coachingNotes:""});setShowSafetyAdd(false);}} style={{...S.btn,marginTop:14}}>Save</button>
+                </div>
+              )}
+              {/* Per-driver table */}
+              <div style={S.card}>
+                <div style={{fontSize:9,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:12}}>Driver Safety Table — Latest Week</div>
+                {(drivers||[]).length===0&&<div style={{color:"#555",fontSize:12,padding:20,textAlign:"center"}}>No drivers yet.</div>}
+                {(drivers||[]).map(d=>{
+                  const latestEvent=safetyEvents.filter(e=>String(e.driverId)===String(d.id)).sort((a,b)=>new Date(b.week)-new Date(a.week))[0];
+                  if(!latestEvent) return null;
+                  const hbColor=safetyColor(latestEvent.harshBraking,[3,6],["#22c55e","#f59e0b","#ef4444"]);
+                  const spColor=safetyColor(latestEvent.speeding,[2,4],["#22c55e","#f59e0b","#ef4444"]);
+                  const sbColor=latestEvent.seatbelt>98?"#22c55e":latestEvent.seatbelt>=95?"#f59e0b":"#ef4444";
+                  const dcColor=safetyColor(latestEvent.dashcamFlags,[0,2],["#22c55e","#f59e0b","#ef4444"]);
+                  const flagged=hbColor==="#ef4444"||spColor==="#ef4444"||sbColor==="#ef4444"||dcColor==="#ef4444";
+                  return(
+                    <div key={d.id} style={{borderLeft:`3px solid ${flagged?"#ef4444":accent}`,background:flagged?"#1a0808":"transparent",borderRadius:4,padding:"10px 14px",marginBottom:8}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                        {flagged&&<span style={{color:"#ef4444",fontSize:12}}>⚠</span>}
+                        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{d.name}</span>
+                        <span style={{fontSize:9,color:"#555"}}>Week: {latestEvent.week}</span>
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+                        {[["Harsh Braking",latestEvent.harshBraking,hbColor],["Speeding",latestEvent.speeding,spColor],["Seatbelt %",latestEvent.seatbelt+"%",sbColor],["Dashcam Flags",latestEvent.dashcamFlags,dcColor]].map(([lbl,val,col])=>(
+                          <div key={lbl} style={{textAlign:"center"}}>
+                            <div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div>
+                            <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>{lbl}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {latestEvent.coachingNotes&&<div style={{fontSize:10,color:"#888",marginTop:8,fontStyle:"italic"}}>📋 {latestEvent.coachingNotes}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Legend */}
+              <div style={{...S.card,marginTop:12}}>
+                <div style={{fontSize:9,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:8}}>FedEx Safety Thresholds</div>
+                {[["Harsh Braking","<3 = Good","3-6 = Warning","6+ = Alert"],["Speeding","<2 = Good","2-4 = Warning","4+ = Alert"],["Seatbelt %",">98% = Good","95-98% = Warning","<95% = Alert"],["Dashcam Flags","0 = Good","1-2 = Warning","3+ = Alert"]].map(([metric,...vals])=>(
+                  <div key={metric} style={{display:"flex",gap:12,padding:"4px 0",borderBottom:"1px solid #1a1a1a",alignItems:"center"}}>
+                    <span style={{fontSize:10,color:"#888",width:120,flexShrink:0}}>{metric}</span>
+                    {vals.map((v,i)=><span key={i} style={{fontSize:9,color:["#22c55e","#f59e0b","#ef4444"][i]}}>{v}</span>)}
+                  </div>
+                ))}
+              </div>
+            </div>
+            );
+          })()}
           </div>
         </div>
         );
@@ -440,13 +520,45 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
   );
 };
 
+// ════════════════════════════════════════════════════════════════════════
+// ── Error Boundary ────────────────────────────────────────────────────────────
+import React from "react";
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error("ContractorOS Error:", error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#0a0a0a",padding:24,flexDirection:"column",gap:16,fontFamily:"'DM Mono',monospace"}}>
+          <div style={{fontSize:32}}>⚠</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#e8e4d8"}}>Something went wrong</div>
+          <div style={{fontSize:12,color:"#555",textAlign:"center",maxWidth:400,lineHeight:1.8}}>
+            ContractorOS hit an unexpected error. Your data is safe — it's saved in the cloud.<br/>
+            Refresh the page to continue.
+          </div>
+          <div style={{fontSize:10,color:"#333",background:"#141414",border:"1px solid #2a2a2a",borderRadius:6,padding:"10px 16px",maxWidth:500,wordBreak:"break-all"}}>
+            {this.state.error?.message}
+          </div>
+          <button onClick={()=>window.location.reload()} style={{background:"#f59e0b",color:"#0a0a0a",border:"none",padding:"12px 28px",borderRadius:6,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,cursor:"pointer",letterSpacing:"0.05em"}}>
+            Refresh Page →
+          </button>
+          <button onClick={()=>this.setState({hasError:false,error:null})} style={{background:"transparent",border:"1px solid #2a2a2a",color:"#555",padding:"8px 20px",borderRadius:6,fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer"}}>
+            Try Without Refreshing
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // ── Auth wrapper — shown before the main app ─────────────────────────────────
 function AuthGate() {
   const { isLoaded: userLoaded, isSignedIn, user } = useUser();
   const { organization, isLoaded: orgLoaded } = useOrganization();
   const { userMemberships, isLoaded: listLoaded } = useOrganizationList({ userMemberships: true });
-  const [authView, setAuthView] = useState(() => { try { return new URLSearchParams(window.location.search).get("signup") === "1" ? "signup" : "signin"; } catch { return "signin"; } }); // signin | signup | create_org | select_org
+  const [authView, setAuthView] = useState("signin"); // signin | signup | create_org | select_org
 
   if (!userLoaded) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#0a0a0a",flexDirection:"column",gap:16}}>
@@ -455,7 +567,7 @@ function AuthGate() {
     </div>
   );
 
-  // Not signed in — show login page (dark themed, matches app)
+  // Not signed in — show sign in / sign up
   if (!isSignedIn) return (
     <div style={{minHeight:"100vh",background:"#0a0a0a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20}}>
       <div style={{marginBottom:24,textAlign:"center"}}>
@@ -463,17 +575,16 @@ function AuthGate() {
           CONTRACTOR<span style={{color:"#f59e0b"}}>OS</span>
         </div>
         <div style={{fontSize:11,color:"#555",marginTop:4,letterSpacing:"0.15em",textTransform:"uppercase"}}>Fleet Operating System</div>
-        <a href="/landing.html" style={{display:"block",marginTop:8,fontSize:10,color:"#444",textDecoration:"none",fontFamily:"'DM Mono',monospace"}}>← Back to home</a>
       </div>
       {authView === "signin"
         ? <SignIn
           routing="virtual"
-          afterSignInUrl="/app"
+          afterSignInUrl="/"
           appearance={{elements:{rootBox:{width:"100%",maxWidth:400}}}}
         />
         : <SignUp
           routing="virtual"
-          afterSignUpUrl="/app"
+          afterSignUpUrl="/"
           appearance={{elements:{rootBox:{width:"100%",maxWidth:400}}}}
         />
       }
@@ -515,7 +626,7 @@ function AuthGate() {
           ) : null}
           <CreateOrganization
             routing="virtual"
-            afterCreateOrganizationUrl="/app"
+            afterCreateOrganizationUrl="/"
             appearance={{
               elements: {
                 rootBox: { width: "100%" },
@@ -532,7 +643,14 @@ function AuthGate() {
   return <ContractorOS />;
 }
 
-export default AuthGate;
+function AppWithErrorBoundary() {
+  return (
+    <ErrorBoundary>
+      <AuthGate />
+    </ErrorBoundary>
+  );
+}
+export default AppWithErrorBoundary;
 
 function ContractorOS() {
   const { organization } = useOrganization();
@@ -560,8 +678,6 @@ function ContractorOS() {
   const [segment, setSegment] = useState(() => { try { return localStorage.getItem("cos_segment_locked") || null; } catch { return null; } });
   const [onboardStep, setOnboardStep] = useState(0); // 0 = not started, 1-5 = steps, 6 = done
   const [onboardDismissed, setOnboardDismissed] = useState(() => { try { return localStorage.getItem("cos_onboard_done") === "1"; } catch { return false; } });
-  const [compliance, setCompliance] = useState({trucks:[],drivers:[]});
-  const [drivers, setDrivers] = useState([]);
 
   // Schedule Day 3 and Day 7 emails
   useEffect(()=>{
@@ -594,7 +710,9 @@ function ContractorOS() {
   const [screen, setScreen] = useState("dashboard");
   const [navOpen, setNavOpen] = useState(false);
   const [settings, setSettings] = useState({mpg:8,dieselPrice:3.85,cpm:0.18,homeBase:"",companyName:""});
+  const [compliance, setCompliance] = useState({trucks:[],drivers:[]});
   const [vehicles, setVehicles] = useState([]);
+  const [drivers, setDrivers] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [revenue, setRevenue] = useState([]);
@@ -665,8 +783,14 @@ function ContractorOS() {
   const [vehicleForm, setVehicleForm] = useState({name:"",nickname:"",vin:"",year:"",make:"",plate:"",dotInspection:"",ifta:"",irp:"",registration:"",insuranceExpiry:""});
   const [showAddCompDriver, setShowAddCompDriver] = useState(false);
   const [compDriverForm, setCompDriverForm] = useState({name:"",cdlExpiry:"",medCardExpiry:"",mvrDue:"",drugTest:"",annualReview:""});
-
+  const [aiResult, setAiResult] = useState(null);
+  const [aiError, setAiError] = useState("");
+  const [dotAnswer, setDotAnswer] = useState(null);
+  const [dotQ, setDotQ] = useState("");
+  const [pasteText, setPasteText] = useState("");
+  const [parsedLoad, setParsedLoad] = useState(null);
   const [loadForm, setLoadForm] = useState({origin:"",destination:"",miles:"",offeredRate:"",deadheadMiles:"",commodity:"",pickupDate:"",brokerName:""});
+  const [analyzeStep, setAnalyzeStep] = useState("paste");
   const [dbLoaded, setDbLoaded] = useState(false);
 
   // ── v10: New feature state ──────────────────────────────────────────
@@ -679,10 +803,23 @@ function ContractorOS() {
   const [dispatches, setDispatches] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [hosLog, setHosLog] = useState([]);
+  // ── v20: FedEx-specific state ──
+  const [hiringCandidates, setHiringCandidates] = useState([]);
+  const [hiringForm, setHiringForm] = useState({name:"",appliedDate:"",stage:"applied",cdlClass:"",cdlExpiry:"",backgroundCost:"",trainingCost:"",recruitingCost:"",notes:""});
+  const [showHiringAdd, setShowHiringAdd] = useState(false);
+  const [safetyEvents, setSafetyEvents] = useState([]);
+  const [safetyForm, setSafetyForm] = useState({driverId:"",week:"",harshBraking:0,speeding:0,seatbelt:100,dashcamFlags:0,coachingNotes:""});
+  const [showSafetyAdd, setShowSafetyAdd] = useState(false);
+  const [stopCostLog, setStopCostLog] = useState([]);
+  const [stopCostForm, setStopCostForm] = useState({date:"",stops:"",fuelCost:"",driverWages:"",vehicleCost:"",revenue:""});
+  const [deliveryFailures, setDeliveryFailures] = useState([]);
+  const [failureForm, setFailureForm] = useState({date:"",driverId:"",routeName:"",failureCode:"",category:"driver_error",packageCount:"",notes:""});
+  const [showFailureAdd, setShowFailureAdd] = useState(false);
+  const [plView, setPlView] = useState("monthly");
   // New feature UI state
   const [payrollSub, setPayrollSub] = useState("runs");
   const [payrollShowAdd, setPayrollShowAdd] = useState(false);
-  const [payrollForm, setPayrollForm] = useState({driverId:"",periodStart:"",periodEnd:"",miles:"",hours:"",stops:"",days:"",loadRevenue:"",manualAmount:"",notes:""});
+  const [payrollForm, setPayrollForm] = useState({driverId:"",periodStart:"",periodEnd:"",miles:"",hours:"",stops:"",days:"",loadRevenue:"",manualAmount:"",notes:"",stopsCompleted:"",stopBonusThreshold:"",stopBonusRate:"",overtimeHours:""});
   const [payrollPreview, setPayrollPreview] = useState(null);
   const [payStub, setPayStub] = useState(null);
   const [fuelSub, setFuelSub] = useState("log");
@@ -723,18 +860,10 @@ function ContractorOS() {
   const [showBugReport, setShowBugReport] = useState(false);
   const [scorecardWeek, setScorecardWeek] = useState(() => new Date().toISOString().slice(0,10));
   const [scorecardData, setScorecardData] = useState(() => { try { return JSON.parse(localStorage.getItem("cos_scorecard")||"[]"); } catch { return []; } });
+  const [scorecardSub, setScorecardSub] = useState("metrics");
   const [bugForm, setBugForm] = useState({subject:"",description:"",email:""});
   const [incidentFollowUpId, setIncidentFollowUpId] = useState(null);
   const [validationMsg, setValidationMsg] = useState("");
-  // OTR Settlements
-  const [settlements, setSettlements] = useState([]);
-  const [settlementSub, setSettlementSub] = useState("outstanding");
-  const [settlementShowAdd, setSettlementShowAdd] = useState(false);
-  const [settlementForm, setSettlementForm] = useState({loadNum:"",broker:"",origin:"",destination:"",miles:"",rate:"",invoiceDate:"",podSubmitted:false,factoringUsed:false,factoringFee:"",paidDate:"",detentionHours:"",detentionRate:"65",notes:""});
-  // OTR Load Calculator
-  const [calcForm, setCalcForm] = useState({origin:"",destination:"",miles:"",offeredRate:"",deadheadMiles:"",commodity:"",brokerName:"",detention:"0"});
-  const [calcResult, setCalcResult] = useState(null);
-  const [taxReservePct, setTaxReservePct] = useState(()=>{try{return localStorage.getItem("cos_tax_reserve_pct")||"27";}catch{return "27";}});
   const showValidation = (msg) => { setValidationMsg(msg); setTimeout(()=>setValidationMsg(""), 3000); };
   const [showOrgProfile, setShowOrgProfile] = useState(false);
 
@@ -753,7 +882,8 @@ function ContractorOS() {
         _compliance, _vehicles, _drivers, _maintenance, _expenses, _revenue,
         _routes, _contracts, _incidents, _brokers, _loads, _users, _currentUser,
         _notifications, _filings, _payroll, _fuelLog, _invoices, _odometer,
-        _tires, _documents, _dispatches, _contacts, _hosLog, _settlements,
+        _tires, _documents, _dispatches, _contacts, _hosLog,
+        _hiringCandidates, _safetyEvents, _stopCostLog, _deliveryFailures,
       ] = await Promise.all([
         db.get(D.compliance,  {trucks:[],drivers:[]}),
         db.get(D.vehicles,    []),
@@ -779,7 +909,10 @@ function ContractorOS() {
         db.get(D.dispatches,  []),
         db.get(D.contacts,    []),
         db.get(D.hosLog,      []),
-        db.get(D.settlements, []),
+        db.get(D.hiringCandidates, []),
+        db.get(D.safetyEvents,     []),
+        db.get(D.stopCostLog,      []),
+        db.get(D.deliveryFailures, []),
       ]);
       if(cancelled) return;
       setCompliance(_compliance);
@@ -812,7 +945,10 @@ function ContractorOS() {
       setDispatches(_dispatches);
       setContacts(_contacts);
       setHosLog(_hosLog);
-      setSettlements(_settlements||[]);
+      setHiringCandidates(_hiringCandidates||[]);
+      setSafetyEvents(_safetyEvents||[]);
+      setStopCostLog(_stopCostLog||[]);
+      setDeliveryFailures(_deliveryFailures||[]);
       setDbLoaded(true);
     })();
     return ()=>{ cancelled=true; };
@@ -844,7 +980,10 @@ function ContractorOS() {
   useEffect(()=>{if(dbLoaded)db.set(KEYS.dispatches,dispatches);},[dispatches,dbLoaded]);
   useEffect(()=>{if(dbLoaded)db.set(KEYS.contacts,contacts);},[contacts,dbLoaded]);
   useEffect(()=>{if(dbLoaded)db.set(KEYS.hosLog,hosLog);},[hosLog,dbLoaded]);
-  useEffect(()=>{if(dbLoaded)db.set(KEYS.settlements,settlements);},[settlements,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.hiringCandidates,hiringCandidates);},[hiringCandidates,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.safetyEvents,safetyEvents);},[safetyEvents,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.stopCostLog,stopCostLog);},[stopCostLog,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.deliveryFailures,deliveryFailures);},[deliveryFailures,dbLoaded]);
 
   const seg = segment ? SEGMENTS[segment] : null;
   const S = seg ? mkStyles(seg.color) : mkStyles("#f59e0b");
@@ -862,6 +1001,52 @@ function ContractorOS() {
     try { return JSON.parse(text.replace(/```json|```/g,"").trim()); } catch { return null; }
   };
 
+  const analyzeLoad = async () => {
+    if(!loadForm.origin||!loadForm.destination||!loadForm.offeredRate) return;
+    setAiLoading(true); setAiResult(null);
+    const miles=parseFloat(loadForm.miles)||0, dead=parseFloat(loadForm.deadheadMiles)||0;
+    const fuelEst=((miles+dead)/settings.mpg)*settings.dieselPrice;
+    const result = await callAI(ANALYZE_PROMPT, `Origin:${loadForm.origin} Dest:${loadForm.destination} Miles:${miles} Dead:${dead} Rate:$${loadForm.offeredRate} Commodity:${loadForm.commodity||"?"} Broker:${loadForm.brokerName||"?"} MPG:${settings.mpg} Diesel:$${settings.dieselPrice} FuelEst:$${fuelEst.toFixed(2)} TruckCPM:$${settings.cpm}`);
+    if(result) { setAiResult(result); setLoads(p=>[{id:Date.now(),date:new Date().toLocaleDateString(),load:{...loadForm},result},...p].slice(0,100)); }
+    setAnalyzeStep("result"); setAiLoading(false);
+  };
+
+  const parseLoad = async () => {
+    if(!pasteText.trim()) return;
+    setAiLoading(true);
+    const parsed = await callAI(PARSE_PROMPT, pasteText);
+    if(parsed) setLoadForm({origin:parsed.origin||"",destination:parsed.destination||"",miles:parsed.miles||"",offeredRate:parsed.offeredRate||"",deadheadMiles:parsed.deadheadMiles||"",commodity:parsed.commodity||"",pickupDate:parsed.pickupDate||"",brokerName:parsed.brokerName||""});
+    setAnalyzeStep("confirm"); setAiLoading(false);
+  };
+
+  const analyzeRoute = async (route) => {
+    setAiLoading(true);
+    const result = await callAI(ROUTE_AI_PROMPT, `Route:${route.name} Stops:${route.stops} Miles:${route.miles} ContractedRate:$${route.rate} FuelCost:$${((route.miles/settings.mpg)*settings.dieselPrice).toFixed(2)} TruckCPM:$${settings.cpm} DriverPay:$${route.driverPay||0} OtherCosts:$${route.otherCosts||0}`);
+    if(result) { setRoutes(p=>p.map(r=>r.id===route.id?{...r,analysis:result}:r)); }
+    setAiLoading(false);
+  };
+
+  const askDot = async () => {
+    if(!dotQ.trim()) return;
+    setAiLoading(true); setDotAnswer(""); setAiError("");
+    try {
+      const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+      if(!apiKey) { setAiError("Anthropic API key not configured. Add VITE_ANTHROPIC_API_KEY to Vercel environment variables."); setAiLoading(false); return; }
+      const res = await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,messages:[{role:"user",content:`You are a DOT/FMCSA compliance expert for US commercial trucking. Answer this question clearly and practically for an owner-operator or fleet manager. Be specific, cite relevant regulations where applicable, and flag any time-sensitive deadlines. Question: ${dotQ}`}]})
+      });
+      if(!res.ok) { const err = await res.json(); throw new Error(err.error?.message||`API error ${res.status}`); }
+      const data = await res.json();
+      const answer = data.content?.[0]?.text;
+      if(!answer) throw new Error("No response from AI");
+      setDotAnswer(answer);
+    } catch(err) {
+      setAiError(`DOT AI error: ${err.message}. Try again or check your API key.`);
+    }
+    setAiLoading(false);
+  };;
 
   const importExcelPL = async (file) => {
     setExcelImporting(true); setExcelResult(null);
@@ -1248,7 +1433,7 @@ function ContractorOS() {
   }
 
   // ── SHARED COMPONENTS ──────────────────────────────────────────────
-  const navLabels = {dashboard:"Dashboard",analyze:"Analyze Load",settlements:"Settlements",boards:"Load Boards",compliance:"Compliance",brokers:"Brokers",fleet:"Fleet",finance:"Finance",routes:"Routes",drivers:"Drivers",contracts:"Contracts",reports:"Reports",trends:"P&L Trends",users:"Users",settings:"Settings",payroll:"Payroll",invoices:"Invoices",dispatch:"Dispatch",contacts:"Contacts",documents:"Documents",data:"Data & Backup",fmcsa:"FMCSA Lookup",scorecard:"Scorecard"};
+  const navLabels = {dashboard:"Dashboard",analyze:"Analyze Load",boards:"Load Boards",compliance:"Compliance",brokers:"Brokers",fleet:"Fleet",finance:"Finance",routes:"Routes",drivers:"Drivers",contracts:"Contracts",reports:"Reports",trends:"P&L Trends",users:"Users",settings:"Settings",payroll:"Payroll",invoices:"Invoices",dispatch:"Dispatch",contacts:"Contacts",documents:"Documents",data:"Data & Backup",fmcsa:"FMCSA Lookup",scorecard:"Scorecard"};
   const SubNav = ({tabs,active,onSelect}) => <SubNavComp tabs={tabs} active={active} accent={accent} onSelect={onSelect}/>;
   const Stat = ({label,value,color,sub}) => <StatCard label={label} value={value} color={color||accent} sub={sub} card={S.card}/>;
   const ExpiryBadge = ({label,days}) => <ExpiryBadgeComp label={label} days={days}/>;
@@ -1313,7 +1498,7 @@ function ContractorOS() {
     alert("Company name applied to Settings.");
   };
 
-  const handleNav = (id) => { setScreen(id); setSubScreen(null); setNavOpen(false); };
+  const handleNav = (id) => { setScreen(id); setSubScreen(null); setAiResult(null); setAnalyzeStep("paste"); setNavOpen(false); };
 
   // ── RENDER ─────────────────────────────────────────────────────────
   // Show loading screen while data loads from Supabase
@@ -1542,271 +1727,86 @@ function ContractorOS() {
 
       {/* ══ OTR: ANALYZE LOAD ══════════════════════════════════════════ */}
       {screen==="analyze"&&seg.features.loadAnalysis&&(
-        <div style={{flex:1,overflowY:"auto",padding:24}}>
-          <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-            <div style={{...S.section,marginBottom:4}}>LOAD PROFITABILITY CALCULATOR</div>
-            <p style={{fontSize:11,color:"#555",marginBottom:20,lineHeight:1.8}}>Enter load details to calculate true net RPM and decide whether to take it. Uses your truck MPG and diesel price from Settings.</p>
-            <div style={{...S.card,marginBottom:20}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-                {[["origin","Origin","Chicago, IL"],["destination","Destination","Nashville, TN"],["miles","Loaded Miles","487"],["deadheadMiles","Deadhead Miles","0"],["offeredRate","Offered Rate ($)","1450"],["commodity","Commodity","General freight"],["brokerName","Broker","Coyote Logistics"],["detention","Detention Hours (if any)","0"]].map(([f,lbl,ph])=>(
-                  <div key={f}>
-                    <label style={S.label}>{lbl}</label>
-                    <input value={calcForm[f]} onChange={e=>setCalcForm(p=>({...p,[f]:e.target.value}))} placeholder={ph} style={S.input} type={["miles","deadheadMiles","offeredRate","detention"].includes(f)?"number":"text"}/>
-                  </div>
-                ))}
+        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          <div style={{display:"flex",borderBottom:"1px solid #1e1e1e",background:"#0d0d0d",padding:"0 24px"}}>
+            {[["paste","Paste Load"],["confirm","Confirm"],["result","Score"]].map(([id,lbl],i)=>{
+              const active=(analyzeStep===id);
+              const done=(i===0&&analyzeStep!=="paste")||(i===1&&analyzeStep==="result");
+              return <div key={id} style={{padding:"12px 16px",fontSize:10,color:active?accent:done?"#555":"#333",borderBottom:active?`2px solid ${accent}`:"2px solid transparent",letterSpacing:"0.1em",textTransform:"uppercase"}}><span style={{color:done?"#22c55e":active?accent:"#2a2a2a",marginRight:5}}>{done?"✓":`0${i+1}`}</span>{lbl}</div>;
+            })}
+          </div>
+          <div style={{flex:1,overflowY:"auto",padding:24,maxWidth:800,margin:"0 auto",width:"100%"}}>
+            {aiLoading&&<Loader msg="Analyzing rate..."/>}
+
+            {analyzeStep==="paste"&&!aiLoading&&(
+              <div style={{animation:"fadeUp 0.3s ease"}}>
+                <div style={{...S.section,marginBottom:8}}>PASTE YOUR LOAD</div>
+                <p style={{fontSize:11,color:"#555",marginBottom:16,lineHeight:1.8}}>Copy from DAT, Truckstop, broker email or text. Paste everything — AI extracts what it needs.</p>
+                <textarea value={pasteText} onChange={e=>setPasteText(e.target.value)} placeholder={"Chicago, IL to Nashville, TN\n487 miles | 42,000 lbs\nRate: $1,450\nPickup: Tomorrow 7am\nBroker: Coyote Logistics"} style={{...S.input,height:160,resize:"vertical",lineHeight:1.7}}/>
+                <div style={{display:"flex",gap:12,marginTop:14}}>
+                  <button className="hov" onClick={parseLoad} disabled={!pasteText.trim()} style={{...S.btn,opacity:pasteText.trim()?1:0.4}}>Parse Load →</button>
+                  <button onClick={()=>setAnalyzeStep("confirm")} style={S.ghost}>Enter manually</button>
+                </div>
               </div>
-              <button className="hov" onClick={()=>{
-                const miles=parseFloat(calcForm.miles)||0;
-                const dead=parseFloat(calcForm.deadheadMiles)||0;
-                const rate=parseFloat(calcForm.offeredRate)||0;
-                const detention=parseFloat(calcForm.detention)||0;
-                const totalMiles=miles+dead;
-                const fuelCost=(totalMiles/parseFloat(settings.mpg||8))*parseFloat(settings.dieselPrice||3.85);
-                const cpmCost=totalMiles*parseFloat(settings.cpm||0.18);
-                const detentionPay=detention*65;
-                const grossRate=rate+detentionPay;
-                const totalCost=fuelCost+cpmCost;
-                const netRevenue=grossRate-totalCost;
-                const netRPM=miles>0?netRevenue/miles:0;
-                const grossRPM=miles>0?grossRate/miles:0;
-                const grade=netRPM>=1.8?"A":netRPM>=1.4?"B":netRPM>=1.0?"C":"D";
-                const verdict=netRPM>=1.8?"TAKE IT":netRPM>=1.4?"SOLID LOAD":netRPM>=1.0?"MARGINAL":"PASS";
-                const vColor=netRPM>=1.4?"green":netRPM>=1.0?"yellow":"red";
-                setCalcResult({miles,dead,rate,fuelCost,cpmCost,detentionPay,grossRate,totalCost,netRevenue,netRPM,grossRPM,grade,verdict,vColor});
-              }} disabled={!calcForm.miles||!calcForm.offeredRate} style={{...S.btn,opacity:calcForm.miles&&calcForm.offeredRate?1:0.4}}>Calculate →</button>
-            </div>
-            {calcResult&&(()=>{
+            )}
+
+            {aiError&&!aiLoading&&analyzeStep!=="result"&&(<div style={{...S.card,background:"#1a0808",border:"1px solid #3a1010",color:"#f87171",fontSize:11,padding:16,marginBottom:12,animation:"fadeUp 0.3s ease"}}>⚠ {aiError}<br/><span style={{fontSize:9,color:"#7a4040"}}>Check your VITE_ANTHROPIC_API_KEY in Vercel, or try again.</span></div>)}
+            {analyzeStep==="confirm"&&!aiLoading&&(
+              <div style={{animation:"fadeUp 0.3s ease"}}>
+                <div style={{...S.section,marginBottom:8}}>CONFIRM DETAILS</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+                  {[["origin","Origin *","City, ST"],["destination","Destination *","City, ST"],["miles","Loaded Miles","487"],["deadheadMiles","Deadhead Miles","0"],["offeredRate","Offered Rate ($) *","1450"],["commodity","Commodity","General freight"],["pickupDate","Pickup Date",""],["brokerName","Broker Name",""]].map(([f,lbl,ph])=>(
+                    <div key={f}><label style={S.label}>{lbl}</label><input value={loadForm[f]} onChange={e=>setLoadForm(p=>({...p,[f]:e.target.value}))} placeholder={ph} style={S.input}/></div>
+                  ))}
+                </div>
+                <div style={{display:"flex",gap:12}}>
+                  <button className="hov" onClick={analyzeLoad} disabled={!loadForm.origin||!loadForm.destination||!loadForm.offeredRate} style={{...S.btn,opacity:(loadForm.origin&&loadForm.destination&&loadForm.offeredRate)?1:0.4}}>Score This Load →</button>
+                  <button onClick={()=>setAnalyzeStep("paste")} style={S.ghost}>← Back</button>
+                </div>
+              </div>
+            )}
+
+            {analyzeStep!=="paste"&&!aiLoading&&!aiResult&&aiError&&(<div style={{...S.card,background:"#1a0808",border:"1px solid #3a1010",color:"#f87171",fontSize:12,padding:20,marginBottom:16,animation:"fadeUp 0.3s ease"}}>⚠ {aiError}<br/><span style={{fontSize:10,color:"#7a4040"}}>Check your API key in Vercel environment variables, or try again in a moment.</span></div>)}
+            {analyzeStep==="result"&&aiResult&&!aiLoading&&(()=>{
               const vBg={green:"#051a0a",yellow:"#1a1505",red:"#1a0505"};
               const vBd={green:"#0d3a1a",yellow:"#3a2a0a",red:"#3a0a0a"};
-              const gc={A:"#22c55e",B:"#84cc16",C:"#f59e0b",D:"#ef4444"};
               return (
                 <div style={{animation:"fadeUp 0.3s ease"}}>
-                  <div style={{background:vBg[calcResult.vColor]||"#111",border:`1px solid ${vBd[calcResult.vColor]||"#222"}`,borderRadius:8,padding:"20px 24px",display:"flex",alignItems:"center",gap:20,marginBottom:16}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:64,fontWeight:900,color:gc[calcResult.grade]||"#555",lineHeight:1}}>{calcResult.grade}</div>
+                  <div style={{background:vBg[aiResult.verdictColor]||"#111",border:`1px solid ${vBd[aiResult.verdictColor]||"#222"}`,borderRadius:8,padding:"20px 24px",display:"flex",alignItems:"center",gap:20,marginBottom:16}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:64,fontWeight:900,color:gradeColor(aiResult.grade),lineHeight:1}}>{aiResult.grade}</div>
                     <div style={{flex:1}}>
-                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:calcResult.vColor==="green"?"#22c55e":calcResult.vColor==="yellow"?"#f59e0b":"#ef4444"}}>{calcResult.verdict}</div>
-                      <div style={{fontSize:11,color:"#666",marginTop:4}}>{calcForm.origin&&calcForm.destination?`${calcForm.origin} → ${calcForm.destination} · `:""}{calcResult.miles} loaded mi + {calcResult.dead} dead mi{calcForm.brokerName?` · ${calcForm.brokerName}`:""}</div>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:aiResult.verdictColor==="green"?"#22c55e":aiResult.verdictColor==="yellow"?"#f59e0b":"#ef4444"}}>{aiResult.verdict}</div>
+                      <div style={{fontSize:12,color:"#888",lineHeight:1.7,marginTop:4}}>{aiResult.summary}</div>
                     </div>
                     <div style={{textAlign:"right",flexShrink:0}}>
-                      <div style={{fontSize:9,color:"#555",marginBottom:2,textTransform:"uppercase",letterSpacing:"0.1em"}}>Net RPM</div>
-                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:36,fontWeight:900,color:calcResult.vColor==="green"?"#22c55e":calcResult.vColor==="yellow"?"#f59e0b":"#ef4444"}}>${calcResult.netRPM.toFixed(2)}</div>
+                      <div style={{fontSize:10,color:"#555",marginBottom:2}}>NET RPM</div>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:36,fontWeight:900,color:aiResult.verdictColor==="green"?"#22c55e":aiResult.verdictColor==="yellow"?"#f59e0b":"#ef4444"}}>${(aiResult.netRPM||0).toFixed(2)}</div>
                     </div>
                   </div>
                   <div style={{...S.card,marginBottom:14}}>
                     <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>Rate Breakdown</div>
                     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
-                      {[["Offered Rate",`$${calcResult.rate.toFixed(2)}`,"#c8c4bc"],["Gross RPM",`$${calcResult.grossRPM.toFixed(2)}/mi`,"#c8c4bc"],["Fuel Cost",`-$${calcResult.fuelCost.toFixed(2)}`,"#ef4444"],["Truck CPM",`-$${calcResult.cpmCost.toFixed(2)}`,"#ef4444"],["Detention Pay",calcResult.detentionPay>0?`+$${calcResult.detentionPay.toFixed(2)}`:"$0.00","#22c55e"],["Net Revenue",`$${calcResult.netRevenue.toFixed(2)}`,calcResult.netRevenue>0?"#22c55e":"#ef4444"]].map(([lbl,val,col])=>(
-                        <div key={lbl} style={{padding:"8px 0",borderTop:"1px solid #1e1e1e"}}>
-                          <div style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{lbl}</div>
-                          <div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{val}</div>
-                        </div>
+                      {[["Gross Rate",fmt$(aiResult.grossRate),"#c8c4bc"],["Gross RPM",`$${(aiResult.grossRPM||0).toFixed(2)}/mi`,"#c8c4bc"],["Fuel Cost",`-${fmt$(aiResult.fuelCost)}`,"#ef4444"],["Deadhead",`-${fmt$(aiResult.deadheadCost)}`,"#ef4444"],["Truck Cost",`-${fmt$(aiResult.truckCost)}`,"#ef4444"],["Net Revenue",fmt$(aiResult.netRevenue),"#22c55e"]].map(([lbl,val,col])=>(
+                        <div key={lbl} style={{padding:"8px 0",borderTop:"1px solid #1e1e1e"}}><div style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{lbl}</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{val}</div></div>
                       ))}
                     </div>
                   </div>
-                  <div style={{...S.card,marginBottom:14,background:"#0a0f1a",border:"1px solid #1a1a3a"}}>
-                    <div style={{fontSize:11,color:"#888",lineHeight:1.8}}>
-                      <strong style={{color:"#c8c4bc"}}>Break-even rate:</strong> ${((calcResult.fuelCost+calcResult.cpmCost)/Math.max(calcResult.miles,1)).toFixed(2)}/mi · ${(calcResult.fuelCost+calcResult.cpmCost).toFixed(2)} total
-                    </div>
-                    <div style={{fontSize:10,color:"#555",marginTop:4,lineHeight:1.8}}>
-                      Using: {settings.mpg||8} MPG · ${settings.dieselPrice||3.85}/gal · ${settings.cpm||0.18}/mi CPM — <span style={{color:accent,cursor:"pointer"}} onClick={()=>setScreen("settings")}>Update in Settings →</span>
-                    </div>
-                  </div>
-                  <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
-                    <button className="hov" onClick={()=>{
-                      setLoads(p=>[{id:Date.now(),date:new Date().toLocaleDateString(),origin:calcForm.origin,destination:calcForm.destination,miles:calcResult.miles,rate:calcResult.rate,netRPM:calcResult.netRPM,grade:calcResult.grade,verdict:calcResult.verdict,broker:calcForm.brokerName,commodity:calcForm.commodity},...p].slice(0,100));
-                      showValidation("Load saved to history");
-                    }} style={S.btn}>Save to History</button>
-                    <button onClick={()=>{setCalcForm({origin:"",destination:"",miles:"",offeredRate:"",deadheadMiles:"",commodity:"",brokerName:"",detention:"0"});setCalcResult(null);}} style={S.ghost}>Clear</button>
-                  </div>
-                  {loads.length>0&&(
-                    <div style={{...S.card,marginTop:20}}>
-                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>Recent Loads</div>
-                      {loads.slice(0,8).map(l=>(
-                        <div key={l.id} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 0",borderBottom:"1px solid #1a1a1a"}}>
-                          <div style={{width:28,height:28,background:(l.grade==="A"||l.grade==="B")?"#052a0a":"#1a0505",border:`1px solid ${(l.grade==="A"||l.grade==="B")?"#22c55e44":"#ef444444"}`,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:{A:"#22c55e",B:"#84cc16",C:"#f59e0b",D:"#ef4444"}[l.grade]||"#555",flexShrink:0}}>{l.grade||"?"}</div>
-                          <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontSize:11,color:"#c8c4bc",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.origin&&l.destination?`${l.origin} → ${l.destination}`:"Load"}{l.broker?` · ${l.broker}`:""}</div>
-                            <div style={{fontSize:10,color:"#555"}}>{l.date}{l.commodity?` · ${l.commodity}`:""}</div>
-                          </div>
-                          <div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:(l.grade==="A"||l.grade==="B")?"#22c55e":l.grade==="C"?"#f59e0b":"#ef4444",flexShrink:0}}>${(l.netRPM||0).toFixed(2)}/mi</div>
-                          <button onClick={()=>setLoads(p=>p.filter(x=>x.id!==l.id))} style={{background:"transparent",border:"none",color:"#333",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
-                        </div>
-                      ))}
+                  {aiResult.counterOffer&&(
+                    <div style={{background:"#110f00",border:"1px solid #2a2500",borderRadius:8,padding:"16px 20px",marginBottom:14}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                        <div><div style={{fontSize:9,color:"#5a5000",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:3}}>Negotiation Script</div><div style={{fontSize:15,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#f59e0b"}}>Counter: {fmt$(aiResult.counterOffer.suggestedRate)}</div></div>
+                        <button onClick={()=>navigator.clipboard.writeText(aiResult.counterOffer.script)} style={{background:"#1a1500",border:"1px solid #2a2000",color:"#f59e0b",padding:"5px 12px",fontSize:9,cursor:"pointer",borderRadius:4,fontFamily:"'DM Mono',monospace"}}>Copy</button>
+                      </div>
+                      <div style={{background:"#0a0900",border:"1px solid #1a1800",borderRadius:4,padding:"12px 14px",fontSize:12,color:"#c8c080",lineHeight:1.8,fontStyle:"italic"}}>"{aiResult.counterOffer.script}"</div>
                     </div>
                   )}
+                  <div style={{display:"flex",gap:12}}>
+                    <button className="hov" onClick={()=>{setAnalyzeStep("paste");setPasteText("");setAiResult(null);setLoadForm({origin:"",destination:"",miles:"",offeredRate:"",deadheadMiles:"",commodity:"",pickupDate:"",brokerName:""});}} style={S.btn}>→ Analyze Another</button>
+                    <button onClick={()=>setScreen("dashboard")} style={S.ghost}>Dashboard</button>
+                  </div>
                 </div>
               );
             })()}
-          </div>
-        </div>
-      )}
-
-      {/* ══ OTR: SETTLEMENTS ═══════════════════════════════════════════ */}
-      {screen==="settlements"&&seg.id==="otr"&&(
-        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["outstanding","Outstanding"],["paid","Paid"],["factoring","Factoring"],["add","+ Log Settlement"]]} active={settlementSub} onSelect={setSettlementSub}/>
-          <div style={{flex:1,overflowY:"auto",padding:24}}>
-            <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-              {settlementSub==="outstanding"&&(()=>{
-                const unpaid=settlements.filter(s=>!s.paidDate);
-                const total=unpaid.reduce((a,s)=>a+parseFloat(s.rate||0),0);
-                return (
-                  <div>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
-                      <Stat label="Outstanding" value={fmt$(total)} color="#f59e0b"/>
-                      <Stat label="Loads Unpaid" value={unpaid.length} color="#c8c4bc"/>
-                      <Stat label="Avg Days Out" value={(()=>{if(!unpaid.length)return"—";const avg=unpaid.reduce((a,s)=>{const d=s.invoiceDate?Math.floor((Date.now()-new Date(s.invoiceDate))/(864e5)):0;return a+d;},0)/unpaid.length;return Math.round(avg)+"d";})()}/>
-                    </div>
-                    {!unpaid.length?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No outstanding settlements. Use "+ Log Settlement" to add one.</div>:unpaid.map(s=>{
-                      const age=s.invoiceDate?Math.floor((Date.now()-new Date(s.invoiceDate))/(864e5)):null;
-                      return (
-                        <div key={s.id} style={{...S.card,marginBottom:10}}>
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                            <div>
-                              <div style={{fontSize:13,color:"#e8e4d8",fontWeight:600}}>{s.broker||"Unknown Broker"}{s.loadNum?` · #${s.loadNum}`:""}</div>
-                              <div style={{fontSize:10,color:"#555",marginTop:2}}>{s.origin&&s.destination?`${s.origin} → ${s.destination}`:""}{s.miles?` · ${s.miles} mi`:""}</div>
-                            </div>
-                            <div style={{textAlign:"right",flexShrink:0}}>
-                              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:700,color:"#f59e0b"}}>{fmt$(s.rate)}</div>
-                              {age!==null&&<div style={{fontSize:9,color:age>30?"#ef4444":age>14?"#f59e0b":"#555",marginTop:2}}>Invoice {age}d ago</div>}
-                            </div>
-                          </div>
-                          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
-                            {s.podSubmitted&&<span style={{fontSize:9,padding:"2px 6px",background:"#0d3a1a",color:"#22c55e",borderRadius:3}}>POD Submitted</span>}
-                            {!s.podSubmitted&&<span style={{fontSize:9,padding:"2px 6px",background:"#3a0a0a",color:"#ef4444",borderRadius:3}}>POD Pending</span>}
-                            {s.factoringUsed&&<span style={{fontSize:9,padding:"2px 6px",background:"#1a1505",color:"#f59e0b",borderRadius:3}}>Factored</span>}
-                            {age>30&&<span style={{fontSize:9,padding:"2px 6px",background:"#3a0a0a",color:"#ef4444",borderRadius:3}}>AGING 30+</span>}
-                          </div>
-                          <div style={{display:"flex",gap:8}}>
-                            <button className="hov" onClick={()=>setSettlements(p=>p.map(x=>x.id===s.id?{...x,paidDate:new Date().toISOString().slice(0,10)}:x))} style={{...S.btn,padding:"6px 14px",fontSize:11}}>Mark Paid</button>
-                            <button onClick={()=>setSettlements(p=>p.filter(x=>x.id!==s.id))} style={{...S.ghost,padding:"6px 14px",fontSize:11}}>Delete</button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-              {settlementSub==="paid"&&(()=>{
-                const paid=settlements.filter(s=>s.paidDate);
-                const grossTotal=paid.reduce((a,s)=>a+parseFloat(s.rate||0),0);
-                const factoringFees=paid.filter(s=>s.factoringUsed).reduce((a,s)=>a+parseFloat(s.factoringFee||0)/100*parseFloat(s.rate||0),0);
-                const taxPct=parseFloat(taxReservePct)||27;
-                const taxReserve=(grossTotal-factoringFees)*(taxPct/100);
-                return (
-                  <div>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
-                      <Stat label="Gross Collected" value={fmt$(grossTotal)} color="#22c55e"/>
-                      <Stat label="Factoring Fees" value={fmt$(factoringFees)} color="#ef4444"/>
-                      <Stat label="Net Received" value={fmt$(grossTotal-factoringFees)} color="#c8c4bc"/>
-                      <Stat label={`Tax Reserve (${taxPct}%)`} value={fmt$(taxReserve)} color="#f59e0b"/>
-                    </div>
-                    {!paid.length?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No paid settlements yet.</div>:paid.map(s=>(
-                      <div key={s.id} style={{...S.card,marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        <div>
-                          <div style={{fontSize:12,color:"#c8c4bc"}}>{s.broker||"Broker"}{s.loadNum?` · #${s.loadNum}`:""}</div>
-                          <div style={{fontSize:10,color:"#555"}}>{s.paidDate} · {s.origin&&s.destination?`${s.origin} → ${s.destination}`:""}</div>
-                        </div>
-                        <div style={{textAlign:"right"}}>
-                          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#22c55e"}}>{fmt$(s.rate)}</div>
-                          {s.factoringUsed&&<div style={{fontSize:9,color:"#f59e0b"}}>-{fmt$(parseFloat(s.factoringFee||0)/100*parseFloat(s.rate||0))} factoring</div>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-              {settlementSub==="factoring"&&(()=>{
-                const factored=settlements.filter(s=>s.factoringUsed);
-                const gross=factored.reduce((a,s)=>a+parseFloat(s.rate||0),0);
-                const fees=factored.reduce((a,s)=>a+parseFloat(s.factoringFee||0)/100*parseFloat(s.rate||0),0);
-                const net=gross-fees;
-                const effectiveRate=gross>0?fees/gross*100:0;
-                return (
-                  <div>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
-                      <Stat label="Factored Loads" value={factored.length} color="#c8c4bc"/>
-                      <Stat label="Gross Factored" value={fmt$(gross)} color="#c8c4bc"/>
-                      <Stat label="Total Fees Paid" value={fmt$(fees)} color="#ef4444"/>
-                      <Stat label="Effective Rate" value={effectiveRate.toFixed(2)+"%"} color="#f59e0b"/>
-                    </div>
-                    <div style={{...S.card,marginBottom:16,background:"#0a0f1a",border:"1px solid #1a1a3a"}}>
-                      <div style={{fontSize:11,color:"#888",lineHeight:1.9}}>Net after fees: <strong style={{color:"#22c55e"}}>{fmt$(net)}</strong>. If your factoring rate is above 3%, consider shopping alternatives — DAT Freight, OTR Solutions, RTS Financial, and Triumph Business Capital are common options in the owner-operator space.</div>
-                    </div>
-                    {!factored.length?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No factored loads yet. Log settlements with "Factoring Used" checked.</div>:factored.map(s=>(
-                      <div key={s.id} style={{...S.card,marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        <div>
-                          <div style={{fontSize:12,color:"#c8c4bc"}}>{s.broker||"Broker"}{s.loadNum?` · #${s.loadNum}`:""}</div>
-                          <div style={{fontSize:10,color:"#555"}}>{s.origin&&s.destination?`${s.origin} → ${s.destination}`:""}</div>
-                        </div>
-                        <div style={{textAlign:"right"}}>
-                          <div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#c8c4bc"}}>{fmt$(s.rate)}</div>
-                          <div style={{fontSize:10,color:"#ef4444"}}>-{fmt$(parseFloat(s.factoringFee||0)/100*parseFloat(s.rate||0))} ({s.factoringFee||0}%)</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-              {settlementSub==="add"&&(
-                <div style={{maxWidth:600}}>
-                  <div style={{...S.section,marginBottom:16}}>LOG NEW SETTLEMENT</div>
-                  <div style={{...S.card}}>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-                      {[["loadNum","Load / Reference #",""],["broker","Broker Name",""],["origin","Origin",""],["destination","Destination",""],["miles","Miles",""],["rate","Gross Rate ($)",""]].map(([f,lbl,ph])=>(
-                        <div key={f}>
-                          <label style={S.label}>{lbl}</label>
-                          <input value={settlementForm[f]} onChange={e=>setSettlementForm(p=>({...p,[f]:e.target.value}))} placeholder={ph} style={S.input} type={["miles","rate"].includes(f)?"number":"text"}/>
-                        </div>
-                      ))}
-                      <div>
-                        <label style={S.label}>Invoice Date</label>
-                        <input value={settlementForm.invoiceDate} onChange={e=>setSettlementForm(p=>({...p,invoiceDate:e.target.value}))} type="date" style={S.input}/>
-                      </div>
-                      <div>
-                        <label style={S.label}>Paid Date (leave blank if unpaid)</label>
-                        <input value={settlementForm.paidDate} onChange={e=>setSettlementForm(p=>({...p,paidDate:e.target.value}))} type="date" style={S.input}/>
-                      </div>
-                      <div>
-                        <label style={S.label}>Detention Hours</label>
-                        <input value={settlementForm.detentionHours} onChange={e=>setSettlementForm(p=>({...p,detentionHours:e.target.value}))} placeholder="0" style={S.input} type="number"/>
-                      </div>
-                      <div>
-                        <label style={S.label}>Detention Rate ($/hr)</label>
-                        <input value={settlementForm.detentionRate} onChange={e=>setSettlementForm(p=>({...p,detentionRate:e.target.value}))} placeholder="65" style={S.input} type="number"/>
-                      </div>
-                    </div>
-                    <div style={{display:"flex",gap:24,marginBottom:12}}>
-                      <label style={{display:"flex",alignItems:"center",gap:8,fontSize:12,color:"#888",cursor:"pointer"}}>
-                        <input type="checkbox" checked={settlementForm.podSubmitted} onChange={e=>setSettlementForm(p=>({...p,podSubmitted:e.target.checked}))} style={{width:14,height:14}}/>
-                        POD Submitted
-                      </label>
-                      <label style={{display:"flex",alignItems:"center",gap:8,fontSize:12,color:"#888",cursor:"pointer"}}>
-                        <input type="checkbox" checked={settlementForm.factoringUsed} onChange={e=>setSettlementForm(p=>({...p,factoringUsed:e.target.checked}))} style={{width:14,height:14}}/>
-                        Factoring Used
-                      </label>
-                    </div>
-                    {settlementForm.factoringUsed&&(
-                      <div style={{marginBottom:12}}>
-                        <label style={S.label}>Factoring Fee (%)</label>
-                        <input value={settlementForm.factoringFee} onChange={e=>setSettlementForm(p=>({...p,factoringFee:e.target.value}))} placeholder="3" style={{...S.input,maxWidth:120}} type="number" step="0.1"/>
-                      </div>
-                    )}
-                    <div style={{marginBottom:14}}>
-                      <label style={S.label}>Notes</label>
-                      <input value={settlementForm.notes} onChange={e=>setSettlementForm(p=>({...p,notes:e.target.value}))} placeholder="Any notes..." style={S.input}/>
-                    </div>
-                    <button className="hov" onClick={()=>{
-                      if(!settlementForm.rate){showValidation("Rate is required");return;}
-                      setSettlements(p=>[{...settlementForm,id:Date.now()},...p]);
-                      setSettlementForm({loadNum:"",broker:"",origin:"",destination:"",miles:"",rate:"",invoiceDate:"",podSubmitted:false,factoringUsed:false,factoringFee:"",paidDate:"",detentionHours:"",detentionRate:"65",notes:""});
-                      setSettlementSub("outstanding");
-                      showValidation("Settlement logged");
-                    }} style={S.btn}>Save Settlement</button>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       )}
@@ -1852,7 +1852,7 @@ function ContractorOS() {
       {/* ══ ROUTES (Non-OTR segments) ═══════════════════════════════════ */}
       {screen==="routes"&&(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["list","My Routes"],["add","Add Route"],["performance","Performance"]]} active={subScreen||"list"} onSelect={setSubScreen}/>
+          <SubNav tabs={[["list","My Routes"],["add","Add Route"],["performance","Performance"],...(seg.id==="fedex"?[["failures","Failure Codes"]]:[] )]} active={subScreen||"list"} onSelect={setSubScreen}/>
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             {(!subScreen||subScreen==="list")&&(
               <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -1870,7 +1870,9 @@ function ContractorOS() {
                           <div style={{fontSize:10,color:"#555"}}>{r.stops} stops · {r.miles} mi · {r.frequency||"Daily"}</div>
                         </div>
                         <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                          {r.analysis&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:gradeColor(r.analysis.profitabilityScore)}}>{r.analysis.verdict}</div>}
                           <button onClick={()=>openEdit("route",r)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
+                          <button className="hov" onClick={()=>analyzeRoute(r)} style={{...S.btn,padding:"6px 14px",fontSize:11}}>Analyze</button>
                           <button onClick={()=>setRoutes(p=>p.filter(x=>x.id!==r.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
                         </div>
                       </div>
@@ -1933,6 +1935,83 @@ function ContractorOS() {
               </div>
             )}
 
+            {subScreen==="performance"&&(
+              <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{...S.section,marginBottom:20}}>ROUTE PERFORMANCE</div>
+                {routes.filter(r=>r.analysis).length===0?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No routes analyzed yet. Go to My Routes and click Analyze on each route.</div>:
+                <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                  {routes.filter(r=>r.analysis).sort((a,b)=>parseFloat(b.rate||0)-parseFloat(a.rate||0)).map((r,i)=>(
+                    <div key={r.id} style={{...S.card,display:"flex",alignItems:"center",gap:16}}>
+                      <div style={{width:28,fontSize:12,color:"#555",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>#{i+1}</div>
+                      <div style={{flex:1}}><div style={{fontSize:13,color:"#e8e4d8"}}>{r.name}</div><div style={{fontSize:10,color:"#555"}}>{r.stops} stops · {r.miles} mi</div></div>
+                      <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Net/Stop</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:accent}}>{fmt$(r.analysis.netPerStop)}</div></div>
+                      <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Net/Mile</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e"}}>{fmt$(r.analysis.netPerMile)}</div></div>
+                      <div style={{width:32,height:32,background:gradeColor(r.analysis.profitabilityScore)+"22",border:`1px solid ${gradeColor(r.analysis.profitabilityScore)}44`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:gradeColor(r.analysis.profitabilityScore),borderRadius:4}}>{r.analysis.profitabilityScore}</div>
+                    </div>
+                  ))}
+                </div>}
+              </div>
+            )}
+            {subScreen==="failures"&&seg.id==="fedex"&&(()=>{
+              const now=new Date();
+              const weekAgo=new Date(now-7*86400000);
+              const twoWeeksAgo=new Date(now-14*86400000);
+              const thisWeekFails=deliveryFailures.filter(f=>new Date(f.date)>=weekAgo);
+              const lastWeekFails=deliveryFailures.filter(f=>new Date(f.date)>=twoWeeksAgo&&new Date(f.date)<weekAgo);
+              const catColors={driver_error:"#ef4444",volume_spike:"#f59e0b",route_issue:"#8888cc",vehicle_issue:"#f97316",customer_unavailable:"#22c55e",weather:"#60a5fa"};
+              const catLabels={driver_error:"Driver Error",volume_spike:"Volume Spike",route_issue:"Route Issue",vehicle_issue:"Vehicle Issue",customer_unavailable:"Customer Unavailable",weather:"Weather"};
+              const catCounts=deliveryFailures.reduce((acc,f)=>({...acc,[f.category]:(acc[f.category]||0)+1}),{});
+              const trend=thisWeekFails.length>lastWeekFails.length?"↑":thisWeekFails.length<lastWeekFails.length?"↓":"→";
+              const trendColor=thisWeekFails.length>lastWeekFails.length?"#ef4444":"#22c55e";
+              return(
+              <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+                  <div style={S.section}>FAILURE CODE TRACKER</div>
+                  <button className="hov" onClick={()=>setShowFailureAdd(!showFailureAdd)} style={S.btn}>{showFailureAdd?"Cancel":"+ Log Failure"}</button>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+                  <div style={S.card}><div style={{fontSize:28,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#ef4444"}}>{thisWeekFails.length} <span style={{fontSize:16,color:trendColor}}>{trend}</span></div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.15em",marginTop:4}}>This Week</div></div>
+                  <div style={S.card}><div style={{fontSize:28,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#888"}}>{lastWeekFails.length}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.15em",marginTop:4}}>Last Week</div></div>
+                </div>
+                {thisWeekFails.length>=3&&<div style={{background:"#1a0808",border:"1px solid #3a1010",borderRadius:6,padding:"10px 16px",marginBottom:16,color:"#ef4444",fontSize:12}}>⚠ Contract risk threshold reached — review failures with your FedEx station manager.</div>}
+                {showFailureAdd&&(
+                  <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                      <div><label style={S.label}>Date</label><input type="date" value={failureForm.date} onChange={e=>setFailureForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
+                      <div><label style={S.label}>Driver</label><select value={failureForm.driverId} onChange={e=>setFailureForm(p=>({...p,driverId:e.target.value}))} style={S.input}><option value="">Select driver...</option>{drivers.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
+                      <div><label style={S.label}>Route Name</label><input value={failureForm.routeName} onChange={e=>setFailureForm(p=>({...p,routeName:e.target.value}))} style={S.input}/></div>
+                      <div><label style={S.label}>Failure Code</label><input value={failureForm.failureCode} onChange={e=>setFailureForm(p=>({...p,failureCode:e.target.value}))} placeholder="e.g. P-010" style={S.input}/></div>
+                      <div><label style={S.label}>Category</label><select value={failureForm.category} onChange={e=>setFailureForm(p=>({...p,category:e.target.value}))} style={S.input}>{Object.entries(catLabels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></div>
+                      <div><label style={S.label}>Packages Affected</label><input type="number" value={failureForm.packageCount} onChange={e=>setFailureForm(p=>({...p,packageCount:e.target.value}))} style={S.input}/></div>
+                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={failureForm.notes} onChange={e=>setFailureForm(p=>({...p,notes:e.target.value}))} style={S.input}/></div>
+                    </div>
+                    <button className="hov" onClick={()=>{if(!failureForm.date){showValidation("Date is required");return;}const d=drivers.find(x=>String(x.id)===String(failureForm.driverId));setDeliveryFailures(p=>[{...failureForm,id:Date.now(),driverName:d?.name||"Unknown"},...p]);setFailureForm({date:"",driverId:"",routeName:"",failureCode:"",category:"driver_error",packageCount:"",notes:""});setShowFailureAdd(false);}} style={{...S.btn,marginTop:14}}>Save Failure</button>
+                  </div>
+                )}
+                <div style={S.card}>
+                  <div style={{fontSize:9,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:10}}>Root Cause Breakdown</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                    {Object.entries(catCounts).sort((a,b)=>b[1]-a[1]).map(([cat,count])=>(
+                      <span key={cat} style={{background:(catColors[cat]||"#555")+"22",border:`1px solid ${(catColors[cat]||"#555")}44`,color:catColors[cat]||"#888",padding:"4px 10px",borderRadius:4,fontSize:10}}>{catLabels[cat]||cat}: {count}</span>
+                    ))}
+                  </div>
+                </div>
+                <div style={{...S.card,marginTop:12}}>
+                  {[...deliveryFailures].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(f=>(
+                    <div key={f.id} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:"1px solid #1a1a1a"}}>
+                      <span style={{fontSize:10,color:"#888",width:80,flexShrink:0}}>{f.date}</span>
+                      <span style={{fontSize:10,color:"#c8c4bc"}}>{f.driverName||"—"}</span>
+                      <span style={{fontSize:10,color:"#555"}}>{f.routeName}</span>
+                      <span style={{fontSize:10,color:"#888",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{f.failureCode}</span>
+                      <span style={{fontSize:9,background:(catColors[f.category]||"#555")+"22",color:catColors[f.category]||"#888",padding:"2px 7px",borderRadius:3}}>{catLabels[f.category]||f.category}</span>
+                      {f.packageCount&&<span style={{fontSize:9,color:"#555"}}>{f.packageCount} pkgs</span>}
+                      <button onClick={()=>setDeliveryFailures(p=>p.filter(x=>x.id!==f.id))} style={{marginLeft:"auto",background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -2184,9 +2263,21 @@ function ContractorOS() {
             )}
 
             {subScreen==="ask"&&(
-              <div style={{maxWidth:700,margin:"0 auto",animation:"fadeUp 0.3s ease",textAlign:"center",paddingTop:60}}>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:48,fontWeight:900,color:"#1e1e1e",letterSpacing:"0.05em",marginBottom:12}}>COMING SOON</div>
-                <div style={{fontSize:13,color:"#555",lineHeight:1.9}}>DOT AI is under development and will be available in an upcoming update.</div>
+              <div style={{maxWidth:700,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{...S.section,marginBottom:4}}>ASK DOT AI</div>
+                <p style={{fontSize:11,color:"#555",marginBottom:18,lineHeight:1.8}}>Plain-English answers to any compliance question.</p>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
+                  {["What goes in a driver qualification file?","When do I pull an MVR?","What is UCR and when to renew?","What triggers a DOT audit?","How to register with Drug Clearinghouse?","What is MCS-150?","How long keep HOS logs?","Documents required in vehicle?"].map(q=>(
+                    <button key={q} onClick={()=>setDotQ(q)} style={{background:"#111",border:"1px solid #222",color:"#666",padding:"5px 10px",fontSize:10,borderRadius:4,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>{q}</button>
+                  ))}
+                </div>
+                <div style={{display:"flex",gap:10,marginBottom:18}}>
+                  <input value={dotQ} onChange={e=>setDotQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&askDot()} placeholder="Ask any DOT/FMCSA compliance question..." style={{...S.input,flex:1}}/>
+                  <button className="hov" onClick={askDot} disabled={!dotQ.trim()||aiLoading} style={{...S.danger,opacity:dotQ.trim()&&!aiLoading?1:0.4}}>{aiLoading?"...":"Ask →"}</button>
+                </div>
+                {aiLoading&&<Loader msg="Consulting FMCSA regulations..."/>}
+                {aiError&&!aiLoading&&screen==="compliance"&&<div style={{...S.card,background:"#1a0808",border:"1px solid #3a1010",color:"#f87171",fontSize:11,marginBottom:12}}>{aiError}</div>}
+                {dotAnswer&&!aiLoading&&<div style={{background:"#110f00",border:"1px solid #2a2000",borderRadius:8,padding:"18px 22px",animation:"fadeUp 0.3s ease"}}><div style={{fontSize:9,color:"#5a4a00",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:10}}>DOT AI Answer</div><div style={{fontSize:12,color:"#c8c4a0",lineHeight:1.9,whiteSpace:"pre-wrap"}}>{dotAnswer}</div><div style={{marginTop:14,fontSize:10,color:"#3a3000",borderTop:"1px solid #2a1800",paddingTop:10}}>⚠ Informational only. Verify with your state DOT and a compliance professional.</div></div>}
               </div>
             )}
           </div>
@@ -2196,7 +2287,7 @@ function ContractorOS() {
       {/* ══ DRIVERS ════════════════════════════════════════════════════ */}
       {screen==="drivers"&&(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["list","All Drivers"],["scorecards","Scorecards"],["incidents","Incidents"],["onboarding","Onboarding"],["hos","HOS Log"]]} active={subScreen||"list"} onSelect={setSubScreen}/>
+          <SubNav tabs={[["list","All Drivers"],["scorecards","Scorecards"],["incidents","Incidents"],["onboarding","Onboarding"],["hos","HOS Log"],...(seg.id==="fedex"?[["hiring","Hiring Pipeline"]]:[] )]} active={subScreen||"list"} onSelect={setSubScreen}/>
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             {(!subScreen||subScreen==="list")&&(
               <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -2409,6 +2500,87 @@ function ContractorOS() {
         </div>
       )}
 
+            {subScreen==="hiring"&&seg.id==="fedex"&&(()=>{
+              const STAGES=["applied","interviewed","background_check","onboarding","active"];
+              const STAGE_LABELS={applied:"Applied",interviewed:"Interviewed",background_check:"Background Check",onboarding:"Onboarding",active:"Active"};
+              const stageCounts=STAGES.reduce((acc,s)=>({...acc,[s]:hiringCandidates.filter(c=>c.stage===s).length}),{});
+              const totalCost=c=>(parseFloat(c.backgroundCost||0)+parseFloat(c.trainingCost||0)+parseFloat(c.recruitingCost||0));
+              const activeCandidates=hiringCandidates.filter(c=>c.stage==="active");
+              const totalCostSum=activeCandidates.reduce((s,c)=>s+totalCost(c),0);
+              const avgCostPerHire=activeCandidates.length?totalCostSum/activeCandidates.length:0;
+              const daysSince=c=>c.appliedDate?Math.floor((Date.now()-new Date(c.appliedDate))/(86400000)):null;
+              const activeWithDays=activeCandidates.filter(c=>c.appliedDate);
+              const avgDaysToFill=activeWithDays.length?activeWithDays.reduce((s,c)=>s+daysSince(c),0)/activeWithDays.length:0;
+              const cdlColor=c=>{if(!c.cdlExpiry)return"#555";const d=daysUntil(c.cdlExpiry);return d<30?"#ef4444":d<90?"#f59e0b":"#22c55e";};
+              const nextStage=s=>{const i=STAGES.indexOf(s);return STAGES[Math.min(i+1,STAGES.length-1)];};
+              return(
+              <div style={{maxWidth:900,margin:"0 auto",padding:24,animation:"fadeUp 0.3s ease"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+                  <div style={S.section}>HIRING PIPELINE</div>
+                  <button className="hov" onClick={()=>setShowHiringAdd(!showHiringAdd)} style={S.btn}>{showHiringAdd?"Cancel":"+ Add Candidate"}</button>
+                </div>
+                {/* Pipeline visual */}
+                <div style={{display:"flex",gap:4,marginBottom:24,overflowX:"auto"}}>
+                  {STAGES.map((s,i)=>(
+                    <div key={s} style={{flex:1,minWidth:100,textAlign:"center",background:"#141414",border:"1px solid #222",borderTop:`3px solid ${accent}`,borderRadius:6,padding:"10px 8px"}}>
+                      <div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:accent}}>{stageCounts[s]||0}</div>
+                      <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",lineHeight:1.3}}>{STAGE_LABELS[s]}</div>
+                      {i<STAGES.length-1&&<div style={{fontSize:10,color:"#333",marginTop:4}}>→</div>}
+                    </div>
+                  ))}
+                </div>
+                {/* Summary stats */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+                  <div style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#22c55e"}}>{fmt$(avgCostPerHire)}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.15em",marginTop:4}}>Avg Cost Per Hire</div></div>
+                  <div style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:accent}}>{avgDaysToFill?avgDaysToFill.toFixed(0):"—"} days</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.15em",marginTop:4}}>Avg Days to Fill</div></div>
+                </div>
+                {showHiringAdd&&(
+                  <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Candidate Name *</label><input value={hiringForm.name} onChange={e=>setHiringForm(p=>({...p,name:e.target.value}))} style={S.input}/></div>
+                      <div><label style={S.label}>Applied Date</label><input type="date" value={hiringForm.appliedDate} onChange={e=>setHiringForm(p=>({...p,appliedDate:e.target.value}))} style={S.input}/></div>
+                      <div><label style={S.label}>Stage</label><select value={hiringForm.stage} onChange={e=>setHiringForm(p=>({...p,stage:e.target.value}))} style={S.input}>{STAGES.map(s=><option key={s} value={s}>{STAGE_LABELS[s]}</option>)}</select></div>
+                      <div><label style={S.label}>CDL Class</label><input value={hiringForm.cdlClass} onChange={e=>setHiringForm(p=>({...p,cdlClass:e.target.value}))} placeholder="A, B, C" style={S.input}/></div>
+                      <div><label style={S.label}>CDL Expiry</label><input type="date" value={hiringForm.cdlExpiry} onChange={e=>setHiringForm(p=>({...p,cdlExpiry:e.target.value}))} style={S.input}/></div>
+                      <div><label style={S.label}>Background Cost ($)</label><input type="number" value={hiringForm.backgroundCost} onChange={e=>setHiringForm(p=>({...p,backgroundCost:e.target.value}))} placeholder="0" style={S.input}/></div>
+                      <div><label style={S.label}>Training Cost ($)</label><input type="number" value={hiringForm.trainingCost} onChange={e=>setHiringForm(p=>({...p,trainingCost:e.target.value}))} placeholder="0" style={S.input}/></div>
+                      <div><label style={S.label}>Recruiting Cost ($)</label><input type="number" value={hiringForm.recruitingCost} onChange={e=>setHiringForm(p=>({...p,recruitingCost:e.target.value}))} placeholder="0" style={S.input}/></div>
+                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={hiringForm.notes} onChange={e=>setHiringForm(p=>({...p,notes:e.target.value}))} style={S.input}/></div>
+                    </div>
+                    <button className="hov" onClick={()=>{if(!hiringForm.name){showValidation("Name is required");return;}setHiringCandidates(p=>[...p,{...hiringForm,id:Date.now()}]);setHiringForm({name:"",appliedDate:"",stage:"applied",cdlClass:"",cdlExpiry:"",backgroundCost:"",trainingCost:"",recruitingCost:"",notes:""});setShowHiringAdd(false);}} style={{...S.btn,marginTop:14}}>Save Candidate</button>
+                  </div>
+                )}
+                {hiringCandidates.length===0&&!showHiringAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No candidates yet. Click "+ Add Candidate" to start tracking your pipeline.</div>}
+                {STAGES.map(stage=>{
+                  const cands=hiringCandidates.filter(c=>c.stage===stage);
+                  if(!cands.length) return null;
+                  return(
+                    <div key={stage} style={{marginBottom:20}}>
+                      <div style={{fontSize:10,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:8}}>{STAGE_LABELS[stage]} ({cands.length})</div>
+                      {cands.map(c=>(
+                        <div key={c.id} style={{...S.card,marginBottom:8,borderLeft:`3px solid ${accent}`}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                            <div style={{flex:1}}>
+                              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8"}}>{c.name}</div>
+                              <div style={{fontSize:10,color:"#555",marginTop:2}}>CDL {c.cdlClass||"—"} · Applied {c.appliedDate||"—"} · {daysSince(c)!==null?`${daysSince(c)}d in pipeline`:"—"}</div>
+                              {c.cdlExpiry&&<span style={{fontSize:9,background:cdlColor(c)+"22",border:`1px solid ${cdlColor(c)}44`,color:cdlColor(c),padding:"1px 6px",borderRadius:3,marginTop:4,display:"inline-block"}}>CDL exp {c.cdlExpiry}</span>}
+                              <div style={{fontSize:10,color:"#22c55e",marginTop:4}}>Total cost: {fmt$(totalCost(c))}</div>
+                              {c.notes&&<div style={{fontSize:10,color:"#555",marginTop:2}}>{c.notes}</div>}
+                            </div>
+                            <div style={{display:"flex",gap:6,flexShrink:0}}>
+                              {c.stage!=="active"&&<button onClick={()=>setHiringCandidates(p=>p.map(x=>x.id===c.id?{...x,stage:nextStage(x.stage)}:x))} style={{...S.btn,fontSize:10,padding:"4px 10px"}}>Promote →</button>}
+                              <button onClick={()=>setHiringCandidates(p=>p.filter(x=>x.id!==c.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+              );
+            })()}
+
             {(subScreen==="onboarding"||subScreen==="hos")&&(()=>{
               const ONBOARDING_STEPS=[{id:"application",label:"Employment Application",req:true},{id:"background",label:"Background Check Ordered",req:true},{id:"background_clear",label:"Background Check — Cleared",req:true},{id:"pre_drug_test",label:"Pre-Employment Drug Test",req:true},{id:"drug_clear",label:"Drug Test — Negative Result",req:true},{id:"clearinghouse_query",label:"FMCSA Drug Clearinghouse Query",req:true},{id:"cdl_copy",label:"CDL Copy on File",req:true},{id:"medical_card",label:"Medical Card Copy on File",req:true},{id:"mvr",label:"MVR (Motor Vehicle Record) Pulled",req:true},{id:"driving_history_3yr",label:"3-Year Driving/Employment History Verified",req:true},{id:"orientation",label:"Orientation / Safety Training Completed",req:true},{id:"orientation_signed",label:"Orientation Sign-off Form Signed",req:true},{id:"i9",label:"I-9 Employment Eligibility",req:true},{id:"direct_deposit",label:"Direct Deposit / Pay Setup",req:false},{id:"uniform",label:"Uniform / Equipment Issued",req:false},{id:"eld_training",label:"ELD / HOS Training",req:false},{id:"handbook",label:"Company Handbook Acknowledged",req:false}];
               const toggleStep=(driverId,stepId)=>setDrivers(prev=>prev.map(d=>{if(String(d.id)!==String(driverId))return d;const checklist=d.onboarding||{};return{...d,onboarding:{...checklist,[stepId]:checklist[stepId]?null:new Date().toISOString().slice(0,10)}};}));
@@ -2510,7 +2682,7 @@ function ContractorOS() {
       {/* ══ FLEET / MAINTENANCE ════════════════════════════════════════ */}
       {screen==="fleet"&&(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["log","Maintenance Log"],["schedule","Upcoming Service"],["fuel","Fuel Log"],["odometer","Odometer / Miles"],["tires","Tires"],...(seg.id==="otr"?[["ifta","IFTA Summary"]]:[] )]} active={subScreen||"log"} onSelect={setSubScreen}/>
+          <SubNav tabs={[["log","Maintenance Log"],["schedule","Upcoming Service"],["fuel","Fuel Log"],["odometer","Odometer / Miles"],["tires","Tires"]]} active={subScreen||"log"} onSelect={setSubScreen}/>
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             {(!subScreen||subScreen==="log")&&(
               <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -2737,71 +2909,6 @@ function ContractorOS() {
               </div>
             )}
 
-            {subScreen==="ifta"&&seg.id==="otr"&&(()=>{
-              const stateMap={};
-              fuelLog.forEach(f=>{
-                const st=(f.state||"??").toUpperCase();
-                if(!stateMap[st])stateMap[st]={miles:0,gallons:0,cost:0};
-                stateMap[st].gallons+=parseFloat(f.gallons||0);
-                stateMap[st].cost+=parseFloat(f.totalCost||0);
-              });
-              odometer.forEach(o=>{
-                const st=(o.state||"??").toUpperCase();
-                if(!stateMap[st])stateMap[st]={miles:0,gallons:0,cost:0};
-                stateMap[st].miles+=parseFloat(o.miles||0);
-              });
-              const states=Object.entries(stateMap).sort((a,b)=>b[1].miles-a[1].miles);
-              const totGal=states.reduce((a,[,v])=>a+v.gallons,0);
-              const totMi=states.reduce((a,[,v])=>a+v.miles,0);
-              const totCost=states.reduce((a,[,v])=>a+v.cost,0);
-              const fleetMPG=totGal>0?totMi/totGal:0;
-              const quarters=[{q:"Q1 (Jan–Mar)","due":"Apr 30"},{"q":"Q2 (Apr–Jun)","due":"Jul 31"},{"q":"Q3 (Jul–Sep)","due":"Oct 31"},{"q":"Q4 (Oct–Dec)","due":"Jan 31"}];
-              return (
-                <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                  <div style={{...S.section,marginBottom:4}}>IFTA FUEL TAX SUMMARY</div>
-                  <p style={{fontSize:11,color:"#555",marginBottom:20,lineHeight:1.8}}>Aggregated from your Fuel Log and Odometer entries. Use this for quarterly IFTA filing with your base state.</p>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
-                    <Stat label="Total Miles (logged)" value={totMi.toFixed(0)+"mi"} color="#c8c4bc"/>
-                    <Stat label="Total Gallons" value={totGal.toFixed(1)+"gal"} color="#c8c4bc"/>
-                    <Stat label="Fleet MPG" value={fleetMPG>0?fleetMPG.toFixed(2):"—"} color="#22c55e"/>
-                  </div>
-                  {!states.length?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No fuel or odometer entries yet. Log fill-ups in Fuel Log and odometer readings to generate IFTA data.</div>:(
-                    <div style={{...S.card,marginBottom:20}}>
-                      <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>State Breakdown</div>
-                      <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr 1fr 1fr",gap:8,padding:"8px 0",borderBottom:"1px solid #222",marginBottom:4}}>
-                        {["State","Miles","Gallons","Fuel Cost","$/Gal"].map(h=><div key={h} style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase"}}>{h}</div>)}
-                      </div>
-                      {states.map(([st,v])=>(
-                        <div key={st} style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr 1fr 1fr",gap:8,padding:"8px 0",borderBottom:"1px solid #111"}}>
-                          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:accent}}>{st}</div>
-                          <div style={{fontSize:12,color:"#c8c4bc"}}>{v.miles>0?v.miles.toFixed(0)+"mi":"—"}</div>
-                          <div style={{fontSize:12,color:"#c8c4bc"}}>{v.gallons>0?v.gallons.toFixed(1)+"gal":"—"}</div>
-                          <div style={{fontSize:12,color:"#c8c4bc"}}>{v.cost>0?fmt$(v.cost):"—"}</div>
-                          <div style={{fontSize:12,color:"#c8c4bc"}}>{v.gallons>0&&v.cost>0?"$"+(v.cost/v.gallons).toFixed(2):"—"}</div>
-                        </div>
-                      ))}
-                      <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr 1fr 1fr",gap:8,padding:"10px 0",marginTop:4}}>
-                        <div style={{fontSize:10,color:"#555",textTransform:"uppercase"}}>Total</div>
-                        <div style={{fontSize:13,fontWeight:700,color:"#e8e4d8"}}>{totMi.toFixed(0)}mi</div>
-                        <div style={{fontSize:13,fontWeight:700,color:"#e8e4d8"}}>{totGal.toFixed(1)}gal</div>
-                        <div style={{fontSize:13,fontWeight:700,color:"#e8e4d8"}}>{fmt$(totCost)}</div>
-                        <div style={{fontSize:13,fontWeight:700,color:"#22c55e"}}>{totGal>0&&totCost>0?"$"+(totCost/totGal).toFixed(2):"—"}</div>
-                      </div>
-                    </div>
-                  )}
-                  <div style={{...S.card}}>
-                    <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>IFTA Filing Deadlines</div>
-                    {quarters.map(({q,due})=>(
-                      <div key={q} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #1a1a1a",fontSize:11,color:"#888"}}>
-                        <span>{q}</span><span style={{color:accent}}>Due {due}</span>
-                      </div>
-                    ))}
-                    <div style={{fontSize:10,color:"#555",marginTop:12,lineHeight:1.8}}>File with your base state. IFTA license renewal is January 1 annually. Keep fuel receipts for 4 years.</div>
-                  </div>
-                </div>
-              );
-            })()}
-
 
       {/* ══ CONTRACTS ══════════════════════════════════════════════════ */}
       {screen==="contracts"&&(
@@ -2874,7 +2981,7 @@ function ContractorOS() {
       {/* ══ FINANCE ════════════════════════════════════════════════════ */}
       {screen==="finance"&&(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["pl","P&L Dashboard"],["revenue","Revenue"],["expenses","Expenses"],["import","Import from Excel/QB"],...(seg.id==="otr"?[["taxreserve","Tax Reserve"]]:[] )]} active={subScreen||"pl"} onSelect={setSubScreen}/>
+          <SubNav tabs={[["pl","P&L Dashboard"],["revenue","Revenue"],["expenses","Expenses"],["import","Import from Excel/QB"],...(seg.id==="fedex"?[["costperstop","Cost Per Stop"]]:[] )]} active={subScreen||"pl"} onSelect={setSubScreen}/>
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             {(!subScreen||subScreen==="pl")&&(
               <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -2911,6 +3018,54 @@ function ContractorOS() {
                   <button className="hov" onClick={()=>setSubScreen("revenue")} style={S.btn}>+ Add Revenue</button>
                   <button className="hov" onClick={()=>setSubScreen("expenses")} style={{...S.btn,background:"#ef4444"}}>+ Add Expense</button>
                 </div>
+                {seg.id==="fedex"&&(()=>{
+                  const totalRev=revenue.reduce((s,r)=>s+parseFloat(r.amount||0),0);
+                  const catTotals={};
+                  expenses.forEach(e=>{const cat=e.category||"other";if(!catTotals[cat])catTotals[cat]=0;catTotals[cat]+=parseFloat(e.amount||0);});
+                  const highlight=["insurance","fuel","maintenance","driver_pay"];
+                  const pct=(v)=>totalRev>0?((v/totalRev)*100).toFixed(1):0;
+                  // Weekly vs Monthly toggle
+                  const groups={};
+                  const groupKey=(date)=>plView==="monthly"?date.slice(0,7):(()=>{const d=new Date(date);const mon=new Date(d);mon.setDate(d.getDate()-d.getDay());return mon.toISOString().slice(0,10);})();
+                  revenue.forEach(r=>{if(!r.date)return;const k=groupKey(r.date);if(!groups[k])groups[k]={rev:0,exp:0};groups[k].rev+=parseFloat(r.amount||0);});
+                  expenses.forEach(e=>{if(!e.date)return;const k=groupKey(e.date);if(!groups[k])groups[k]={rev:0,exp:0};groups[k].exp+=parseFloat(e.amount||0);});
+                  const sortedGroups=Object.entries(groups).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,8);
+                  return(
+                  <div style={{marginTop:20}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                      <div style={{fontSize:10,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase"}}>FedEx Cost Breakdown</div>
+                      <div style={{display:"flex",gap:4}}>
+                        {["monthly","weekly"].map(v=><button key={v} onClick={()=>setPlView(v)} style={{background:plView===v?accent:"transparent",color:plView===v?"#0a0a0a":"#555",border:`1px solid ${plView===v?accent:"#2a2a2a"}`,borderRadius:4,padding:"4px 10px",fontSize:9,cursor:"pointer",fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{v}</button>)}
+                      </div>
+                    </div>
+                    <div style={S.card}>
+                      {sortedGroups.map(([k,d])=>{
+                        const net=d.rev-d.exp;
+                        return <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #1a1a1a"}}>
+                          <span style={{fontSize:10,color:"#888"}}>{k}</span>
+                          <div style={{display:"flex",gap:16}}>
+                            <span style={{fontSize:10,color:"#22c55e"}}>{fmt$(d.rev)}</span>
+                            <span style={{fontSize:10,color:"#ef4444"}}>{fmt$(d.exp)}</span>
+                            <span style={{fontSize:11,fontWeight:700,color:net>=0?"#22c55e":"#ef4444"}}>{fmt$(net)}</span>
+                          </div>
+                        </div>;
+                      })}
+                    </div>
+                    <div style={{...S.card,marginTop:12}}>
+                      <div style={{fontSize:9,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:10}}>Cost Category Breakdown (% of Revenue)</div>
+                      {Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>(
+                        <div key={cat} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:"1px solid #1a1a1a"}}>
+                          <span style={{fontSize:10,color:highlight.includes(cat)?accent:"#888",textTransform:"uppercase",letterSpacing:"0.08em"}}>{cat.replace(/_/g," ")}{highlight.includes(cat)?" ★":""}</span>
+                          <div style={{display:"flex",gap:12}}>
+                            <span style={{fontSize:10,color:"#555"}}>{fmt$(amt)}</span>
+                            <span style={{fontSize:10,fontWeight:700,color:parseFloat(pct(amt))>30?"#ef4444":"#22c55e"}}>{pct(amt)}%</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -3114,61 +3269,74 @@ function ContractorOS() {
                 </div>
               </div>
             )}
-
-            {subScreen==="taxreserve"&&seg.id==="otr"&&(()=>{
-              const gross=settlements.length>0?settlements.filter(s=>s.paidDate).reduce((a,s)=>a+parseFloat(s.rate||0),0):revenue.reduce((a,r)=>a+parseFloat(r.amount||0),0);
-              const taxPct=parseFloat(taxReservePct)||27;
-              const reserve=gross*(taxPct/100);
-              const perQ=reserve/4;
-              const year=new Date().getFullYear();
-              const deadlines=[{q:"Q1",label:"Apr 15",date:`${year}-04-15`},{q:"Q2",label:"Jun 15",date:`${year}-06-15`},{q:"Q3",label:"Sep 15",date:`${year}-09-15`},{q:"Q4",label:"Jan 15",date:`${year+1}-01-15`}];
-              const deductions=["Per-mile fuel costs (fuel receipts by state)","Truck payments / lease payments","Insurance premiums (primary liability, cargo, physical damage)","Maintenance and repairs","Tires","Permits (IFTA, IRP, UCR)","Scales and tolls","ELD subscription","Cell phone (business use portion)","Home office (if applicable)","Health insurance premiums","Retirement contributions (SEP-IRA up to 25% of net)","Mileage for non-truck vehicle used for business","Meals while away from home (80% deductible)"];
-              return (
-                <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                  <div style={{...S.section,marginBottom:4}}>TAX RESERVE CALCULATOR</div>
-                  <p style={{fontSize:11,color:"#555",marginBottom:20,lineHeight:1.8}}>As a 1099 owner-operator you pay self-employment tax (~15.3%) plus federal income tax. Set aside 25–30% of gross revenue to avoid a painful tax bill.</p>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
-                    <Stat label={settlements.length>0?"Gross (from settlements)":"Gross Revenue"} value={fmt$(gross)} color="#c8c4bc"/>
-                    <Stat label={`Reserve (${taxPct}%)`} value={fmt$(reserve)} color="#f59e0b"/>
-                    <Stat label="Per Quarter" value={fmt$(perQ)} color="#f59e0b"/>
-                  </div>
-                  <div style={{...S.card,marginBottom:16}}>
-                    <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>Reserve Percentage</div>
-                    <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                      <input type="range" min={15} max={40} value={taxReservePct} onChange={e=>{setTaxReservePct(e.target.value);try{localStorage.setItem("cos_tax_reserve_pct",e.target.value);}catch{}}} style={{flex:1,accentColor:accent}}/>
-                      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:700,color:accent,width:52,textAlign:"right"}}>{taxReservePct}%</span>
-                    </div>
-                    <div style={{fontSize:10,color:"#555",marginTop:8,lineHeight:1.8}}>Recommended: 27–30% for most owner-operators. Higher if you're in a high-income-tax state. Lower if you have heavy deductions.</div>
-                  </div>
-                  <div style={{...S.card,marginBottom:16}}>
-                    <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>2025 Estimated Tax Deadlines</div>
-                    {deadlines.map(d=>{
-                      const days=Math.ceil((new Date(d.date)-Date.now())/(864e5));
-                      return (
-                        <div key={d.q} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #1a1a1a"}}>
-                          <div>
-                            <div style={{fontSize:12,color:"#c8c4bc"}}>{d.q} Estimated Tax</div>
-                            <div style={{fontSize:10,color:"#555"}}>Due {d.label}</div>
-                          </div>
-                          <div style={{textAlign:"right"}}>
-                            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:accent}}>{fmt$(perQ)}</div>
-                            <div style={{fontSize:9,color:days<14?"#ef4444":days<30?"#f59e0b":"#555"}}>{days<0?"PAST DUE":days===0?"DUE TODAY":`${days}d away`}</div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div style={{...S.card}}>
-                    <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>Key Deductions — Keep Receipts</div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                      {deductions.map(d=>(
-                        <div key={d} style={{fontSize:11,color:"#888",padding:"5px 0",borderBottom:"1px solid #111",display:"flex",gap:8,alignItems:"flex-start"}}>
-                          <span style={{color:accent,flexShrink:0}}>✓</span>{d}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+            {subScreen==="costperstop"&&seg.id==="fedex"&&(()=>{
+              const entries=[...stopCostLog].sort((a,b)=>new Date(b.date)-new Date(a.date));
+              const calcEntry=e=>{
+                const stops=parseFloat(e.stops||1);
+                const totalCost=parseFloat(e.fuelCost||0)+parseFloat(e.driverWages||0)+parseFloat(e.vehicleCost||0);
+                const rev=parseFloat(e.revenue||0);
+                const cps=stops>0?totalCost/stops:0;
+                const rps=stops>0?rev/stops:0;
+                const nps=rps-cps;
+                const margin=rev>0?((nps/rps)*100):0;
+                return{totalCost,rev,cps,rps,nps,margin};
+              };
+              const avgCPS=entries.length?entries.reduce((s,e)=>s+calcEntry(e).cps,0)/entries.length:0;
+              const avgRPS=entries.length?entries.reduce((s,e)=>s+calcEntry(e).rps,0)/entries.length:0;
+              const avgNPS=avgRPS-avgCPS;
+              // weekly rollup
+              const weeks={};
+              entries.forEach(e=>{const d=new Date(e.date);const mon=new Date(d);mon.setDate(d.getDate()-d.getDay());const k=mon.toISOString().slice(0,10);if(!weeks[k])weeks[k]=[];weeks[k].push(e);});
+              const weekKeys=Object.keys(weeks).sort((a,b)=>b.localeCompare(a));
+              const weekAvg=(key)=>{const es=weeks[key];const avg=es.reduce((s,e)=>s+calcEntry(e).nps,0)/es.length;return avg;};
+              const latestEntry=entries[0];
+              const latestCalc=latestEntry?calcEntry(latestEntry):null;
+              return(
+              <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{...S.section,marginBottom:20}}>COST PER STOP</div>
+                {latestCalc&&latestCalc.cps>latestCalc.rps&&<div style={{background:"#1a0808",border:"1px solid #3a1010",borderRadius:6,padding:"10px 16px",marginBottom:16,color:"#ef4444",fontSize:12}}>⚠ Alert: Latest day's cost-per-stop exceeds revenue-per-stop. Review expenses immediately.</div>}
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+                  {[["Avg Cost/Stop",fmt$(avgCPS),"#ef4444"],["Avg Rev/Stop",fmt$(avgRPS),"#22c55e"],["Avg Net/Stop",fmt$(avgNPS),avgNPS>=0?"#22c55e":"#ef4444"],["Days Logged",entries.length.toString(),accent]].map(([lbl,val,col])=>(
+                    <div key={lbl} style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.15em",marginTop:4}}>{lbl}</div></div>
+                  ))}
                 </div>
+                <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>Log Day</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    <div><label style={S.label}>Date</label><input type="date" value={stopCostForm.date} onChange={e=>setStopCostForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
+                    <div><label style={S.label}>Stops Completed</label><input type="number" value={stopCostForm.stops} onChange={e=>setStopCostForm(p=>({...p,stops:e.target.value}))} style={S.input}/></div>
+                    <div><label style={S.label}>Fuel Cost ($)</label><input type="number" value={stopCostForm.fuelCost} onChange={e=>setStopCostForm(p=>({...p,fuelCost:e.target.value}))} style={S.input}/></div>
+                    <div><label style={S.label}>Driver Wages ($)</label><input type="number" value={stopCostForm.driverWages} onChange={e=>setStopCostForm(p=>({...p,driverWages:e.target.value}))} style={S.input}/></div>
+                    <div><label style={S.label}>Vehicle Cost ($)</label><input type="number" value={stopCostForm.vehicleCost} onChange={e=>setStopCostForm(p=>({...p,vehicleCost:e.target.value}))} style={S.input}/></div>
+                    <div><label style={S.label}>Revenue ($)</label><input type="number" value={stopCostForm.revenue} onChange={e=>setStopCostForm(p=>({...p,revenue:e.target.value}))} style={S.input}/></div>
+                  </div>
+                  <button className="hov" onClick={()=>{if(!stopCostForm.date||!stopCostForm.stops){showValidation("Date and stops are required");return;}setStopCostLog(p=>[...p,{...stopCostForm,id:Date.now()}]);setStopCostForm({date:"",stops:"",fuelCost:"",driverWages:"",vehicleCost:"",revenue:""});}} style={{...S.btn,marginTop:14}}>Save Day</button>
+                </div>
+                {entries.length>0&&<div style={S.card}>
+                  <div style={{fontSize:9,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:10}}>Day-by-Day Log</div>
+                  {entries.map(e=>{const c=calcEntry(e);return(
+                    <div key={e.id} style={{display:"flex",gap:12,padding:"7px 0",borderBottom:"1px solid #1a1a1a",alignItems:"center"}}>
+                      <span style={{fontSize:10,color:"#888",width:90,flexShrink:0}}>{e.date}</span>
+                      <span style={{fontSize:10,color:"#555"}}>{e.stops} stops</span>
+                      <span style={{fontSize:10,color:"#ef4444"}}>{fmt$(c.cps)}/stop cost</span>
+                      <span style={{fontSize:10,color:"#22c55e"}}>{fmt$(c.rps)}/stop rev</span>
+                      <span style={{fontSize:11,fontWeight:700,color:c.nps>=0?"#22c55e":"#ef4444"}}>{fmt$(c.nps)} net</span>
+                      <span style={{fontSize:9,color:"#555"}}>{c.margin.toFixed(1)}%</span>
+                      {c.cps>c.rps&&<span style={{fontSize:9,background:"#ef444422",color:"#ef4444",padding:"1px 6px",borderRadius:3}}>⚠ LOSS</span>}
+                      <button onClick={()=>setStopCostLog(p=>p.filter(x=>x.id!==e.id))} style={{marginLeft:"auto",background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                    </div>
+                  );})}
+                </div>}
+                {weekKeys.length>1&&<div style={{...S.card,marginTop:12}}>
+                  <div style={{fontSize:9,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:10}}>Weekly Trend</div>
+                  {weekKeys.slice(0,4).map((k,i)=>{const avg=weekAvg(k);const prev=i<weekKeys.length-1?weekAvg(weekKeys[i+1]):null;const trend=prev!==null?(avg>prev?"↑":"↓"):"";const trendColor=avg>0?"#22c55e":"#ef4444";return(
+                    <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #1a1a1a"}}>
+                      <span style={{fontSize:10,color:"#888"}}>Week of {k}</span>
+                      <span style={{fontSize:11,fontWeight:700,color:trendColor}}>{fmt$(avg)} net/stop {trend&&<span style={{color:trendColor}}>{trend}</span>}</span>
+                    </div>
+                  );})}
+                </div>}
+              </div>
               );
             })()}
           </div>
@@ -3759,29 +3927,14 @@ function ContractorOS() {
             <div style={{...S.card,marginBottom:16}}>
               <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Contractor Type</div>
               <div style={{fontSize:11,color:"#888",marginBottom:12}}>Currently: {seg.icon} {seg.label}</div>
-              {user?.emailAddresses?.[0]?.emailAddress==="bostonrudi1993@gmail.com"?(
-                <>
-                  <div style={{fontSize:10,color:"#f59e0b",marginBottom:10,lineHeight:1.7}}>👑 Site Admin — click any type to switch</div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                    {Object.values(SEGMENTS).map(s=>(
-                      <button key={s.id} className="hov" onClick={()=>{setSegment(s.id);localStorage.setItem("cos_segment_locked",s.id);setScreen("dashboard");showValidation(`Switched to ${s.label}`);}} style={{background:segment===s.id?s.color+"22":"#0f0f0f",border:`1px solid ${segment===s.id?s.color+"44":"#1e1e1e"}`,borderRadius:6,padding:"10px 14px",textAlign:"left",color:segment===s.id?s.color:"#888",fontSize:11,fontFamily:"'DM Mono',monospace",cursor:"pointer"}}>
-                        {s.icon} {s.label}
-                      </button>
-                    ))}
+              <div style={{fontSize:10,color:"#555",marginBottom:10,lineHeight:1.7}}>Contractor type is locked after initial setup to prevent accidental data changes. Contact support to change it.</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                {Object.values(SEGMENTS).map(s=>(
+                  <div key={s.id} style={{background:segment===s.id?s.color+"22":"#0f0f0f",border:`1px solid ${segment===s.id?s.color+"44":"#1e1e1e"}`,borderRadius:6,padding:"10px 14px",textAlign:"left",color:segment===s.id?s.color:"#666",fontSize:11,fontFamily:"'DM Mono',monospace"}}>
+                    {s.icon} {s.label}
                   </div>
-                </>
-              ):(
-                <>
-                  <div style={{fontSize:10,color:"#555",marginBottom:10,lineHeight:1.7}}>Contractor type is locked after initial setup to prevent accidental data changes. Contact support to change it.</div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                    {Object.values(SEGMENTS).map(s=>(
-                      <div key={s.id} style={{background:segment===s.id?s.color+"22":"#0f0f0f",border:`1px solid ${segment===s.id?s.color+"44":"#1e1e1e"}`,borderRadius:6,padding:"10px 14px",textAlign:"left",color:segment===s.id?s.color:"#666",fontSize:11,fontFamily:"'DM Mono',monospace"}}>
-                        {s.icon} {s.label}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
+                ))}
+              </div>
             </div>
             <div style={{padding:"12px 16px",background:"#0d0d14",border:"1px solid #1a1a2a",borderRadius:6}}>
               <div style={{fontSize:9,color:"#3a3a6a",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:4}}>Auto-Saved</div>
@@ -3794,7 +3947,20 @@ function ContractorOS() {
 
       {/* ══ PAYROLL ════════════════════════════════════════════════════ */}
       {screen==="payroll"&&(()=>{
-        const calcRunPay=(driver,form)=>{const rate=parseFloat(driver.payRate||0);let gross=0,breakdown="";switch(driver.payType){case"per_mile":gross=rate*parseFloat(form.miles||0);breakdown=`${form.miles} mi × $${rate}/mi`;break;case"hourly":gross=rate*parseFloat(form.hours||0);breakdown=`${form.hours} hrs × $${rate}/hr`;break;case"percentage":gross=(rate/100)*parseFloat(form.loadRevenue||0);breakdown=`${rate}% of $${form.loadRevenue}`;break;case"salary":gross=rate/52;breakdown=`$${rate}/yr ÷ 52 weeks`;break;case"per_stop":gross=rate*parseFloat(form.stops||0);breakdown=`${form.stops} stops × $${rate}/stop`;break;case"per_day":gross=rate*parseFloat(form.days||0);breakdown=`${form.days} days × $${rate}/day`;break;default:gross=parseFloat(form.manualAmount||0);breakdown="Manual entry";}return{gross:parseFloat(gross.toFixed(2)),breakdown};};
+        const retentionMonths=(d)=>d.hireDate?Math.floor((Date.now()-new Date(d.hireDate))/(30.44*864e5)):null;
+        const calcRunPay=(driver,form)=>{const rate=parseFloat(driver.payRate||0);let gross=0,breakdown="";switch(driver.payType){case"per_mile":gross=rate*parseFloat(form.miles||0);breakdown=`${form.miles} mi × $${rate}/mi`;break;case"hourly":gross=rate*parseFloat(form.hours||0);breakdown=`${form.hours} hrs × $${rate}/hr`;break;case"percentage":gross=(rate/100)*parseFloat(form.loadRevenue||0);breakdown=`${rate}% of $${form.loadRevenue}`;break;case"salary":gross=rate/52;breakdown=`$${rate}/yr ÷ 52 weeks`;break;case"per_stop":gross=rate*parseFloat(form.stops||0);breakdown=`${form.stops} stops × $${rate}/stop`;break;case"per_day":gross=rate*parseFloat(form.days||0);breakdown=`${form.days} days × $${rate}/day`;break;default:gross=parseFloat(form.manualAmount||0);breakdown="Manual entry";}
+          // FedEx W-2 enhancements
+          if(seg.id==="fedex"){
+            const stopsCompleted=parseFloat(form.stopsCompleted||0);
+            const threshold=parseFloat(form.stopBonusThreshold||0);
+            const bonusRate=parseFloat(form.stopBonusRate||0);
+            const overtimeHours=parseFloat(form.overtimeHours||0);
+            const stopBonus=Math.max(0,stopsCompleted-threshold)*bonusRate;
+            const overtimePay=overtimeHours*(rate*1.5);
+            if(stopBonus>0){gross+=stopBonus;breakdown+=` + Stop Bonus ${fmt$(stopBonus)}`;}
+            if(overtimePay>0){gross+=overtimePay;breakdown+=` + OT ${fmt$(overtimePay)}`;}
+          }
+          return{gross:parseFloat(gross.toFixed(2)),breakdown};};
         const totalUnpaid=payroll.filter(r=>r.status==="unpaid").reduce((s,r)=>s+r.gross,0);
         const totalPaid=payroll.filter(r=>r.status==="paid").reduce((s,r)=>s+r.gross,0);
         const PAY_FIELDS={per_mile:[["miles","Miles Driven","number"]],hourly:[["hours","Hours Worked","number"]],percentage:[["loadRevenue","Route/Load Revenue ($)","number"]],salary:[],per_stop:[["stops","Stops Completed","number"]],per_day:[["days","Days Worked","number"]]};
@@ -3821,12 +3987,18 @@ function ContractorOS() {
                       <div><label style={S.label}>Driver *</label>
                         <select value={payrollForm.driverId} onChange={e=>{setPayrollForm(p=>({...p,driverId:e.target.value}));setPayrollPreview(null);}} style={S.input}>
                           <option value="">Select driver...</option>
-                          {(drivers.filter(d=>d.status==="active").length>0?drivers.filter(d=>d.status==="active"):drivers).map(d=><option key={d.id} value={d.id}>{d.name} — {(d.payType||"manual").replace(/_/g," ")} @ ${d.payRate||0}</option>)}
+                          {(drivers.filter(d=>d.status==="active").length>0?drivers.filter(d=>d.status==="active"):drivers).map(d=><option key={d.id} value={d.id}>{d.name}{seg.id==="fedex"&&retentionMonths(d)!==null?` (${retentionMonths(d)}mo)`:""} — {(d.payType||"manual").replace(/_/g," ")} @ ${d.payRate||0}</option>)}
                         </select>
                       </div>
                       <div><label style={S.label}>Pay Period Start *</label><input type="date" value={payrollForm.periodStart} onChange={e=>setPayrollForm(p=>({...p,periodStart:e.target.value}))} style={S.input}/></div>
                       <div><label style={S.label}>Pay Period End</label><input type="date" value={payrollForm.periodEnd} onChange={e=>setPayrollForm(p=>({...p,periodEnd:e.target.value}))} style={S.input}/></div>
                       {extraFields.map(([f,lbl,t])=>(<div key={f}><label style={S.label}>{lbl}</label><input type={t} value={payrollForm[f]||""} onChange={e=>setPayrollForm(p=>({...p,[f]:e.target.value}))} style={S.input}/></div>))}
+                      {seg.id==="fedex"&&<>
+                        <div><label style={S.label}>Stops Completed</label><input type="number" value={payrollForm.stopsCompleted||""} onChange={e=>setPayrollForm(p=>({...p,stopsCompleted:e.target.value}))} style={S.input}/></div>
+                        <div><label style={S.label}>Stop Bonus Threshold</label><input type="number" value={payrollForm.stopBonusThreshold||""} onChange={e=>setPayrollForm(p=>({...p,stopBonusThreshold:e.target.value}))} placeholder="Stops before bonus kicks in" style={S.input}/></div>
+                        <div><label style={S.label}>Stop Bonus Rate ($/stop)</label><input type="number" value={payrollForm.stopBonusRate||""} onChange={e=>setPayrollForm(p=>({...p,stopBonusRate:e.target.value}))} placeholder="0.00" style={S.input}/></div>
+                        <div><label style={S.label}>Overtime Hours (over 40)</label><input type="number" value={payrollForm.overtimeHours||""} onChange={e=>setPayrollForm(p=>({...p,overtimeHours:e.target.value}))} placeholder="0" style={S.input}/></div>
+                      </>}
                       <div><label style={S.label}>Manual Override Amount ($) <span style={{color:"#555",fontSize:8}}>(optional — overrides calculated pay)</span></label><input type="number" value={payrollForm.manualAmount||""} onChange={e=>setPayrollForm(p=>({...p,manualAmount:e.target.value}))} placeholder="Leave blank to use calculated amount" style={S.input}/></div>
                       <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes (bonus, deduction, etc.)</label><input value={payrollForm.notes} onChange={e=>setPayrollForm(p=>({...p,notes:e.target.value}))} style={S.input}/></div>
                     </div>
@@ -3834,7 +4006,7 @@ function ContractorOS() {
                       <button className="hov" onClick={()=>{if(!payrollForm.driverId){showValidation("Please select a driver");return;}const d=drivers.find(x=>String(x.id)===String(payrollForm.driverId));if(!d){showValidation("Driver not found");return;}const{gross,breakdown}=calcRunPay(d,payrollForm);setPayrollPreview({driver:d,gross,breakdown});}} style={{...S.btn,background:"#6366f1"}}>Preview Pay</button>
                       {payrollPreview&&<button className="hov" onClick={()=>{const d=drivers.find(x=>String(x.id)===String(payrollForm.driverId));if(!d)return;const{gross,breakdown}=calcRunPay(d,payrollForm);const run={id:Date.now(),driverId:d.id,driverName:d.name,periodStart:payrollForm.periodStart,periodEnd:payrollForm.periodEnd,gross,breakdown,notes:payrollForm.notes,date:new Date().toISOString().slice(0,10),payType:d.payType,payRate:d.payRate,status:"unpaid"};setPayroll(p=>[run,...p]);
                       setExpenses(p=>[{id:Date.now()+1,date:run.date,category:"driver_pay",amount:gross,description:`Pay — ${d.name}${payrollForm.periodStart?" ("+payrollForm.periodStart+(payrollForm.periodEnd?" → "+payrollForm.periodEnd:"")+")":" "}`,vehicle:"",source:"payroll"},...p]);
-                      setPayrollForm({driverId:"",periodStart:"",periodEnd:"",miles:"",hours:"",stops:"",days:"",loadRevenue:"",manualAmount:"",notes:""});setPayrollPreview(null);setPayrollShowAdd(false);}} style={S.btn}>Save Pay Run</button>}
+                      setPayrollForm({driverId:"",periodStart:"",periodEnd:"",miles:"",hours:"",stops:"",days:"",loadRevenue:"",manualAmount:"",notes:"",stopsCompleted:"",stopBonusThreshold:"",stopBonusRate:"",overtimeHours:""});setPayrollPreview(null);setPayrollShowAdd(false);}} style={S.btn}>Save Pay Run</button>}
                       <button onClick={()=>{setPayrollShowAdd(false);setPayrollPreview(null);}} style={S.ghost}>Cancel</button>
                     </div>
                     {payrollPreview&&(<div style={{marginTop:14,background:"#0a1a0a",border:"1px solid #1a3a1a",borderRadius:6,padding:"14px 18px"}}><div style={{fontSize:10,color:"#2d5a2d",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:8}}>Pay Preview — {payrollPreview.driver.name}</div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontSize:11,color:"#888"}}>{payrollPreview.breakdown}</div><div style={{fontSize:24,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#22c55e"}}>{fmt$(payrollPreview.gross)}</div></div></div>)}
@@ -3844,7 +4016,7 @@ function ContractorOS() {
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {payroll.map(run=>(
                     <div key={run.id} style={{...S.card,borderLeft:`3px solid ${run.status==="paid"?"#22c55e":"#f59e0b"}`,display:"flex",alignItems:"center",gap:14}}>
-                      <div style={{flex:1}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{run.driverName}</div><div style={{fontSize:10,color:"#555"}}>{run.periodStart}{run.periodEnd?` → ${run.periodEnd}`:""} · {run.breakdown}{run.notes&&` · ${run.notes}`}</div></div>
+                      <div style={{flex:1}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{run.driverName}{seg.id==="fedex"&&(()=>{const d=drivers.find(x=>String(x.id)===String(run.driverId));const mo=d?retentionMonths(d):null;return mo!==null?<span style={{fontSize:10,color:"#555",marginLeft:8}}>{mo}mo tenure</span>:null;})()}</div><div style={{fontSize:10,color:"#555"}}>{run.periodStart}{run.periodEnd?` → ${run.periodEnd}`:""} · {run.breakdown}{run.notes&&` · ${run.notes}`}</div></div>
                       <div style={{textAlign:"right"}}><div style={{fontSize:18,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#22c55e"}}>{fmt$(run.gross)}</div><div style={{fontSize:9,color:run.status==="paid"?"#22c55e":"#f59e0b",textTransform:"uppercase",letterSpacing:"0.1em"}}>{run.status==="paid"?`✓ Paid ${fmtDate(run.paidDate)}`:"Unpaid"}</div></div>
                       <div style={{display:"flex",gap:6,flexShrink:0}}>
                         {run.status==="unpaid"&&<button onClick={()=>setPayroll(p=>p.map(r=>r.id===run.id?{...r,status:"paid",paidDate:new Date().toISOString().slice(0,10)}:r))} style={{...S.btn,background:"#22c55e",fontSize:10,padding:"5px 12px"}}>Mark Paid</button>}
@@ -4151,7 +4323,35 @@ function ContractorOS() {
                   <div><label style={S.label}>Linked To (truck / driver / load)</label><input value={docForm.linkedTo} onChange={e=>setDocForm(p=>({...p,linkedTo:e.target.value}))} placeholder="Unit 1, John Smith, Load #5678..." style={S.input}/></div>
                   <div>
                     <label style={S.label}>File (optional, max 2MB)</label>
-                    <input type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.csv,.xlsx" onChange={e=>handleFileUpload(e)} style={{...S.input,padding:"7px 14px"}}/>
+                    <input type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.csv,.xlsx" onChange={async(e)=>{
+                      handleFileUpload(e);
+                      // OCR: if it's an image/pdf, try to extract key fields using Claude
+                      const file = e.target.files?.[0];
+                      if(!file||(file.type!=="image/jpeg"&&file.type!=="image/png"&&file.type!=="application/pdf")) return;
+                      if(file.size > 2*1024*1024) return;
+                      try {
+                        const reader = new FileReader();
+                        reader.onload = async(ev) => {
+                          const base64 = ev.target.result.split(",")[1];
+                          const mediaType = file.type === "application/pdf" ? "application/pdf" : file.type;
+                          const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+                          if(!apiKey) return;
+                          const res = await fetch("https://api.anthropic.com/v1/messages", {
+                            method:"POST",
+                            headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+                            body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,messages:[{role:"user",content:[{type:mediaType==="application/pdf"?"document":"image",source:{type:"base64",media_type:mediaType,data:base64}},{type:"text",text:"Extract these fields from this document if present. Return ONLY a JSON object with these keys (null if not found): documentName, documentType (Rate Confirmation/BOL/Delivery Confirmation/Invoice/Other), date (YYYY-MM-DD), linkedTo (truck or driver name), referenceNumber, notes (any important info like load#, PO#, rate amount). No other text."}]}]})
+                          });
+                          const data = await res.json();
+                          try {
+                            const text = data.content?.[0]?.text || "{}";
+                            const parsed = JSON.parse(text.replace(/```json|```/g,"").trim());
+                            if(parsed.documentName) setDocForm(p=>({...p,name:parsed.documentName||p.name,type:parsed.documentType||p.type,date:parsed.date||p.date,linkedTo:parsed.linkedTo||p.linkedTo,fileName:file.name,notes:parsed.notes||p.notes}));
+                          } catch{}
+                        };
+                        reader.readAsDataURL(file);
+                      } catch{}
+                    }} style={{...S.input,padding:"7px 14px"}}/>
+                    <div style={{fontSize:9,color:"#444",marginTop:4}}>💡 Images and PDFs are automatically scanned to fill in document details</div>
                   </div>
                   <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={docForm.notes} onChange={e=>setDocForm(p=>({...p,notes:e.target.value}))} placeholder="Confirmation #, broker contact, expiry..." style={S.input}/></div>
                 </div>
