@@ -186,339 +186,10 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
           <button onClick={closeModal} style={S.ghost}>Cancel</button>
         </div>
       </div>
-      {/* ══ FMCSA LOOKUP ══════════════════════════════════════════════ */}
-      {/* ══ SCORECARD (FedEx/Amazon/LastMile) ══════════════════════ */}
-      {screen==="scorecard"&&(()=>{
-        const isFedex = segment==="fedex";
-        const isAmazon = segment==="amazon";
-        const isLastMile = segment==="lastmile";
-        const isUsps = segment==="usps";
-
-        // FedEx metrics
-        const fedexMetrics = [
-          {key:"pickupCompliance",label:"Pickup Compliance",target:99,unit:"%",color:"#f59e0b"},
-          {key:"deliveryCompliance",label:"Delivery Compliance",target:98,unit:"%",color:"#22c55e"},
-          {key:"packageHandling",label:"Package Handling",target:99,unit:"%",color:"#60a5fa"},
-          {key:"uniformCompliance",label:"Uniform / Vehicle Compliance",target:100,unit:"%",color:"#8888cc"},
-          {key:"onTimePickup",label:"On-Time Pickup",target:97,unit:"%",color:"#f59e0b"},
-          {key:"routeCompletion",label:"Route Completion Rate",target:99,unit:"%",color:"#22c55e"},
-        ];
-
-        // Amazon DSP metrics
-        const amazonMetrics = [
-          {key:"dart",label:"DART Score",target:98,unit:"%",color:"#f59e0b",desc:"Delivery Associate Reliability Today"},
-          {key:"dcr",label:"DCR — Delivery Completion Rate",target:99,unit:"%",color:"#22c55e"},
-          {key:"pod",label:"POD — Photo On Delivery",target:99,unit:"%",color:"#60a5fa"},
-          {key:"mentor",label:"Mentor Safety Score (avg)",target:800,unit:"pts",color:"#8888cc"},
-          {key:"contactCompliance",label:"Delivery Contact Compliance",target:97,unit:"%",color:"#f59e0b"},
-          {key:"attendanceRate",label:"Driver Attendance Rate",target:98,unit:"%",color:"#22c55e"},
-        ];
-
-        // Last Mile / Lowe's metrics
-        const lastmileMetrics = [
-          {key:"stopCompletion",label:"Stop Completion Rate",target:99,unit:"%",color:"#22c55e"},
-          {key:"onTimeDelivery",label:"On-Time Delivery",target:97,unit:"%",color:"#f59e0b"},
-          {key:"customerSatisfaction",label:"Customer Satisfaction (CSAT)",target:95,unit:"%",color:"#60a5fa"},
-          {key:"damageRate",label:"Damage-Free Rate",target:99,unit:"%",color:"#8888cc"},
-          {key:"signatureCapture",label:"Signature Capture Rate",target:98,unit:"%",color:"#f59e0b"},
-          {key:"callAhead",label:"Call-Ahead Compliance",target:95,unit:"%",color:"#22c55e"},
-        ];
-
-        // USPS metrics
-        const uspsMetrics = [
-          {key:"routeCompletion",label:"Route Completion Rate",target:100,unit:"%",color:"#22c55e"},
-          {key:"onTime",label:"On-Time Performance",target:97,unit:"%",color:"#f59e0b"},
-          {key:"vehicleInspection",label:"Vehicle Inspection Compliance",target:100,unit:"%",color:"#60a5fa"},
-          {key:"substituteAvail",label:"Substitute Driver Availability",target:90,unit:"%",color:"#8888cc"},
-          {key:"mailSecurity",label:"Mail Security Compliance",target:100,unit:"%",color:"#ef4444"},
-        ];
-
-        const metrics = isFedex?fedexMetrics:isAmazon?amazonMetrics:isLastMile?lastmileMetrics:uspsMetrics;
-        const segLabel = isFedex?"FedEx Ground":isAmazon?"Amazon DSP":isLastMile?"Last Mile / Lowe's":"USPS Contract";
-
-        // Get this week's scorecard entry
-        const thisWeek = scorecardData.find(s=>s.week===scorecardWeek)||{week:scorecardWeek};
-        const updateMetric = (key,val) => {
-          const existing = scorecardData.find(s=>s.week===scorecardWeek);
-          if(existing) {
-            setScorecardData(p=>p.map(s=>s.week===scorecardWeek?{...s,[key]:val}:s));
-          } else {
-            setScorecardData(p=>[{week:scorecardWeek,[key]:val},...p]);
-          }
-        };
-
-        const overallScore = metrics.reduce((sum,m)=>{
-          const val = parseFloat(thisWeek[m.key]||0);
-          const pct = m.unit==="%" ? val : Math.min((val/m.target)*100,100);
-          return sum + pct;
-        },0) / metrics.length;
-
-        return(
-        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          {isFedex&&<SubNavComp tabs={[["metrics","Metrics"],["safety","Safety"]]} active={scorecardSub} accent={accent} onSelect={setScorecardSub}/>}
-          <div style={{flex:1,overflowY:"auto",padding:24}}>
-          {(!isFedex||scorecardSub==="metrics")&&<div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
-              <div>
-                <div style={{...S.section}}>{segLabel.toUpperCase()} SCORECARD</div>
-                <div style={{fontSize:11,color:"#555",marginTop:4}}>Track your weekly performance metrics. Enter your scores from your contractor portal.</div>
-              </div>
-              <div style={{textAlign:"center",background:"#141414",border:`1px solid ${accent}44`,borderRadius:8,padding:"12px 18px"}}>
-                <div style={{fontSize:32,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:overallScore>=95?"#22c55e":overallScore>=85?"#f59e0b":"#ef4444"}}>{isNaN(overallScore)?"-":overallScore.toFixed(0)}%</div>
-                <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Overall Score</div>
-              </div>
-            </div>
-
-            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
-              <label style={{...S.label,marginBottom:0,whiteSpace:"nowrap"}}>Week of:</label>
-              <input type="date" value={scorecardWeek} onChange={e=>setScorecardWeek(e.target.value)} style={{...S.input,maxWidth:180}}/>
-            </div>
-
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12,marginBottom:24}}>
-              {metrics.map(m=>{
-                const val = thisWeek[m.key]||"";
-                const numVal = parseFloat(val||0);
-                const pct = m.unit==="%"?numVal:Math.min((numVal/m.target)*100,100);
-                const status = pct>=m.target?"#22c55e":pct>=(m.target-5)?"#f59e0b":"#ef4444";
-                return(
-                  <div key={m.key} style={{...S.card,borderTop:`3px solid ${m.color}`}}>
-                    <div style={{fontSize:11,color:"#888",marginBottom:8,lineHeight:1.4}}>{m.label}</div>
-                    {m.desc&&<div style={{fontSize:9,color:"#444",marginBottom:6}}>{m.desc}</div>}
-                    <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
-                      <input type="number" value={val} onChange={e=>updateMetric(m.key,e.target.value)} placeholder={m.target.toString()} style={{...S.input,maxWidth:90}} min={0} max={m.unit==="%"?100:undefined}/>
-                      <div style={{fontSize:9,color:"#555"}}>{m.unit}</div>
-                      <div style={{marginLeft:"auto",fontSize:10,color:val?status:"#444",fontWeight:700}}>Target: {m.target}{m.unit}</div>
-                    </div>
-                    <div style={{height:4,background:"#1e1e1e",borderRadius:2}}>
-                      <div style={{height:"100%",width:`${Math.min(pct,100)}%`,background:val?status:m.color,borderRadius:2,transition:"width 0.3s"}}/>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Weekly history */}
-            {scorecardData.length>0&&(
-              <div style={S.card}>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>Score History</div>
-                <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                  {[...scorecardData].sort((a,b)=>new Date(b.week)-new Date(a.week)).slice(0,8).map(week=>{
-                    const weekAvg = metrics.reduce((sum,m)=>{
-                      const v=parseFloat(week[m.key]||0);
-                      return sum+(m.unit==="%"?v:Math.min((v/m.target)*100,100));
-                    },0)/metrics.length;
-                    return(
-                      <div key={week.week} style={{display:"flex",alignItems:"center",gap:12,padding:"6px 0",borderBottom:"1px solid #1a1a1a"}}>
-                        <div style={{fontSize:11,color:"#888",width:90,flexShrink:0}}>{fmtDate(week.week)}</div>
-                        <div style={{flex:1,height:6,background:"#1e1e1e",borderRadius:3}}>
-                          <div style={{height:"100%",width:`${Math.min(weekAvg,100)}%`,background:weekAvg>=95?"#22c55e":weekAvg>=85?"#f59e0b":"#ef4444",borderRadius:3}}/>
-                        </div>
-                        <div style={{fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:weekAvg>=95?"#22c55e":weekAvg>=85?"#f59e0b":"#ef4444",width:40,textAlign:"right"}}>{isNaN(weekAvg)?"-":weekAvg.toFixed(0)}%</div>
-                        <button onClick={()=>setScorecardData(p=>p.filter(s=>s.week!==week.week))} style={{background:"transparent",border:"none",color:"#333",cursor:"pointer",fontSize:11}}>✕</button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Segment-specific tips */}
-            <div style={{marginTop:16,background:"#0a0a14",border:"1px solid #1a1a2a",borderRadius:6,padding:"14px 18px"}}>
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"#e8e4d8",marginBottom:10}}>{segLabel} Tips</div>
-              {isFedex&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• Pickup compliance is the most-watched FedEx metric — missing pickups triggers contractor reviews<br/>• Vehicle appearance inspections happen randomly — keep trucks clean and branded<br/>• Route completion below 99% for 3+ weeks can trigger ISP contract review<br/>• Log incidents in the Drivers → Incidents screen immediately — delays hurt your rating</div>}
-              {isAmazon&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• DART below 95% for 2 consecutive weeks flags your DSP for coaching<br/>• Mentor scores below 700 require mandatory retraining — check scores weekly<br/>• POD compliance dropped below 98% is the #1 reason DSPs lose packages<br/>• Keep a rescue driver on standby for unexpected driver callouts</div>}
-              {isLastMile&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• Always call ahead for large item deliveries (appliances, lumber) — it's contractually required<br/>• Log every delivery attempt with timestamp even if no one is home<br/>• Damage claims over 0.5% of stops triggers Lowe's contract review<br/>• White glove delivery requires two-person team — log both drivers</div>}
-              {isUsps&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• HCR routes must be completed regardless of volume — no partial days<br/>• Substitute drivers must be pre-approved by your postmaster before running routes<br/>• Vehicle inspection forms must be completed daily and kept 90 days<br/>• Mail security incidents must be reported within 1 hour — no exceptions</div>}
-            </div>
-          </div>}
-          {isFedex&&scorecardSub==="safety"&&(()=>{
-            const safetyColor=(val,thresholds,colors)=>{for(let i=0;i<thresholds.length;i++){if(val<=thresholds[i])return colors[i];}return colors[colors.length-1];};
-            return(
-            <div style={{maxWidth:900,margin:"0 auto",padding:24,animation:"fadeUp 0.3s ease"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-                <div style={{...S.section}}>SAFETY SCORECARD</div>
-                <button className="hov" onClick={()=>setShowSafetyAdd(!showSafetyAdd)} style={S.btn}>{showSafetyAdd?"Cancel":"+ Log Safety Week"}</button>
-              </div>
-              {showSafetyAdd&&(
-                <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                    <div><label style={S.label}>Driver</label><select value={safetyForm.driverId} onChange={e=>setSafetyForm(p=>({...p,driverId:e.target.value}))} style={S.input}><option value="">Select driver...</option>{(drivers||[]).map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
-                    <div><label style={S.label}>Week (date)</label><input type="date" value={safetyForm.week} onChange={e=>setSafetyForm(p=>({...p,week:e.target.value}))} style={S.input}/></div>
-                    <div><label style={S.label}>Harsh Braking Events</label><input type="number" value={safetyForm.harshBraking} onChange={e=>setSafetyForm(p=>({...p,harshBraking:e.target.value}))} style={S.input} min={0}/></div>
-                    <div><label style={S.label}>Speeding Events</label><input type="number" value={safetyForm.speeding} onChange={e=>setSafetyForm(p=>({...p,speeding:e.target.value}))} style={S.input} min={0}/></div>
-                    <div><label style={S.label}>Seatbelt %</label><input type="number" value={safetyForm.seatbelt} onChange={e=>setSafetyForm(p=>({...p,seatbelt:e.target.value}))} style={S.input} min={0} max={100}/></div>
-                    <div><label style={S.label}>Dashcam Flags</label><input type="number" value={safetyForm.dashcamFlags} onChange={e=>setSafetyForm(p=>({...p,dashcamFlags:e.target.value}))} style={S.input} min={0}/></div>
-                    <div style={{gridColumn:"1/-1"}}><label style={S.label}>Coaching Notes</label><input value={safetyForm.coachingNotes} onChange={e=>setSafetyForm(p=>({...p,coachingNotes:e.target.value}))} style={S.input}/></div>
-                  </div>
-                  <button className="hov" onClick={()=>{if(!safetyForm.driverId||!safetyForm.week){showValidation("Driver and week are required");return;}setSafetyEvents(p=>[...p,{...safetyForm,id:Date.now(),harshBraking:parseFloat(safetyForm.harshBraking||0),speeding:parseFloat(safetyForm.speeding||0),seatbelt:parseFloat(safetyForm.seatbelt||100),dashcamFlags:parseFloat(safetyForm.dashcamFlags||0)}]);setSafetyForm({driverId:"",week:"",harshBraking:0,speeding:0,seatbelt:100,dashcamFlags:0,coachingNotes:""});setShowSafetyAdd(false);}} style={{...S.btn,marginTop:14}}>Save</button>
-                </div>
-              )}
-              {/* Per-driver table */}
-              <div style={S.card}>
-                <div style={{fontSize:9,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:12}}>Driver Safety Table — Latest Week</div>
-                {(drivers||[]).length===0&&<div style={{color:"#555",fontSize:12,padding:20,textAlign:"center"}}>No drivers yet.</div>}
-                {(drivers||[]).map(d=>{
-                  const latestEvent=safetyEvents.filter(e=>String(e.driverId)===String(d.id)).sort((a,b)=>new Date(b.week)-new Date(a.week))[0];
-                  if(!latestEvent) return null;
-                  const hbColor=safetyColor(latestEvent.harshBraking,[3,6],["#22c55e","#f59e0b","#ef4444"]);
-                  const spColor=safetyColor(latestEvent.speeding,[2,4],["#22c55e","#f59e0b","#ef4444"]);
-                  const sbColor=latestEvent.seatbelt>98?"#22c55e":latestEvent.seatbelt>=95?"#f59e0b":"#ef4444";
-                  const dcColor=safetyColor(latestEvent.dashcamFlags,[0,2],["#22c55e","#f59e0b","#ef4444"]);
-                  const flagged=hbColor==="#ef4444"||spColor==="#ef4444"||sbColor==="#ef4444"||dcColor==="#ef4444";
-                  return(
-                    <div key={d.id} style={{borderLeft:`3px solid ${flagged?"#ef4444":accent}`,background:flagged?"#1a0808":"transparent",borderRadius:4,padding:"10px 14px",marginBottom:8}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                        {flagged&&<span style={{color:"#ef4444",fontSize:12}}>⚠</span>}
-                        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{d.name}</span>
-                        <span style={{fontSize:9,color:"#555"}}>Week: {latestEvent.week}</span>
-                      </div>
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-                        {[["Harsh Braking",latestEvent.harshBraking,hbColor],["Speeding",latestEvent.speeding,spColor],["Seatbelt %",latestEvent.seatbelt+"%",sbColor],["Dashcam Flags",latestEvent.dashcamFlags,dcColor]].map(([lbl,val,col])=>(
-                          <div key={lbl} style={{textAlign:"center"}}>
-                            <div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div>
-                            <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>{lbl}</div>
-                          </div>
-                        ))}
-                      </div>
-                      {latestEvent.coachingNotes&&<div style={{fontSize:10,color:"#888",marginTop:8,fontStyle:"italic"}}>📋 {latestEvent.coachingNotes}</div>}
-                    </div>
-                  );
-                })}
-              </div>
-              {/* Legend */}
-              <div style={{...S.card,marginTop:12}}>
-                <div style={{fontSize:9,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:8}}>FedEx Safety Thresholds</div>
-                {[["Harsh Braking","<3 = Good","3-6 = Warning","6+ = Alert"],["Speeding","<2 = Good","2-4 = Warning","4+ = Alert"],["Seatbelt %",">98% = Good","95-98% = Warning","<95% = Alert"],["Dashcam Flags","0 = Good","1-2 = Warning","3+ = Alert"]].map(([metric,...vals])=>(
-                  <div key={metric} style={{display:"flex",gap:12,padding:"4px 0",borderBottom:"1px solid #1a1a1a",alignItems:"center"}}>
-                    <span style={{fontSize:10,color:"#888",width:120,flexShrink:0}}>{metric}</span>
-                    {vals.map((v,i)=><span key={i} style={{fontSize:9,color:["#22c55e","#f59e0b","#ef4444"][i]}}>{v}</span>)}
-                  </div>
-                ))}
-              </div>
-            </div>
-            );
-          })()}
-          </div>
-        </div>
-        );
-      })()}
-
-      {screen==="fmcsa"&&(
-        <div style={{flex:1,overflowY:"auto",padding:24}}>
-          <div style={{maxWidth:700,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-            <div style={{...S.section,marginBottom:4}}>FMCSA CARRIER LOOKUP</div>
-            <p style={{fontSize:11,color:"#555",marginBottom:20,lineHeight:1.8}}>Enter your USDOT number to pull your carrier profile from the FMCSA SAFER database. Verify your authority status, safety rating, and auto-fill your company name.</p>
-            <div style={{...S.card,marginBottom:20,border:`1px solid ${accent}33`}}>
-              <label style={S.label}>USDOT Number</label>
-              <div style={{display:"flex",gap:10,marginBottom:8}}>
-                <input value={fmcsaDot} onChange={e=>setFmcsaDot(e.target.value.replace(/\D/g,""))} onKeyDown={e=>e.key==="Enter"&&lookupDOT()} placeholder="Enter your DOT number (numbers only)" style={{...S.input,flex:1}} maxLength={10}/>
-                <button className="hov" onClick={lookupDOT} style={{...S.btn,flexShrink:0}}>{fmcsaLoading?"Looking up...":"Lookup →"}</button>
-              </div>
-              <div style={{fontSize:10,color:"#444"}}>Your USDOT number is on your operating authority certificate and cab card. Find it at <a href="https://safer.fmcsa.dot.gov" target="_blank" rel="noreferrer" style={{color:accent}}>safer.fmcsa.dot.gov</a></div>
-            </div>
-            {fmcsaError&&<div style={{...S.card,background:"#1a0808",border:"1px solid #3a1010",color:"#f87171",fontSize:12,marginBottom:16}}>{fmcsaError}</div>}
-            {fmcsaLoading&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32,animation:"fadeUp 0.3s ease"}}>
-              <div style={{width:32,height:32,border:"3px solid #1e1e1e",borderTop:`3px solid ${accent}`,borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 12px"}}/>
-              Querying FMCSA SAFER database...
-              <div style={{fontSize:10,color:"#444",marginTop:8}}>This may take 5–10 seconds. FMCSA's servers can be slow.</div>
-            </div>}
-            {!fmcsaLoading&&!fmcsaResult&&!fmcsaError&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>Enter your USDOT number above and click Lookup → to pull your carrier profile from the FMCSA SAFER database.</div>}
-            {fmcsaResult&&(
-              <div style={{...S.card,border:`1px solid ${accent}33`}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
-                  <div>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#e8e4d8"}}>{fmcsaResult.legalName||"Unknown"}</div>
-                    {fmcsaResult.dbaName&&<div style={{fontSize:11,color:"#666"}}>DBA: {fmcsaResult.dbaName}</div>}
-                  </div>
-                  <div style={{background:fmcsaResult.opStatus?.toLowerCase().includes("authorized")?"#051a05":"#1a0808",border:`1px solid ${fmcsaResult.opStatus?.toLowerCase().includes("authorized")?"#22c55e44":"#ef444444"}`,borderRadius:6,padding:"6px 14px",textAlign:"center",flexShrink:0}}>
-                    <div style={{fontSize:11,color:fmcsaResult.opStatus?.toLowerCase().includes("authorized")?"#22c55e":"#ef4444",fontWeight:700}}>{fmcsaResult.opStatus||"Unknown"}</div>
-                    <div style={{fontSize:9,color:"#555"}}>Operating Status</div>
-                  </div>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:10,marginBottom:16}}>
-                  {[["USDOT #",fmcsaResult.dotNum],["MC/Docket #",fmcsaResult.mcNum||"—"],["Safety Rating",fmcsaResult.safetyRating||"Not Rated"],["Power Units",fmcsaResult.powerUnits||"—"],["Drivers",fmcsaResult.drivers||"—"],["Phone",fmcsaResult.phone||"—"]].map(([lbl,val])=>val&&(
-                    <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}>
-                      <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>{lbl}</div>
-                      <div style={{fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#c8c4bc"}}>{val}</div>
-                    </div>
-                  ))}
-                </div>
-                {fmcsaResult.address&&<div style={{fontSize:11,color:"#666",marginBottom:16}}>📍 {fmcsaResult.address}</div>}
-                <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                  <button className="hov" onClick={applyToSettings} style={{...S.btn,fontSize:11}}>Apply Company Name to Settings</button>
-                  <a href={`https://safer.fmcsa.dot.gov/query.asp?query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${fmcsaResult.dotNum}`} target="_blank" rel="noreferrer" style={{...S.ghost,textDecoration:"none",fontSize:11,padding:"10px 18px",display:"inline-block"}}>View Full FMCSA Profile ↗</a>
-                </div>
-              </div>
-            )}
-            <div style={{...S.card,marginTop:20,background:"#0a0f1a",border:"1px solid #1a1a3a"}}>
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8",marginBottom:10}}>FMCSA Forms Renewal Calendar</div>
-              <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                {[["MCS-150","Every 2 years from USDOT issuance date","Register/update at fmcsa.dot.gov/registration"],["UCR","Annual — renew by Dec 31 each year","Register at ucr.gov"],["IFTA","Quarterly filings + annual license renewal","File with your base state"],["IRP","Annual renewal","File with your base state DMV"],["Drug Clearinghouse","Annual query per driver","Login at clearinghouse.fmcsa.dot.gov"],["BOC-3","One-time, refile if agent changes","Use a registered process agent"],["Insurance (BMC-91)","Keep current — no lapse","Filed by your insurer to FMCSA"]].map(([form,freq,notes])=>(
-                  <div key={form} style={{display:"flex",gap:14,padding:"8px 0",borderBottom:"1px solid #1a1a2a"}}>
-                    <div style={{width:120,flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:accent}}>{form}</div>
-                    <div style={{flex:1}}><div style={{fontSize:11,color:"#c8c4bc"}}>{freq}</div><div style={{fontSize:10,color:"#444"}}>{notes}</div></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══ FOOTER + BUG REPORT ════════════════════════════════════════ */}
-      {showBugReport&&(
-        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:500,padding:20}} onClick={()=>setShowBugReport(false)}>
-          <div style={{background:"#141414",border:"1px solid #2a2a2a",borderRadius:10,padding:"28px 32px",maxWidth:480,width:"100%"}} onClick={e=>e.stopPropagation()}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#e8e4d8",marginBottom:4}}>Report a Bug / Contact</div>
-            <div style={{fontSize:11,color:"#555",marginBottom:16}}>Found something broken? Have a feature idea? Reach out directly.</div>
-            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
-              <div><label style={S.label}>Your Email (optional)</label><input value={bugForm.email} onChange={e=>setBugForm(p=>({...p,email:e.target.value}))} placeholder="so we can follow up" style={S.input}/></div>
-              <div><label style={S.label}>Subject</label><input value={bugForm.subject} onChange={e=>setBugForm(p=>({...p,subject:e.target.value}))} placeholder="Bug: ..., Feature request: ..." style={S.input}/></div>
-              <div><label style={S.label}>Description *</label><textarea value={bugForm.description} onChange={e=>setBugForm(p=>({...p,description:e.target.value}))} placeholder="Describe what happened, what screen you were on, and what you expected..." style={{...S.input,height:90,resize:"vertical"}}/></div>
-            </div>
-            <div style={{display:"flex",gap:10}}>
-              <a href={`mailto:bostonrudi1993@gmail.com?subject=${encodeURIComponent(bugForm.subject||"ContractorOS Feedback")}&body=${encodeURIComponent((bugForm.email?"From: "+bugForm.email+"\n\n":"")+bugForm.description)}`} style={{...S.btn,textDecoration:"none",display:"inline-block",fontSize:12}} onClick={()=>setShowBugReport(false)}>Send Email →</a>
-              <button onClick={()=>setShowBugReport(false)} style={{...S.ghost,fontSize:11}}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Clerk Org Profile Modal */}
-      {showOrgProfile&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.9)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:600,padding:20}} onClick={()=>setShowOrgProfile(false)}>
-          <div style={{maxWidth:860,width:"100%",maxHeight:"90vh",overflow:"auto",borderRadius:10}} onClick={e=>e.stopPropagation()}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8"}}>Manage Team</div>
-              <button onClick={()=>setShowOrgProfile(false)} style={{background:"transparent",border:"none",color:"#555",fontSize:22,cursor:"pointer"}}>✕</button>
-            </div>
-            <OrganizationProfile routing="virtual" appearance={{elements:{rootBox:{width:"100%"},card:{backgroundColor:"#141414",border:"1px solid #2a2a2a",boxShadow:"none"}}}}/>
-          </div>
-        </div>
-      )}
-
-      {/* Validation Toast */}
-      {validationMsg&&(
-        <div style={{position:"fixed",bottom:80,left:"50%",transform:"translateX(-50%)",background:"#1a0808",border:"1px solid #ef444466",color:"#f87171",padding:"10px 20px",borderRadius:6,fontSize:11,zIndex:600,animation:"fadeUp 0.2s ease",whiteSpace:"nowrap",fontFamily:"'DM Mono',monospace",letterSpacing:"0.05em"}}>
-          ⚠ {validationMsg}
-        </div>
-      )}
-
-      {/* App Footer */}
-      <div style={{flexShrink:0,borderTop:"2px solid #333",background:"#0d0d0d",padding:"16px 24px"}}>
-        <div style={{fontSize:10,color:"#ffffff",lineHeight:1.9,marginBottom:10}}>
-          © 2025–{new Date().getFullYear()} <strong>ContractorOS LLC</strong>. All rights reserved. ContractorOS LLC is a proprietary fleet management platform. Unauthorized reproduction, distribution, modification, or use of this software, its design, code, or content — in whole or in part — is strictly prohibited without express written permission. Built for independent contractors and fleet operators.
-        </div>
-        <div style={{display:"flex",gap:20,alignItems:"center"}}>
-          <button onClick={()=>setShowBugReport(true)} style={{background:"transparent",border:"1px solid #444",color:"#ffffff",fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em",padding:"4px 12px",borderRadius:4}}>Report a Bug</button>
-          <a href="mailto:bostonrudi1993@gmail.com" style={{color:"#ffffff",fontSize:10,textDecoration:"none",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em"}}>Contact Us</a>
-          <div style={{marginLeft:"auto",fontSize:9,color:"#555"}}>contractoroshub.com</div>
-        </div>
-      </div>
-
     </div>
   );
 };
+
 
 // ════════════════════════════════════════════════════════════════════════
 // ── Error Boundary ────────────────────────────────────────────────────────────
@@ -1513,6 +1184,317 @@ function ContractorOS() {
   return (
     <div style={{minHeight:"100vh",background:"#0a0a0a",fontFamily:"'DM Mono','Courier New',monospace",color:"#d4d0c8",display:"flex",flexDirection:"column"}}>
       <EditModalComp modal={modal} editForm={editForm} setEditForm={setEditForm} saveEdit={saveEdit} closeModal={closeModal} accent={accent} S={S} MODAL_CONFIGS={MODAL_CONFIGS}/>
+
+      {/* ══ FMCSA LOOKUP ══════════════════════════════════════════════ */}
+      {/* ══ SCORECARD (FedEx/Amazon/LastMile) ══════════════════════ */}
+      {screen==="scorecard"&&(()=>{
+        const isFedex = segment==="fedex";
+        const isAmazon = segment==="amazon";
+        const isLastMile = segment==="lastmile";
+        const isUsps = segment==="usps";
+
+        // FedEx metrics
+        const fedexMetrics = [
+          {key:"pickupCompliance",label:"Pickup Compliance",target:99,unit:"%",color:"#f59e0b"},
+          {key:"deliveryCompliance",label:"Delivery Compliance",target:98,unit:"%",color:"#22c55e"},
+          {key:"packageHandling",label:"Package Handling",target:99,unit:"%",color:"#60a5fa"},
+          {key:"uniformCompliance",label:"Uniform / Vehicle Compliance",target:100,unit:"%",color:"#8888cc"},
+          {key:"onTimePickup",label:"On-Time Pickup",target:97,unit:"%",color:"#f59e0b"},
+          {key:"routeCompletion",label:"Route Completion Rate",target:99,unit:"%",color:"#22c55e"},
+        ];
+
+        // Amazon DSP metrics
+        const amazonMetrics = [
+          {key:"dart",label:"DART Score",target:98,unit:"%",color:"#f59e0b",desc:"Delivery Associate Reliability Today"},
+          {key:"dcr",label:"DCR — Delivery Completion Rate",target:99,unit:"%",color:"#22c55e"},
+          {key:"pod",label:"POD — Photo On Delivery",target:99,unit:"%",color:"#60a5fa"},
+          {key:"mentor",label:"Mentor Safety Score (avg)",target:800,unit:"pts",color:"#8888cc"},
+          {key:"contactCompliance",label:"Delivery Contact Compliance",target:97,unit:"%",color:"#f59e0b"},
+          {key:"attendanceRate",label:"Driver Attendance Rate",target:98,unit:"%",color:"#22c55e"},
+        ];
+
+        // Last Mile / Lowe's metrics
+        const lastmileMetrics = [
+          {key:"stopCompletion",label:"Stop Completion Rate",target:99,unit:"%",color:"#22c55e"},
+          {key:"onTimeDelivery",label:"On-Time Delivery",target:97,unit:"%",color:"#f59e0b"},
+          {key:"customerSatisfaction",label:"Customer Satisfaction (CSAT)",target:95,unit:"%",color:"#60a5fa"},
+          {key:"damageRate",label:"Damage-Free Rate",target:99,unit:"%",color:"#8888cc"},
+          {key:"signatureCapture",label:"Signature Capture Rate",target:98,unit:"%",color:"#f59e0b"},
+          {key:"callAhead",label:"Call-Ahead Compliance",target:95,unit:"%",color:"#22c55e"},
+        ];
+
+        // USPS metrics
+        const uspsMetrics = [
+          {key:"routeCompletion",label:"Route Completion Rate",target:100,unit:"%",color:"#22c55e"},
+          {key:"onTime",label:"On-Time Performance",target:97,unit:"%",color:"#f59e0b"},
+          {key:"vehicleInspection",label:"Vehicle Inspection Compliance",target:100,unit:"%",color:"#60a5fa"},
+          {key:"substituteAvail",label:"Substitute Driver Availability",target:90,unit:"%",color:"#8888cc"},
+          {key:"mailSecurity",label:"Mail Security Compliance",target:100,unit:"%",color:"#ef4444"},
+        ];
+
+        const metrics = isFedex?fedexMetrics:isAmazon?amazonMetrics:isLastMile?lastmileMetrics:uspsMetrics;
+        const segLabel = isFedex?"FedEx Ground":isAmazon?"Amazon DSP":isLastMile?"Last Mile / Lowe's":"USPS Contract";
+
+        // Get this week's scorecard entry
+        const thisWeek = scorecardData.find(s=>s.week===scorecardWeek)||{week:scorecardWeek};
+        const updateMetric = (key,val) => {
+          const existing = scorecardData.find(s=>s.week===scorecardWeek);
+          if(existing) {
+            setScorecardData(p=>p.map(s=>s.week===scorecardWeek?{...s,[key]:val}:s));
+          } else {
+            setScorecardData(p=>[{week:scorecardWeek,[key]:val},...p]);
+          }
+        };
+
+        const overallScore = metrics.reduce((sum,m)=>{
+          const val = parseFloat(thisWeek[m.key]||0);
+          const pct = m.unit==="%" ? val : Math.min((val/m.target)*100,100);
+          return sum + pct;
+        },0) / metrics.length;
+
+        return(
+        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          {isFedex&&<SubNavComp tabs={[["metrics","Metrics"],["safety","Safety"]]} active={scorecardSub} accent={accent} onSelect={setScorecardSub}/>}
+          <div style={{flex:1,overflowY:"auto",padding:24}}>
+          {(!isFedex||scorecardSub==="metrics")&&<div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+              <div>
+                <div style={{...S.section}}>{segLabel.toUpperCase()} SCORECARD</div>
+                <div style={{fontSize:11,color:"#555",marginTop:4}}>Track your weekly performance metrics. Enter your scores from your contractor portal.</div>
+              </div>
+              <div style={{textAlign:"center",background:"#141414",border:`1px solid ${accent}44`,borderRadius:8,padding:"12px 18px"}}>
+                <div style={{fontSize:32,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:overallScore>=95?"#22c55e":overallScore>=85?"#f59e0b":"#ef4444"}}>{isNaN(overallScore)?"-":overallScore.toFixed(0)}%</div>
+                <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Overall Score</div>
+              </div>
+            </div>
+
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+              <label style={{...S.label,marginBottom:0,whiteSpace:"nowrap"}}>Week of:</label>
+              <input type="date" value={scorecardWeek} onChange={e=>setScorecardWeek(e.target.value)} style={{...S.input,maxWidth:180}}/>
+            </div>
+
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12,marginBottom:24}}>
+              {metrics.map(m=>{
+                const val = thisWeek[m.key]||"";
+                const numVal = parseFloat(val||0);
+                const pct = m.unit==="%"?numVal:Math.min((numVal/m.target)*100,100);
+                const status = pct>=m.target?"#22c55e":pct>=(m.target-5)?"#f59e0b":"#ef4444";
+                return(
+                  <div key={m.key} style={{...S.card,borderTop:`3px solid ${m.color}`}}>
+                    <div style={{fontSize:11,color:"#888",marginBottom:8,lineHeight:1.4}}>{m.label}</div>
+                    {m.desc&&<div style={{fontSize:9,color:"#444",marginBottom:6}}>{m.desc}</div>}
+                    <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+                      <input type="number" value={val} onChange={e=>updateMetric(m.key,e.target.value)} placeholder={m.target.toString()} style={{...S.input,maxWidth:90}} min={0} max={m.unit==="%"?100:undefined}/>
+                      <div style={{fontSize:9,color:"#555"}}>{m.unit}</div>
+                      <div style={{marginLeft:"auto",fontSize:10,color:val?status:"#444",fontWeight:700}}>Target: {m.target}{m.unit}</div>
+                    </div>
+                    <div style={{height:4,background:"#1e1e1e",borderRadius:2}}>
+                      <div style={{height:"100%",width:`${Math.min(pct,100)}%`,background:val?status:m.color,borderRadius:2,transition:"width 0.3s"}}/>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Weekly history */}
+            {scorecardData.length>0&&(
+              <div style={S.card}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>Score History</div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {[...scorecardData].sort((a,b)=>new Date(b.week)-new Date(a.week)).slice(0,8).map(week=>{
+                    const weekAvg = metrics.reduce((sum,m)=>{
+                      const v=parseFloat(week[m.key]||0);
+                      return sum+(m.unit==="%"?v:Math.min((v/m.target)*100,100));
+                    },0)/metrics.length;
+                    return(
+                      <div key={week.week} style={{display:"flex",alignItems:"center",gap:12,padding:"6px 0",borderBottom:"1px solid #1a1a1a"}}>
+                        <div style={{fontSize:11,color:"#888",width:90,flexShrink:0}}>{fmtDate(week.week)}</div>
+                        <div style={{flex:1,height:6,background:"#1e1e1e",borderRadius:3}}>
+                          <div style={{height:"100%",width:`${Math.min(weekAvg,100)}%`,background:weekAvg>=95?"#22c55e":weekAvg>=85?"#f59e0b":"#ef4444",borderRadius:3}}/>
+                        </div>
+                        <div style={{fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:weekAvg>=95?"#22c55e":weekAvg>=85?"#f59e0b":"#ef4444",width:40,textAlign:"right"}}>{isNaN(weekAvg)?"-":weekAvg.toFixed(0)}%</div>
+                        <button onClick={()=>setScorecardData(p=>p.filter(s=>s.week!==week.week))} style={{background:"transparent",border:"none",color:"#333",cursor:"pointer",fontSize:11}}>✕</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Segment-specific tips */}
+            <div style={{marginTop:16,background:"#0a0a14",border:"1px solid #1a1a2a",borderRadius:6,padding:"14px 18px"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"#e8e4d8",marginBottom:10}}>{segLabel} Tips</div>
+              {isFedex&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• Pickup compliance is the most-watched FedEx metric — missing pickups triggers contractor reviews<br/>• Vehicle appearance inspections happen randomly — keep trucks clean and branded<br/>• Route completion below 99% for 3+ weeks can trigger ISP contract review<br/>• Log incidents in the Drivers → Incidents screen immediately — delays hurt your rating</div>}
+              {isAmazon&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• DART below 95% for 2 consecutive weeks flags your DSP for coaching<br/>• Mentor scores below 700 require mandatory retraining — check scores weekly<br/>• POD compliance dropped below 98% is the #1 reason DSPs lose packages<br/>• Keep a rescue driver on standby for unexpected driver callouts</div>}
+              {isLastMile&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• Always call ahead for large item deliveries (appliances, lumber) — it's contractually required<br/>• Log every delivery attempt with timestamp even if no one is home<br/>• Damage claims over 0.5% of stops triggers Lowe's contract review<br/>• White glove delivery requires two-person team — log both drivers</div>}
+              {isUsps&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• HCR routes must be completed regardless of volume — no partial days<br/>• Substitute drivers must be pre-approved by your postmaster before running routes<br/>• Vehicle inspection forms must be completed daily and kept 90 days<br/>• Mail security incidents must be reported within 1 hour — no exceptions</div>}
+            </div>
+          </div>}
+          {isFedex&&scorecardSub==="safety"&&(()=>{
+            const safetyColor=(val,thresholds,colors)=>{for(let i=0;i<thresholds.length;i++){if(val<=thresholds[i])return colors[i];}return colors[colors.length-1];};
+            return(
+            <div style={{maxWidth:900,margin:"0 auto",padding:24,animation:"fadeUp 0.3s ease"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+                <div style={{...S.section}}>SAFETY SCORECARD</div>
+                <button className="hov" onClick={()=>setShowSafetyAdd(!showSafetyAdd)} style={S.btn}>{showSafetyAdd?"Cancel":"+ Log Safety Week"}</button>
+              </div>
+              {showSafetyAdd&&(
+                <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    <div><label style={S.label}>Driver</label><select value={safetyForm.driverId} onChange={e=>setSafetyForm(p=>({...p,driverId:e.target.value}))} style={S.input}><option value="">Select driver...</option>{(drivers||[]).map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
+                    <div><label style={S.label}>Week (date)</label><input type="date" value={safetyForm.week} onChange={e=>setSafetyForm(p=>({...p,week:e.target.value}))} style={S.input}/></div>
+                    <div><label style={S.label}>Harsh Braking Events</label><input type="number" value={safetyForm.harshBraking} onChange={e=>setSafetyForm(p=>({...p,harshBraking:e.target.value}))} style={S.input} min={0}/></div>
+                    <div><label style={S.label}>Speeding Events</label><input type="number" value={safetyForm.speeding} onChange={e=>setSafetyForm(p=>({...p,speeding:e.target.value}))} style={S.input} min={0}/></div>
+                    <div><label style={S.label}>Seatbelt %</label><input type="number" value={safetyForm.seatbelt} onChange={e=>setSafetyForm(p=>({...p,seatbelt:e.target.value}))} style={S.input} min={0} max={100}/></div>
+                    <div><label style={S.label}>Dashcam Flags</label><input type="number" value={safetyForm.dashcamFlags} onChange={e=>setSafetyForm(p=>({...p,dashcamFlags:e.target.value}))} style={S.input} min={0}/></div>
+                    <div style={{gridColumn:"1/-1"}}><label style={S.label}>Coaching Notes</label><input value={safetyForm.coachingNotes} onChange={e=>setSafetyForm(p=>({...p,coachingNotes:e.target.value}))} style={S.input}/></div>
+                  </div>
+                  <button className="hov" onClick={()=>{if(!safetyForm.driverId||!safetyForm.week){showValidation("Driver and week are required");return;}setSafetyEvents(p=>[...p,{...safetyForm,id:Date.now(),harshBraking:parseFloat(safetyForm.harshBraking||0),speeding:parseFloat(safetyForm.speeding||0),seatbelt:parseFloat(safetyForm.seatbelt||100),dashcamFlags:parseFloat(safetyForm.dashcamFlags||0)}]);setSafetyForm({driverId:"",week:"",harshBraking:0,speeding:0,seatbelt:100,dashcamFlags:0,coachingNotes:""});setShowSafetyAdd(false);}} style={{...S.btn,marginTop:14}}>Save</button>
+                </div>
+              )}
+              {/* Per-driver table */}
+              <div style={S.card}>
+                <div style={{fontSize:9,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:12}}>Driver Safety Table — Latest Week</div>
+                {(drivers||[]).length===0&&<div style={{color:"#555",fontSize:12,padding:20,textAlign:"center"}}>No drivers yet.</div>}
+                {(drivers||[]).map(d=>{
+                  const latestEvent=safetyEvents.filter(e=>String(e.driverId)===String(d.id)).sort((a,b)=>new Date(b.week)-new Date(a.week))[0];
+                  if(!latestEvent) return null;
+                  const hbColor=safetyColor(latestEvent.harshBraking,[3,6],["#22c55e","#f59e0b","#ef4444"]);
+                  const spColor=safetyColor(latestEvent.speeding,[2,4],["#22c55e","#f59e0b","#ef4444"]);
+                  const sbColor=latestEvent.seatbelt>98?"#22c55e":latestEvent.seatbelt>=95?"#f59e0b":"#ef4444";
+                  const dcColor=safetyColor(latestEvent.dashcamFlags,[0,2],["#22c55e","#f59e0b","#ef4444"]);
+                  const flagged=hbColor==="#ef4444"||spColor==="#ef4444"||sbColor==="#ef4444"||dcColor==="#ef4444";
+                  return(
+                    <div key={d.id} style={{borderLeft:`3px solid ${flagged?"#ef4444":accent}`,background:flagged?"#1a0808":"transparent",borderRadius:4,padding:"10px 14px",marginBottom:8}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                        {flagged&&<span style={{color:"#ef4444",fontSize:12}}>⚠</span>}
+                        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{d.name}</span>
+                        <span style={{fontSize:9,color:"#555"}}>Week: {latestEvent.week}</span>
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+                        {[["Harsh Braking",latestEvent.harshBraking,hbColor],["Speeding",latestEvent.speeding,spColor],["Seatbelt %",latestEvent.seatbelt+"%",sbColor],["Dashcam Flags",latestEvent.dashcamFlags,dcColor]].map(([lbl,val,col])=>(
+                          <div key={lbl} style={{textAlign:"center"}}>
+                            <div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div>
+                            <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>{lbl}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {latestEvent.coachingNotes&&<div style={{fontSize:10,color:"#888",marginTop:8,fontStyle:"italic"}}>📋 {latestEvent.coachingNotes}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Legend */}
+              <div style={{...S.card,marginTop:12}}>
+                <div style={{fontSize:9,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:8}}>FedEx Safety Thresholds</div>
+                {[["Harsh Braking","<3 = Good","3-6 = Warning","6+ = Alert"],["Speeding","<2 = Good","2-4 = Warning","4+ = Alert"],["Seatbelt %",">98% = Good","95-98% = Warning","<95% = Alert"],["Dashcam Flags","0 = Good","1-2 = Warning","3+ = Alert"]].map(([metric,...vals])=>(
+                  <div key={metric} style={{display:"flex",gap:12,padding:"4px 0",borderBottom:"1px solid #1a1a1a",alignItems:"center"}}>
+                    <span style={{fontSize:10,color:"#888",width:120,flexShrink:0}}>{metric}</span>
+                    {vals.map((v,i)=><span key={i} style={{fontSize:9,color:["#22c55e","#f59e0b","#ef4444"][i]}}>{v}</span>)}
+                  </div>
+                ))}
+              </div>
+            </div>
+            );
+          })()}
+          </div>
+        </div>
+        );
+      })()}
+
+      {screen==="fmcsa"&&(
+        <div style={{flex:1,overflowY:"auto",padding:24}}>
+          <div style={{maxWidth:700,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+            <div style={{...S.section,marginBottom:4}}>FMCSA CARRIER LOOKUP</div>
+            <p style={{fontSize:11,color:"#555",marginBottom:20,lineHeight:1.8}}>Enter your USDOT number to pull your carrier profile from the FMCSA SAFER database. Verify your authority status, safety rating, and auto-fill your company name.</p>
+            <div style={{...S.card,marginBottom:20,border:`1px solid ${accent}33`}}>
+              <label style={S.label}>USDOT Number</label>
+              <div style={{display:"flex",gap:10,marginBottom:8}}>
+                <input value={fmcsaDot} onChange={e=>setFmcsaDot(e.target.value.replace(/\D/g,""))} onKeyDown={e=>e.key==="Enter"&&lookupDOT()} placeholder="Enter your DOT number (numbers only)" style={{...S.input,flex:1}} maxLength={10}/>
+                <button className="hov" onClick={lookupDOT} style={{...S.btn,flexShrink:0}}>{fmcsaLoading?"Looking up...":"Lookup →"}</button>
+              </div>
+              <div style={{fontSize:10,color:"#444"}}>Your USDOT number is on your operating authority certificate and cab card. Find it at <a href="https://safer.fmcsa.dot.gov" target="_blank" rel="noreferrer" style={{color:accent}}>safer.fmcsa.dot.gov</a></div>
+            </div>
+            {fmcsaError&&<div style={{...S.card,background:"#1a0808",border:"1px solid #3a1010",color:"#f87171",fontSize:12,marginBottom:16}}>{fmcsaError}</div>}
+            {fmcsaLoading&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32,animation:"fadeUp 0.3s ease"}}>
+              <div style={{width:32,height:32,border:"3px solid #1e1e1e",borderTop:`3px solid ${accent}`,borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 12px"}}/>
+              Querying FMCSA SAFER database...
+              <div style={{fontSize:10,color:"#444",marginTop:8}}>This may take 5–10 seconds. FMCSA's servers can be slow.</div>
+            </div>}
+            {!fmcsaLoading&&!fmcsaResult&&!fmcsaError&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>Enter your USDOT number above and click Lookup → to pull your carrier profile from the FMCSA SAFER database.</div>}
+            {fmcsaResult&&(
+              <div style={{...S.card,border:`1px solid ${accent}33`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
+                  <div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#e8e4d8"}}>{fmcsaResult.legalName||"Unknown"}</div>
+                    {fmcsaResult.dbaName&&<div style={{fontSize:11,color:"#666"}}>DBA: {fmcsaResult.dbaName}</div>}
+                  </div>
+                  <div style={{background:fmcsaResult.opStatus?.toLowerCase().includes("authorized")?"#051a05":"#1a0808",border:`1px solid ${fmcsaResult.opStatus?.toLowerCase().includes("authorized")?"#22c55e44":"#ef444444"}`,borderRadius:6,padding:"6px 14px",textAlign:"center",flexShrink:0}}>
+                    <div style={{fontSize:11,color:fmcsaResult.opStatus?.toLowerCase().includes("authorized")?"#22c55e":"#ef4444",fontWeight:700}}>{fmcsaResult.opStatus||"Unknown"}</div>
+                    <div style={{fontSize:9,color:"#555"}}>Operating Status</div>
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:10,marginBottom:16}}>
+                  {[["USDOT #",fmcsaResult.dotNum],["MC/Docket #",fmcsaResult.mcNum||"—"],["Safety Rating",fmcsaResult.safetyRating||"Not Rated"],["Power Units",fmcsaResult.powerUnits||"—"],["Drivers",fmcsaResult.drivers||"—"],["Phone",fmcsaResult.phone||"—"]].map(([lbl,val])=>val&&(
+                    <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}>
+                      <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>{lbl}</div>
+                      <div style={{fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#c8c4bc"}}>{val}</div>
+                    </div>
+                  ))}
+                </div>
+                {fmcsaResult.address&&<div style={{fontSize:11,color:"#666",marginBottom:16}}>📍 {fmcsaResult.address}</div>}
+                <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                  <button className="hov" onClick={applyToSettings} style={{...S.btn,fontSize:11}}>Apply Company Name to Settings</button>
+                  <a href={`https://safer.fmcsa.dot.gov/query.asp?query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${fmcsaResult.dotNum}`} target="_blank" rel="noreferrer" style={{...S.ghost,textDecoration:"none",fontSize:11,padding:"10px 18px",display:"inline-block"}}>View Full FMCSA Profile ↗</a>
+                </div>
+              </div>
+            )}
+            <div style={{...S.card,marginTop:20,background:"#0a0f1a",border:"1px solid #1a1a3a"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8",marginBottom:10}}>FMCSA Forms Renewal Calendar</div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {[["MCS-150","Every 2 years from USDOT issuance date","Register/update at fmcsa.dot.gov/registration"],["UCR","Annual — renew by Dec 31 each year","Register at ucr.gov"],["IFTA","Quarterly filings + annual license renewal","File with your base state"],["IRP","Annual renewal","File with your base state DMV"],["Drug Clearinghouse","Annual query per driver","Login at clearinghouse.fmcsa.dot.gov"],["BOC-3","One-time, refile if agent changes","Use a registered process agent"],["Insurance (BMC-91)","Keep current — no lapse","Filed by your insurer to FMCSA"]].map(([form,freq,notes])=>(
+                  <div key={form} style={{display:"flex",gap:14,padding:"8px 0",borderBottom:"1px solid #1a1a2a"}}>
+                    <div style={{width:120,flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:accent}}>{form}</div>
+                    <div style={{flex:1}}><div style={{fontSize:11,color:"#c8c4bc"}}>{freq}</div><div style={{fontSize:10,color:"#444"}}>{notes}</div></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ FOOTER + BUG REPORT ════════════════════════════════════════ */}
+      {showBugReport&&(
+        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:500,padding:20}} onClick={()=>setShowBugReport(false)}>
+          <div style={{background:"#141414",border:"1px solid #2a2a2a",borderRadius:10,padding:"28px 32px",maxWidth:480,width:"100%"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#e8e4d8",marginBottom:4}}>Report a Bug / Contact</div>
+            <div style={{fontSize:11,color:"#555",marginBottom:16}}>Found something broken? Have a feature idea? Reach out directly.</div>
+            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
+              <div><label style={S.label}>Your Email (optional)</label><input value={bugForm.email} onChange={e=>setBugForm(p=>({...p,email:e.target.value}))} placeholder="so we can follow up" style={S.input}/></div>
+              <div><label style={S.label}>Subject</label><input value={bugForm.subject} onChange={e=>setBugForm(p=>({...p,subject:e.target.value}))} placeholder="Bug: ..., Feature request: ..." style={S.input}/></div>
+              <div><label style={S.label}>Description *</label><textarea value={bugForm.description} onChange={e=>setBugForm(p=>({...p,description:e.target.value}))} placeholder="Describe what happened, what screen you were on, and what you expected..." style={{...S.input,height:90,resize:"vertical"}}/></div>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <a href={`mailto:bostonrudi1993@gmail.com?subject=${encodeURIComponent(bugForm.subject||"ContractorOS Feedback")}&body=${encodeURIComponent((bugForm.email?"From: "+bugForm.email+"\n\n":"")+bugForm.description)}`} style={{...S.btn,textDecoration:"none",display:"inline-block",fontSize:12}} onClick={()=>setShowBugReport(false)}>Send Email →</a>
+              <button onClick={()=>setShowBugReport(false)} style={{...S.ghost,fontSize:11}}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clerk Org Profile Modal */}
+      {showOrgProfile&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.9)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:600,padding:20}} onClick={()=>setShowOrgProfile(false)}>
+          <div style={{maxWidth:860,width:"100%",maxHeight:"90vh",overflow:"auto",borderRadius:10}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8"}}>Manage Team</div>
+              <button onClick={()=>setShowOrgProfile(false)} style={{background:"transparent",border:"none",color:"#555",fontSize:22,cursor:"pointer"}}>✕</button>
+            </div>
+            <OrganizationProfile routing="virtual" appearance={{elements:{rootBox:{width:"100%"},card:{backgroundColor:"#141414",border:"1px solid #2a2a2a",boxShadow:"none"}}}}/>
+          </div>
+        </div>
+      )}
 
       {/* ══ ONBOARDING MODAL ════════════════════════════════════════ */}
       {onboardStep > 0 && onboardStep <= 5 && !onboardDismissed && (()=>{
