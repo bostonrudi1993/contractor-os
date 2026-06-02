@@ -250,12 +250,12 @@ function AuthGate() {
       {authView === "signin"
         ? <SignIn
           routing="virtual"
-          afterSignInUrl="/"
+          afterSignInUrl="/app"
           appearance={{elements:{rootBox:{width:"100%",maxWidth:400}}}}
         />
         : <SignUp
           routing="virtual"
-          afterSignUpUrl="/"
+          afterSignUpUrl="/app"
           appearance={{elements:{rootBox:{width:"100%",maxWidth:400}}}}
         />
       }
@@ -297,7 +297,7 @@ function AuthGate() {
           ) : null}
           <CreateOrganization
             routing="virtual"
-            afterCreateOrganizationUrl="/"
+            afterCreateOrganizationUrl="/app"
             appearance={{
               elements: {
                 rootBox: { width: "100%" },
@@ -1624,8 +1624,11 @@ function ContractorOS() {
             <div style={{fontSize:8,color:"#444",letterSpacing:"0.15em",textTransform:"uppercase"}}>{seg.icon} {seg.label}</div>
           </div>
         </div>
-        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
           <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:16,color:"#e8e4d8",textTransform:"uppercase",letterSpacing:"0.08em"}}>{navLabels[screen]||screen}</span>
+          {user?.emailAddresses?.[0]?.emailAddress==="bostonrudi1993@gmail.com"&&(
+            <button onClick={()=>{setSegment(null);localStorage.removeItem("cos_segment_locked");}} style={{background:"transparent",border:"1px solid #f59e0b44",color:"#f59e0b",fontSize:9,padding:"2px 8px",borderRadius:3,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em",flexShrink:0}}>👑 SWITCH TYPE</button>
+          )}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
           {urgentItems.length>0&&<button onClick={()=>handleNav("compliance")} style={{background:"#1a0808",border:"1px solid #ef444433",color:"#ef4444",padding:"4px 10px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>🔴 {urgentItems.length}</button>}
