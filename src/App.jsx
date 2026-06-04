@@ -23,11 +23,12 @@ const KEYS = {
   payroll: "cos_payroll", fuelLog: "cos_fuel_log", invoices: "cos_invoices",
   odometer: "cos_odometer", tires: "cos_tires", documents: "cos_documents",
   dispatches: "cos_dispatches", contacts: "cos_contacts", hosLog: "cos_hos_log",
-  // ── v21: Amazon DSP keys ──
-  hiringCandidates: "cos_hiring_candidates",
-  driverReadiness: "cos_driver_readiness",
-  assetAssignments: "cos_asset_assignments",
-  dailySettlements: "cos_daily_settlements",
+  // ── v22: new feature keys ──
+  clientData: "cos_client_data",
+  stopProfitLog: "cos_stop_profit_log",
+  weeklySettlementLog: "cos_weekly_settlement_log",
+  scheduleData: "cos_schedule_data",
+  segmentChecklist: "cos_segment_checklist",
 };
 const stor = { get: (k,fb) => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):fb; } catch { return fb; } }, set: (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch {} } };
 
@@ -43,6 +44,37 @@ const DEFAULT_FILINGS = [
   {id:"eld",     name:"ELD Log Retention", dueDate:"Ongoing — 6 months", frequency:"Ongoing", notes:"Keep all HOS logs minimum 6 months", federal:true, filedDate:"", confirmationNum:"", filedNotes:""},
 ];
 
+// ─── SEGMENT COMPLIANCE CHECKLISTS ───────────────────────────────────
+const SEGMENT_CHECKLISTS = {
+  fedex: [
+    {id:"fx1",label:"Vehicle appearance inspection (FedEx branding standards)",freq:"Weekly"},
+    {id:"fx2",label:"VEDR (Vehicle Event Data Recorder) system check",freq:"Monthly"},
+    {id:"fx3",label:"FedEx ISP contract performance review",freq:"Quarterly"},
+    {id:"fx4",label:"Driver uniform compliance check",freq:"Weekly"},
+    {id:"fx5",label:"Background check renewals (every 2 years per driver)",freq:"Biennial"},
+    {id:"fx6",label:"Drug test random selection compliance",freq:"Ongoing"},
+  ],
+  amazon: [
+    {id:"amz1",label:"Van photo inspection (daily via Mentor/Netradyne)",freq:"Daily"},
+    {id:"amz2",label:"DSP scorecard review with drivers",freq:"Weekly"},
+    {id:"amz3",label:"Engine Off Compliance (EOC) review",freq:"Weekly"},
+    {id:"amz4",label:"Proper Parking Sequence (PPS) training",freq:"Monthly"},
+    {id:"amz5",label:"Netradyne camera system operational check",freq:"Weekly"},
+  ],
+  lastmile: [
+    {id:"lm1",label:"Delivery vehicle condition report",freq:"Weekly"},
+    {id:"lm2",label:"White glove delivery certification per driver",freq:"Annual"},
+    {id:"lm3",label:"Lowe's/Home Depot vendor compliance review",freq:"Quarterly"},
+    {id:"lm4",label:"Customer signature capture rate review",freq:"Weekly"},
+  ],
+  usps: [
+    {id:"usps1",label:"Daily vehicle inspection form (required before each route)",freq:"Daily"},
+    {id:"usps2",label:"Mail security training acknowledgment",freq:"Annual"},
+    {id:"usps3",label:"Substitute driver pre-approval list update",freq:"Monthly"},
+    {id:"usps4",label:"HCR route contract compliance review",freq:"Quarterly"},
+  ],
+};
+
 // ─── SEGMENT CONFIG ───────────────────────────────────────────────────
 const SEGMENTS = {
   otr: {
@@ -56,28 +88,28 @@ const SEGMENTS = {
     id: "fedex", label: "FedEx Ground / HD Contractor", icon: "📦",
     tagline: "ISP route management & compliance",
     color: "#6366f1", darkColor: "#3730a3",
-    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","reports","trends","users","settings","fmcsa","data"],
+    nav: ["dashboard","routes","compliance","brokers","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","scorecard","stopprofit","settlement","schedule","reports","trends","users","settings","fmcsa","data"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:false, stopMetrics:true },
   },
   amazon: {
     id: "amazon", label: "Amazon DSP", icon: "📬",
     tagline: "Delivery Service Partner operations",
     color: "#f97316", darkColor: "#9a3412",
-    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","reports","trends","users","settings","fmcsa","data"],
+    nav: ["dashboard","routes","compliance","brokers","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","scorecard","settlement","schedule","reports","trends","users","settings","fmcsa","data"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:true, stopMetrics:true },
   },
   lastmile: {
     id: "lastmile", label: "Last Mile (Lowe's / Home Depot)", icon: "🏠",
     tagline: "Home delivery contractor management",
     color: "#22c55e", darkColor: "#14532d",
-    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","reports","trends","users","settings","fmcsa","data"],
+    nav: ["dashboard","routes","compliance","brokers","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","scorecard","stopprofit","reports","trends","users","settings","fmcsa","data"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:false, stopMetrics:true },
   },
   usps: {
     id: "usps", label: "USPS HCR Contractor", icon: "📮",
     tagline: "Highway Contract Route operations",
     color: "#3b82f6", darkColor: "#1e3a8a",
-    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","reports","trends","users","settings","fmcsa","data"],
+    nav: ["dashboard","routes","compliance","brokers","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","scorecard","reports","trends","users","settings","fmcsa","data"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:false, stopMetrics:false },
   },
 };
@@ -271,6 +303,64 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
               <label style={{...S.label,marginBottom:0,whiteSpace:"nowrap"}}>Week of:</label>
               <input type="date" value={scorecardWeek} onChange={e=>setScorecardWeek(e.target.value)} style={{...S.input,maxWidth:180}}/>
             </div>
+
+            {/* Amazon AI Import */}
+            {isAmazon&&(
+              <div style={{...S.card,marginBottom:20,border:`1px solid ${accent}44`}}>
+                <div style={{fontSize:10,color:accent,letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:8}}>Import Weekly Scorecard</div>
+                <div style={{fontSize:11,color:"#555",marginBottom:12,lineHeight:1.7}}>Upload your Amazon DSP scorecard PDF or screenshot. AI will extract all metrics automatically.</div>
+                <input type="file" accept=".pdf,image/*" onChange={async(e)=>{
+                  const file = e.target.files?.[0];
+                  if(!file) return;
+                  setScorecardImporting(true);
+                  setScorecardImportResult(null);
+                  try {
+                    const reader = new FileReader();
+                    reader.onload = async(ev)=>{
+                      const base64 = ev.target.result.split(",")[1];
+                      const mediaType = file.type || "image/jpeg";
+                      const isPdf = file.type==="application/pdf";
+                      const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
+                      const response = await fetch("https://api.anthropic.com/v1/messages",{
+                        method:"POST",
+                        headers:{"Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+                        body: JSON.stringify({
+                          model:"claude-sonnet-4-20250514",
+                          max_tokens:1024,
+                          messages:[{role:"user",content:[
+                            isPdf
+                              ? {type:"document",source:{type:"base64",media_type:"application/pdf",data:base64}}
+                              : {type:"image",source:{type:"base64",media_type:mediaType,data:base64}},
+                            {type:"text",text:`This is an Amazon DSP weekly scorecard. Extract ALL performance metrics you can find including: DART, DCR, POD compliance rate, Contact Compliance, Delivered Not Received (DNR), Customer Escalations, Mentor score average, Seatbelt compliance, Speeding events, Harsh braking events, Delivery Completion Rate, and any other metrics present. Return ONLY a JSON object with metric names as keys and their values as numbers or strings. No markdown, no explanation.`}
+                          ]}]
+                        })
+                      });
+                      const data = await response.json();
+                      const text = data?.content?.[0]?.text||"";
+                      try {
+                        const parsed = JSON.parse(text);
+                        const keyMap = {"dart":"dart","dcr":"dcr","delivery completion rate":"dcr","pod":"pod","photo on delivery":"pod","mentor":"mentor","mentor score":"mentor","contactcompliance":"contactCompliance","contact compliance":"contactCompliance","attendancerate":"attendanceRate","attendance rate":"attendanceRate"};
+                        const newEntry = {...(scorecardData.find(w=>w.week===scorecardWeek)||{week:scorecardWeek})};
+                        const imported = [];
+                        Object.entries(parsed).forEach(([k,v])=>{
+                          const normKey = k.toLowerCase().replace(/[^a-z ]/g,"").trim();
+                          const mappedKey = keyMap[normKey] || normKey.replace(/ /g,"");
+                          if(mappedKey) { newEntry[mappedKey] = parseFloat(v)||v; imported.push(k); }
+                        });
+                        const updated = scorecardData.filter(w=>w.week!==scorecardWeek);
+                        setScorecardData([...updated, newEntry]);
+                        setScorecardImportResult({success:true, fields:imported, raw:parsed});
+                      } catch { setScorecardImportResult({success:false,error:"Could not parse AI response. Fill in manually."}); }
+                      setScorecardImporting(false);
+                    };
+                    reader.readAsDataURL(file);
+                  } catch(err) { setScorecardImportResult({success:false,error:err.message}); setScorecardImporting(false); }
+                }} style={{fontSize:11,color:"#888",marginBottom:8}}/>
+                {scorecardImporting&&<div style={{fontSize:11,color:accent,marginTop:8}}>⏳ Parsing scorecard with AI...</div>}
+                {scorecardImportResult?.success&&<div style={{fontSize:11,color:"#22c55e",marginTop:8}}>✓ Imported: {scorecardImportResult.fields.join(", ")}</div>}
+                {scorecardImportResult?.error&&<div style={{fontSize:11,color:"#ef4444",marginTop:8}}>⚠ {scorecardImportResult.error}</div>}
+              </div>
+            )}
 
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12,marginBottom:24}}>
               {metrics.map(m=>{
@@ -734,23 +824,10 @@ function ContractorOS() {
   const [dispatches, setDispatches] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [hosLog, setHosLog] = useState([]);
-  // ── v21: Amazon DSP state ──
-  const [hiringCandidates, setHiringCandidates] = useState([]);
-  const [hiringForm, setHiringForm] = useState({name:"",appliedDate:"",stage:"applied",cdlClass:"",cdlExpiry:"",backgroundCost:"",trainingCost:"",recruitingCost:"",notes:""});
-  const [showHiringAdd, setShowHiringAdd] = useState(false);
-  const [driverReadiness, setDriverReadiness] = useState([]);
-  const [readinessDate, setReadinessDate] = useState(()=>new Date().toISOString().slice(0,10));
-  const [assetAssignments, setAssetAssignments] = useState([]);
-  const [assetForm, setAssetForm] = useState({driverId:"",vanId:"",rabbitId:"",fuelCardId:"",assignedAt:"",notes:""});
-  const [showAssetAdd, setShowAssetAdd] = useState(false);
-  const [dailySettlements, setDailySettlements] = useState([]);
-  const [settlementForm, setSettlementForm] = useState({date:"",amount:"",routes:"",packages:"",notes:""});
-  const [showSettlementAdd, setShowSettlementAdd] = useState(false);
-  const [settlementViewDate, setSettlementViewDate] = useState(()=>new Date().toISOString().slice(0,10));
   // New feature UI state
   const [payrollSub, setPayrollSub] = useState("runs");
   const [payrollShowAdd, setPayrollShowAdd] = useState(false);
-  const [payrollForm, setPayrollForm] = useState({driverId:"",periodStart:"",periodEnd:"",miles:"",hours:"",stops:"",days:"",loadRevenue:"",manualAmount:"",notes:"",ptoHours:"",routingVolume:""});
+  const [payrollForm, setPayrollForm] = useState({driverId:"",periodStart:"",periodEnd:"",miles:"",hours:"",stops:"",days:"",loadRevenue:"",manualAmount:"",notes:""});
   const [payrollPreview, setPayrollPreview] = useState(null);
   const [payStub, setPayStub] = useState(null);
   const [fuelSub, setFuelSub] = useState("log");
@@ -797,6 +874,27 @@ function ContractorOS() {
   const showValidation = (msg) => { setValidationMsg(msg); setTimeout(()=>setValidationMsg(""), 3000); };
   const [showOrgProfile, setShowOrgProfile] = useState(false);
 
+  // ── v22: new feature state ──
+  const [clientData, setClientData] = useState({stopGuarantee:"",revenuePerStop:"",fuelSurchargeRate:"",contractExpiry:"",contactName:"",contactPhone:"",notes:""});
+  const [clientDataEditing, setClientDataEditing] = useState(false);
+  const [clientDataForm, setClientDataForm] = useState({});
+  const [stopProfitLog, setStopProfitLog] = useState([]);
+  const [stopProfitForm, setStopProfitForm] = useState({date:"",stops:"",revenuePerStop:"",driverPay:"",fuelCost:"",vehicleCost:"",otherCost:""});
+  const [stopProfitSub, setStopProfitSub] = useState("entry");
+  const [weeklySettlementLog, setWeeklySettlementLog] = useState([]);
+  const [weeklySettlementForm, setWeeklySettlementForm] = useState({weekEnding:"",stopsCompleted:"",ratePerStop:"",stopBonuses:"",fuelSurcharge:"",actualDeposit:"",depositDate:"",notes:""});
+  const [weeklySettlementSub, setWeeklySettlementSub] = useState("entry");
+  const [scheduleData, setScheduleData] = useState([]);
+  const [scheduleWeekOffset, setScheduleWeekOffset] = useState(0);
+  const [scheduleSub, setScheduleSub] = useState("weekly");
+  const [minDrivers, setMinDrivers] = useState(3);
+  const [scheduleAssignForm, setScheduleAssignForm] = useState({});
+  const [scheduleAssignDay, setScheduleAssignDay] = useState(null);
+  const [segmentChecklist, setSegmentChecklist] = useState([]);
+  const [scorecardImporting, setScorecardImporting] = useState(false);
+  const [scorecardImportResult, setScorecardImportResult] = useState(null);
+  const [scorecardSub, setScorecardSub] = useState("metrics");
+
   // Persist all state
   // ── Segment & settings stay in localStorage (tiny, sync, no cloud needed) ──
   useEffect(()=>{if(segment)stor.set(KEYS.segment,segment);},[segment]);
@@ -813,7 +911,7 @@ function ContractorOS() {
         _routes, _contracts, _incidents, _brokers, _loads, _users, _currentUser,
         _notifications, _filings, _payroll, _fuelLog, _invoices, _odometer,
         _tires, _documents, _dispatches, _contacts, _hosLog,
-        _hiringCandidates, _driverReadiness, _assetAssignments, _dailySettlements,
+        _clientData, _stopProfitLog, _weeklySettlementLog, _scheduleData, _segmentChecklist,
       ] = await Promise.all([
         db.get(D.compliance,  {trucks:[],drivers:[]}),
         db.get(D.vehicles,    []),
@@ -839,10 +937,11 @@ function ContractorOS() {
         db.get(D.dispatches,  []),
         db.get(D.contacts,    []),
         db.get(D.hosLog,      []),
-        db.get(D.hiringCandidates, []),
-        db.get(D.driverReadiness,  []),
-        db.get(D.assetAssignments, []),
-        db.get(D.dailySettlements, []),
+        db.get(D.clientData,  {stopGuarantee:"",revenuePerStop:"",fuelSurchargeRate:"",contractExpiry:"",contactName:"",contactPhone:"",notes:""}),
+        db.get(D.stopProfitLog, []),
+        db.get(D.weeklySettlementLog, []),
+        db.get(D.scheduleData, []),
+        db.get(D.segmentChecklist, []),
       ]);
       if(cancelled) return;
       setCompliance(_compliance);
@@ -875,10 +974,11 @@ function ContractorOS() {
       setDispatches(_dispatches);
       setContacts(_contacts);
       setHosLog(_hosLog);
-      setHiringCandidates(_hiringCandidates||[]);
-      setDriverReadiness(_driverReadiness||[]);
-      setAssetAssignments(_assetAssignments||[]);
-      setDailySettlements(_dailySettlements||[]);
+      if(_clientData) setClientData(_clientData);
+      setStopProfitLog(_stopProfitLog||[]);
+      setWeeklySettlementLog(_weeklySettlementLog||[]);
+      setScheduleData(_scheduleData||[]);
+      setSegmentChecklist(_segmentChecklist||[]);
       setDbLoaded(true);
     })();
     return ()=>{ cancelled=true; };
@@ -910,10 +1010,11 @@ function ContractorOS() {
   useEffect(()=>{if(dbLoaded)db.set(KEYS.dispatches,dispatches);},[dispatches,dbLoaded]);
   useEffect(()=>{if(dbLoaded)db.set(KEYS.contacts,contacts);},[contacts,dbLoaded]);
   useEffect(()=>{if(dbLoaded)db.set(KEYS.hosLog,hosLog);},[hosLog,dbLoaded]);
-  useEffect(()=>{if(dbLoaded)db.set(KEYS.hiringCandidates,hiringCandidates);},[hiringCandidates,dbLoaded]);
-  useEffect(()=>{if(dbLoaded)db.set(KEYS.driverReadiness,driverReadiness);},[driverReadiness,dbLoaded]);
-  useEffect(()=>{if(dbLoaded)db.set(KEYS.assetAssignments,assetAssignments);},[assetAssignments,dbLoaded]);
-  useEffect(()=>{if(dbLoaded)db.set(KEYS.dailySettlements,dailySettlements);},[dailySettlements,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.clientData,clientData);},[clientData,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.stopProfitLog,stopProfitLog);},[stopProfitLog,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.weeklySettlementLog,weeklySettlementLog);},[weeklySettlementLog,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.scheduleData,scheduleData);},[scheduleData,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.segmentChecklist,segmentChecklist);},[segmentChecklist,dbLoaded]);
 
   const seg = segment ? SEGMENTS[segment] : null;
   const S = seg ? mkStyles(seg.color) : mkStyles("#f59e0b");
@@ -1363,7 +1464,7 @@ function ContractorOS() {
   }
 
   // ── SHARED COMPONENTS ──────────────────────────────────────────────
-  const navLabels = {dashboard:"Dashboard",analyze:"Analyze Load",boards:"Load Boards",compliance:"Compliance",brokers:"Brokers",fleet:"Fleet",finance:"Finance",routes:"Routes",drivers:"Drivers",contracts:"Contracts",reports:"Reports",trends:"P&L Trends",users:"Users",settings:"Settings",payroll:"Payroll",invoices:"Invoices",dispatch:"Dispatch",contacts:"Contacts",documents:"Documents",data:"Data & Backup",fmcsa:"FMCSA Lookup",scorecard:"Scorecard"};
+  const navLabels = {dashboard:"Dashboard",analyze:"Analyze Load",boards:"Load Boards",compliance:"Compliance",brokers:seg?.id==="otr"?"Brokers":"Clients",fleet:"Fleet",finance:"Finance",routes:"Routes",drivers:"Drivers",contracts:"Contracts",reports:"Reports",trends:"P&L Trends",users:"Users",settings:"Settings",payroll:"Payroll",invoices:"Invoices",dispatch:"Dispatch",contacts:"Contacts",documents:"Documents",data:"Data & Backup",fmcsa:"FMCSA Lookup",scorecard:"Scorecard",stopprofit:"Stop Profit",settlement:"Settlement",schedule:"Schedule"};
   const SubNav = ({tabs,active,onSelect}) => <SubNavComp tabs={tabs} active={active} accent={accent} onSelect={onSelect}/>;
   const Stat = ({label,value,color,sub}) => <StatCard label={label} value={value} color={color||accent} sub={sub} card={S.card}/>;
   const ExpiryBadge = ({label,days}) => <ExpiryBadgeComp label={label} days={days}/>;
@@ -1582,9 +1683,23 @@ function ContractorOS() {
       </div>
 
       {/* ══ DASHBOARD ══════════════════════════════════════════════════ */}
-      {screen==="dashboard"&&(
+      {screen==="dashboard"&&(()=>{
+        const thisWeekStart = new Date(); thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay());
+        const thisWeekRevenue = revenue.filter(r=>r.date&&new Date(r.date)>=thisWeekStart).reduce((a,r)=>a+parseFloat(r.amount||0),0);
+        const lastWeekStart = new Date(thisWeekStart); lastWeekStart.setDate(lastWeekStart.getDate()-7);
+        const lastWeekRevenue = revenue.filter(r=>r.date&&new Date(r.date)>=lastWeekStart&&new Date(r.date)<thisWeekStart).reduce((a,r)=>a+parseFloat(r.amount||0),0);
+        const activeDriverCount = drivers.filter(d=>d.status==="active").length;
+        const thisWeekStops = dispatches.filter(d=>d.date&&new Date(d.date)>=thisWeekStart&&d.status==="completed").length;
+        const lastWeekStops = dispatches.filter(d=>d.date&&new Date(d.date)>=lastWeekStart&&new Date(d.date)<thisWeekStart&&d.status==="completed").length;
+        const thisWeekExpenses = expenses.filter(e=>e.date&&new Date(e.date)>=thisWeekStart).reduce((a,e)=>a+parseFloat(e.amount||0),0);
+        const latestScorecardWeek = scorecardData.length>0?scorecardData[scorecardData.length-1]:null;
+        const nearestContract = contracts.filter(c=>c.renewalDate).sort((a,b)=>new Date(a.renewalDate)-new Date(b.renewalDate))[0];
+        const nearestContractDays = nearestContract?daysUntil(nearestContract.renewalDate):null;
+        const avgNetRPM = loads.length>0?(loads.filter(l=>l.result?.netRPM).reduce((a,l)=>a+(l.result.netRPM||0),0)/loads.filter(l=>l.result?.netRPM).length):null;
+        const avgBrokerRating = brokers.filter(b=>b.rating).length>0?(brokers.filter(b=>b.rating).reduce((a,b)=>a+parseFloat(b.rating||0),0)/brokers.filter(b=>b.rating).length):null;
+        return (
         <div style={{flex:1,padding:24,maxWidth:1000,margin:"0 auto",width:"100%",animation:"fadeUp 0.3s ease"}}>
-          <div style={{marginBottom:28}}>
+          <div style={{marginBottom:24}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:36,fontWeight:900,color:"#e8e4d8",lineHeight:1}}>
               {settings.companyName||"YOUR FLEET"}<br/>
               <span style={{color:accent,fontSize:28}}>OPERATIONS DASHBOARD</span>
@@ -1592,39 +1707,130 @@ function ContractorOS() {
             <div style={{fontSize:11,color:"#555",marginTop:8}}>{seg.icon} {seg.label} · ContractorOS</div>
           </div>
 
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
-            <Stat label="Total Revenue" value={fmt$(totalRevenue)} color="#22c55e"/>
-            <Stat label="Total Expenses" value={fmt$(totalExpenses)} color="#ef4444"/>
-            <Stat label="Net Profit" value={fmt$(netProfit)} color={netProfit>=0?"#22c55e":"#ef4444"}/>
-            <Stat label="Compliance Alerts" value={urgentItems.length} color={urgentItems.length>0?"#ef4444":"#22c55e"} sub={urgentItems.length>0?"Needs attention":"All clear"}/>
-          </div>
+          {/* OTR dashboard */}
+          {seg.id==="otr"&&(
+            <>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16}}>
+                <Stat label="This Week Revenue" value={fmt$(thisWeekRevenue)} color="#22c55e"/>
+                <Stat label="Net RPM (avg)" value={avgNetRPM?`$${avgNetRPM.toFixed(2)}/mi`:"—"} color={accent}/>
+                <Stat label="Broker Avg Rating" value={avgBrokerRating?`${avgBrokerRating.toFixed(1)}/5`:"—"}/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+                <Stat label="Open Loads" value={loads.filter(l=>!l.grade||l.verdict==="PASS").length}/>
+                <Stat label="Compliance Alerts" value={urgentItems.length} color={urgentItems.length>0?"#ef4444":"#22c55e"}/>
+                <Stat label="Active Drivers" value={activeDriverCount}/>
+              </div>
+              <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
+                <button className="hov" onClick={()=>setScreen("finance")} style={S.btn}>Log Revenue →</button>
+                <button className="hov" onClick={()=>setScreen("analyze")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Analyze Load →</button>
+                <button className="hov" onClick={()=>setScreen("brokers")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Add Broker →</button>
+              </div>
+            </>
+          )}
 
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
-            <div style={S.card}>
-              <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Quick Actions</div>
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {seg.features.loadAnalysis&&<button className="cardhov" onClick={()=>setScreen("analyze")} style={{...S.card,padding:"10px 14px",fontSize:11,color:accent,cursor:"pointer",textAlign:"left",border:`1px solid ${accent}22`}}>→ Analyze a Load</button>}
-                {seg.features.routeProfit&&<button className="cardhov" onClick={()=>setScreen("routes")} style={{...S.card,padding:"10px 14px",fontSize:11,color:accent,cursor:"pointer",textAlign:"left",border:`1px solid ${accent}22`}}>→ View Route Profitability</button>}
-                <button className="cardhov" onClick={()=>setScreen("compliance")} style={{...S.card,padding:"10px 14px",fontSize:11,color:"#ef4444",cursor:"pointer",textAlign:"left",border:"1px solid #ef444422"}}>→ Check Compliance</button>
-                <button className="cardhov" onClick={()=>{setScreen("fleet");setSubScreen("schedule");}} style={{...S.card,padding:"10px 14px",fontSize:11,color:"#f59e0b",cursor:"pointer",textAlign:"left",border:"1px solid #f59e0b22"}}>→ Fleet Upcoming Service</button>
-                <button className="cardhov" onClick={()=>{setScreen("finance");setSubScreen("expenses");}} style={{...S.card,padding:"10px 14px",fontSize:11,color:"#22c55e",cursor:"pointer",textAlign:"left",border:"1px solid #22c55e22"}}>→ Log an Expense</button>
-                {seg.features.contractTracker&&<button className="cardhov" onClick={()=>setScreen("contracts")} style={{...S.card,padding:"10px 14px",fontSize:11,color:"#8888cc",cursor:"pointer",textAlign:"left",border:"1px solid #8888cc22"}}>→ View Contracts</button>}
+          {/* FedEx dashboard */}
+          {seg.id==="fedex"&&(
+            <>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16}}>
+                <Stat label="This Week Stops" value={thisWeekStops} sub={`vs ${lastWeekStops} last week`}/>
+                <Stat label="Cost Per Stop" value={thisWeekStops>0?`$${(thisWeekExpenses/thisWeekStops).toFixed(2)}`:"—"} color="#ef4444"/>
+                <Stat label="Active Drivers" value={`${activeDriverCount} / ${drivers.length}`}/>
               </div>
-            </div>
-            <div style={S.card}>
-              <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>
-                {urgentItems.length>0?"⚠ Urgent Items":"Compliance Status"}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:20}}>
+                <Stat label="Compliance Alerts" value={urgentItems.length} color={urgentItems.length>0?"#ef4444":"#22c55e"}/>
+                <Stat label="Next Contract Renewal" value={nearestContractDays!==null?`${nearestContractDays}d`:"—"} color={nearestContractDays!==null&&nearestContractDays<=30?"#ef4444":nearestContractDays!==null&&nearestContractDays<=60?"#f59e0b":"#22c55e"}/>
               </div>
-              {urgentItems.length===0&&<div style={{fontSize:12,color:"#22c55e"}}>✓ No urgent compliance items</div>}
+              <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
+                <button className="hov" onClick={()=>setScreen("dispatch")} style={S.btn}>Log Stops →</button>
+                <button className="hov" onClick={()=>setScreen("drivers")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Add Driver →</button>
+                <button className="hov" onClick={()=>setScreen("scorecard")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Scorecard →</button>
+              </div>
+            </>
+          )}
+
+          {/* Amazon dashboard */}
+          {seg.id==="amazon"&&(
+            <>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16}}>
+                <Stat label="DART Score" value={latestScorecardWeek?.dart?`${latestScorecardWeek.dart}%`:"—"} color={latestScorecardWeek?.dart?(parseFloat(latestScorecardWeek.dart)>=98?"#22c55e":"#ef4444"):accent}/>
+                <Stat label="DCR Score" value={latestScorecardWeek?.dcr?`${latestScorecardWeek.dcr}%`:"—"}/>
+                <Stat label="Mentor Score" value={latestScorecardWeek?.mentor||"—"}/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:20}}>
+                <Stat label="Active Drivers" value={`${activeDriverCount} / ${drivers.length}`}/>
+                <Stat label="Compliance Alerts" value={urgentItems.length} color={urgentItems.length>0?"#ef4444":"#22c55e"}/>
+              </div>
+              <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
+                <button className="hov" onClick={()=>setScreen("scorecard")} style={S.btn}>Scorecard →</button>
+                <button className="hov" onClick={()=>setScreen("dispatch")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Log Route →</button>
+                <button className="hov" onClick={()=>setScreen("drivers")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Add Driver →</button>
+              </div>
+            </>
+          )}
+
+          {/* Last Mile dashboard */}
+          {seg.id==="lastmile"&&(
+            <>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:16}}>
+                <Stat label="This Week Revenue" value={fmt$(thisWeekRevenue)} sub={`vs ${fmt$(lastWeekRevenue)} last week`} color="#22c55e"/>
+                <Stat label="This Week Stops" value={thisWeekStops}/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:20}}>
+                <Stat label="Active Drivers" value={activeDriverCount}/>
+                <Stat label="Compliance Alerts" value={urgentItems.length} color={urgentItems.length>0?"#ef4444":"#22c55e"}/>
+              </div>
+              <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
+                <button className="hov" onClick={()=>setScreen("dispatch")} style={S.btn}>Log Delivery →</button>
+                <button className="hov" onClick={()=>setScreen("drivers")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Add Driver →</button>
+                <button className="hov" onClick={()=>setScreen("finance")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Log Expense →</button>
+              </div>
+            </>
+          )}
+
+          {/* USPS dashboard */}
+          {seg.id==="usps"&&(
+            <>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:16}}>
+                <Stat label="Routes This Week" value={thisWeekStops}/>
+                <Stat label="Active Drivers" value={activeDriverCount}/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:20}}>
+                <Stat label="Compliance Alerts" value={urgentItems.length} color={urgentItems.length>0?"#ef4444":"#22c55e"}/>
+                <Stat label="Next Contract Expiry" value={nearestContractDays!==null?`${nearestContractDays}d`:"—"} color={nearestContractDays!==null&&nearestContractDays<=30?"#ef4444":nearestContractDays!==null&&nearestContractDays<=60?"#f59e0b":"#22c55e"}/>
+              </div>
+              <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
+                <button className="hov" onClick={()=>setScreen("dispatch")} style={S.btn}>Log Route →</button>
+                <button className="hov" onClick={()=>setScreen("compliance")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Vehicle Inspection →</button>
+                <button className="hov" onClick={()=>setScreen("drivers")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Add Driver →</button>
+              </div>
+            </>
+          )}
+
+          {/* Urgent items — all segments */}
+          {urgentItems.length>0&&(
+            <div style={S.card}>
+              <div style={{fontSize:9,color:"#ef4444",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:10}}>⚠ Urgent Items</div>
               <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                {urgentItems.slice(0,4).map((item,i)=><ExpiryBadge key={i} {...item}/>)}
-                {urgentItems.length>4&&<div style={{fontSize:10,color:"#555",textAlign:"center",paddingTop:4}}>+{urgentItems.length-4} more — check Compliance tab</div>}
+                {urgentItems.slice(0,5).map((item,i)=><ExpiryBadge key={i} {...item}/>)}
+                {urgentItems.length>5&&<div style={{fontSize:10,color:"#555",textAlign:"center",paddingTop:4}}>+{urgentItems.length-5} more — check Compliance</div>}
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Quick setup onboarding prompt */}
+          {drivers.length===0&&compliance.trucks.length===0&&(
+            <div style={{...S.card,marginTop:16,border:`1px solid ${accent}33`,background:"#0a0a0f"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:8}}>Quick Setup</div>
+              <div style={{fontSize:11,color:"#555",lineHeight:1.8,marginBottom:12}}>Get started by adding your trucks and drivers. This unlocks compliance tracking, payroll, and all reporting.</div>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                <button className="hov" onClick={()=>setScreen("fleet")} style={S.btn}>Add Truck →</button>
+                <button className="hov" onClick={()=>setScreen("drivers")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Add Driver →</button>
+              </div>
+            </div>
+          )}
 
           {seg.features.loadAnalysis&&loads.length>0&&(
-            <div style={S.card}>
+            <div style={{...S.card,marginTop:16}}>
               <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Recent Load Analysis</div>
               <div style={{display:"flex",flexDirection:"column",gap:6}}>
                 {loads.slice(0,4).map(l=>(
@@ -1637,23 +1843,9 @@ function ContractorOS() {
               </div>
             </div>
           )}
-
-          {seg.features.routeProfit&&routes.length>0&&(
-            <div style={{...S.card,marginTop:16}}>
-              <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Route Summary</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
-                {routes.slice(0,4).map(r=>(
-                  <div key={r.id} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:6,padding:"12px 14px"}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8",marginBottom:4}}>{r.name}</div>
-                    <div style={{fontSize:10,color:"#555"}}>{r.stops} stops · {r.miles} mi</div>
-                    {r.analysis&&<div style={{fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:gradeColor(r.analysis.profitabilityScore),marginTop:6}}>{r.analysis.verdict}</div>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
-      )}
+        );
+      })()}
 
       {/* ══ OTR: ANALYZE LOAD ══════════════════════════════════════════ */}
       {screen==="analyze"&&seg.features.loadAnalysis&&(
@@ -2150,6 +2342,43 @@ function ContractorOS() {
                 {dotAnswer&&!aiLoading&&<div style={{background:"#110f00",border:"1px solid #2a2000",borderRadius:8,padding:"18px 22px",animation:"fadeUp 0.3s ease"}}><div style={{fontSize:9,color:"#5a4a00",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:10}}>DOT AI Answer</div><div style={{fontSize:12,color:"#c8c4a0",lineHeight:1.9,whiteSpace:"pre-wrap"}}>{dotAnswer}</div><div style={{marginTop:14,fontSize:10,color:"#3a3000",borderTop:"1px solid #2a1800",paddingTop:10}}>⚠ Informational only. Verify with your state DOT and a compliance professional.</div></div>}
               </div>
             )}
+            {/* Segment Compliance Checklist */}
+            {SEGMENT_CHECKLISTS[seg.id]&&(
+              <div style={{maxWidth:860,margin:"0 auto",marginTop:0}}>
+                <div style={{...S.card,marginTop:20}}>
+                  <div style={{...S.section,fontSize:16,marginBottom:16}}>SEGMENT COMPLIANCE CHECKLIST</div>
+                  {SEGMENT_CHECKLISTS[seg.id].map(item=>{
+                    const entry = segmentChecklist.find(e=>e.id===item.id)||{};
+                    const isComplete = !!entry.completedAt;
+                    const dueDate = entry.dueDate||"";
+                    const isOverdue = dueDate && new Date(dueDate) < new Date() && !isComplete;
+                    const isDueSoon = dueDate && !isOverdue && !isComplete && Math.ceil((new Date(dueDate)-Date.now())/(864e5)) <= 7;
+                    return (
+                      <div key={item.id} style={{display:"flex",alignItems:"flex-start",gap:12,padding:"10px 0",borderBottom:"1px solid #1a1a1a"}}>
+                        <input type="checkbox" checked={isComplete} onChange={e=>{
+                          setSegmentChecklist(p=>{
+                            const existing = p.find(x=>x.id===item.id);
+                            if(existing) return p.map(x=>x.id===item.id?{...x,completedAt:e.target.checked?new Date().toISOString():null}:x);
+                            return [...p,{id:item.id,completedAt:e.target.checked?new Date().toISOString():null,dueDate:"",notes:""}];
+                          });
+                        }} style={{marginTop:2,flexShrink:0}}/>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:12,color:isComplete?"#555":isOverdue?"#ef4444":isDueSoon?"#f59e0b":"#c8c4bc"}}>{item.label}</div>
+                          <div style={{fontSize:9,color:"#555",marginTop:2}}>{item.freq}{entry.completedAt?` · Completed ${new Date(entry.completedAt).toLocaleDateString()}`:""}</div>
+                        </div>
+                        <input type="date" value={dueDate} onChange={e=>setSegmentChecklist(p=>{
+                          const existing=p.find(x=>x.id===item.id);
+                          if(existing) return p.map(x=>x.id===item.id?{...x,dueDate:e.target.value}:x);
+                          return [...p,{id:item.id,completedAt:null,dueDate:e.target.value,notes:""}];
+                        })} style={{...S.input,width:130,fontSize:10}}/>
+                        {isOverdue&&<span style={{fontSize:9,color:"#ef4444",flexShrink:0}}>OVERDUE</span>}
+                        {isDueSoon&&!isOverdue&&<span style={{fontSize:9,color:"#f59e0b",flexShrink:0}}>DUE SOON</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -2157,7 +2386,7 @@ function ContractorOS() {
       {/* ══ DRIVERS ════════════════════════════════════════════════════ */}
       {screen==="drivers"&&(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["list","All Drivers"],["scorecards","Scorecards"],["incidents","Incidents"],["onboarding","Onboarding"],["hos","HOS Log"],...(seg.id==="amazon"?[["lifecycle","Lifecycle"]]:[] )]} active={subScreen||"list"} onSelect={setSubScreen}/>
+          <SubNav tabs={[["list","All Drivers"],["scorecards","Scorecards"],["incidents","Incidents"],["onboarding","Onboarding"],["hos","HOS Log"]]} active={subScreen||"list"} onSelect={setSubScreen}/>
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             {(!subScreen||subScreen==="list")&&(
               <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -2424,6 +2653,11 @@ function ContractorOS() {
                 )}
                 {subScreen==="hos"&&(
                   <>
+                    {(seg.id==="fedex"||seg.id==="amazon")&&(
+                      <div style={{background:"#1a1500",border:"1px solid #f59e0b44",borderRadius:6,padding:"10px 16px",marginBottom:16,fontSize:11,color:"#f59e0b",lineHeight:1.7}}>
+                        ⚠ Note: FedEx and Amazon require an approved ELD for official HOS compliance. This log is for internal reference only — it does not replace your ELD records.
+                      </div>
+                    )}
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
                       <div><div style={S.section}>HOURS OF SERVICE</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Federal limit: 11 hrs driving, 14 hrs on-duty per day. Keep 6 months minimum.</div></div>
                       <button className="hov" onClick={()=>setHosShowAdd(!hosShowAdd)} style={S.btn}>{hosShowAdd?"Cancel":"+ Log Hours"}</button>
@@ -2467,106 +2701,11 @@ function ContractorOS() {
               </div>
               );
             })()}
-            {subScreen==="lifecycle"&&seg.id==="amazon"&&(()=>{
-              const STAGES=["applied","background_check","onboarding","active","terminated"];
-              const STAGE_LABELS={applied:"Applied",background_check:"Background Check",onboarding:"Onboarding",active:"Active",terminated:"Terminated"};
-              const STAGE_COLORS={applied:"#60a5fa",background_check:"#f59e0b",onboarding:"#8888cc",active:"#22c55e",terminated:"#ef4444"};
-              const stageCounts=STAGES.reduce((o,s)=>({...o,[s]:hiringCandidates.filter(c=>c.stage===s).length}),{});
-              const now=new Date();
-              const daysInStage=(c)=>{const d=c.stageDate?Math.floor((now-new Date(c.stageDate))/86400000):null;return d;};
-              const totalCost=(c)=>(parseFloat(c.backgroundCost||0)+parseFloat(c.trainingCost||0)+parseFloat(c.recruitingCost||0));
-              const activeDriversArr=drivers.filter(d=>d.status==="active");
-              const avgTenure=activeDriversArr.length>0?activeDriversArr.reduce((s,d)=>{if(!d.hireDate)return s;const months=Math.floor((now-new Date(d.hireDate))/(30.44*864e5));return s+months;},0)/activeDriversArr.length:0;
-              const thisYear=now.getFullYear();
-              const terminated=hiringCandidates.filter(c=>c.stage==="terminated"&&c.stageDate&&new Date(c.stageDate).getFullYear()===thisYear).length;
-              const avgHeadcount=Math.max(activeDriversArr.length,1);
-              const turnoverRate=((terminated/avgHeadcount)*100).toFixed(1);
-              const advanceStage=(id)=>{setHiringCandidates(p=>p.map(c=>{if(c.id!==id)return c;const idx=STAGES.indexOf(c.stage);const next=STAGES[Math.min(idx+1,STAGES.length-2)];return{...c,stage:next,stageDate:new Date().toISOString().slice(0,10)};}));};
-              return(
-              <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
-                  <div><div style={S.section}>DRIVER LIFECYCLE</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Track candidates from application through active status. Monitor retention metrics.</div></div>
-                  <button className="hov" onClick={()=>setShowHiringAdd(!showHiringAdd)} style={S.btn}>{showHiringAdd?"Cancel":"+ Add Candidate"}</button>
-                </div>
-                {/* Stage pipeline */}
-                <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:20}}>
-                  {STAGES.map(s=>(
-                    <div key={s} style={{...S.card,textAlign:"center",borderTop:`3px solid ${STAGE_COLORS[s]}`}}>
-                      <div style={{fontSize:24,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:STAGE_COLORS[s]}}>{stageCounts[s]||0}</div>
-                      <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginTop:3}}>{STAGE_LABELS[s]}</div>
-                    </div>
-                  ))}
-                </div>
-                {/* Retention metrics */}
-                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:20}}>
-                  {[["Avg Tenure",`${avgTenure.toFixed(1)} mo`,"#22c55e"],["Turnover Rate",`${turnoverRate}%`,parseFloat(turnoverRate)>25?"#ef4444":"#f59e0b"],["Active Drivers",activeDriversArr.length.toString(),accent]].map(([lbl,val,col])=>(
-                    <div key={lbl} style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div><div style={{fontSize:9,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginTop:4}}>{lbl}</div></div>
-                  ))}
-                </div>
-                {showHiringAdd&&(
-                  <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>Add Candidate</div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                      <div><label style={S.label}>Name *</label><input value={hiringForm.name} onChange={e=>setHiringForm(p=>({...p,name:e.target.value}))} placeholder="Candidate name" style={S.input}/></div>
-                      <div><label style={S.label}>Applied Date</label><input type="date" value={hiringForm.appliedDate} onChange={e=>setHiringForm(p=>({...p,appliedDate:e.target.value}))} style={S.input}/></div>
-                      <div><label style={S.label}>Stage</label><select value={hiringForm.stage} onChange={e=>setHiringForm(p=>({...p,stage:e.target.value}))} style={S.input}>{STAGES.filter(s=>s!=="terminated").map(s=><option key={s} value={s}>{STAGE_LABELS[s]}</option>)}</select></div>
-                      <div><label style={S.label}>CDL Required</label><select value={hiringForm.cdlClass} onChange={e=>setHiringForm(p=>({...p,cdlClass:e.target.value}))} style={S.input}><option value="">No CDL</option><option value="A">Class A</option><option value="B">Class B</option><option value="C">Class C</option></select></div>
-                      <div><label style={S.label}>CDL Expiry</label><input type="date" value={hiringForm.cdlExpiry} onChange={e=>setHiringForm(p=>({...p,cdlExpiry:e.target.value}))} style={S.input}/></div>
-                      <div><label style={S.label}>Background Check Cost ($)</label><input type="number" value={hiringForm.backgroundCost} onChange={e=>setHiringForm(p=>({...p,backgroundCost:e.target.value}))} placeholder="0" style={S.input}/></div>
-                      <div><label style={S.label}>Training Cost ($)</label><input type="number" value={hiringForm.trainingCost} onChange={e=>setHiringForm(p=>({...p,trainingCost:e.target.value}))} placeholder="0" style={S.input}/></div>
-                      <div><label style={S.label}>Recruiting Cost ($)</label><input type="number" value={hiringForm.recruitingCost} onChange={e=>setHiringForm(p=>({...p,recruitingCost:e.target.value}))} placeholder="0" style={S.input}/></div>
-                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><textarea value={hiringForm.notes} onChange={e=>setHiringForm(p=>({...p,notes:e.target.value}))} style={{...S.input,height:60,resize:"vertical"}}/></div>
-                    </div>
-                    <div style={{display:"flex",gap:10,marginTop:14}}>
-                      <button className="hov" onClick={()=>{if(!hiringForm.name){showValidation("Name is required");return;}setHiringCandidates(p=>[...p,{...hiringForm,id:Date.now(),stageDate:new Date().toISOString().slice(0,10)}]);setHiringForm({name:"",appliedDate:"",stage:"applied",cdlClass:"",cdlExpiry:"",backgroundCost:"",trainingCost:"",recruitingCost:"",notes:""});setShowHiringAdd(false);}} style={S.btn}>Save</button>
-                      <button onClick={()=>setShowHiringAdd(false)} style={S.ghost}>Cancel</button>
-                    </div>
-                  </div>
-                )}
-                {/* Candidate list grouped by stage */}
-                {STAGES.map(stage=>{
-                  const stageCandidates=hiringCandidates.filter(c=>c.stage===stage);
-                  if(stageCandidates.length===0)return null;
-                  return(
-                    <div key={stage} style={{marginBottom:20}}>
-                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:STAGE_COLORS[stage],marginBottom:8,letterSpacing:"0.05em",textTransform:"uppercase"}}>{STAGE_LABELS[stage]} ({stageCandidates.length})</div>
-                      <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                        {stageCandidates.map(c=>{
-                          const days=daysInStage(c);
-                          const cost=totalCost(c);
-                          const cdlDays=c.cdlExpiry?daysUntil(c.cdlExpiry):null;
-                          return(
-                            <div key={c.id} style={{...S.card,borderLeft:`3px solid ${STAGE_COLORS[stage]}`}}>
-                              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                                <div>
-                                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8"}}>{c.name}</div>
-                                  <div style={{fontSize:10,color:"#555"}}>{c.appliedDate?`Applied ${fmtDate(c.appliedDate)}`:""}{days!==null?` · ${days}d in stage`:""}</div>
-                                </div>
-                                <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                                  {c.stage==="active"&&c.cdlExpiry&&<span style={{fontSize:9,padding:"2px 7px",borderRadius:3,background:cdlDays!==null&&cdlDays<30?"#1a0808":cdlDays!==null&&cdlDays<90?"#1a1005":"#0a1a0a",color:cdlDays!==null&&cdlDays<30?"#ef4444":cdlDays!==null&&cdlDays<90?"#f59e0b":"#22c55e",border:`1px solid ${cdlDays!==null&&cdlDays<30?"#ef444444":cdlDays!==null&&cdlDays<90?"#f59e0b44":"#22c55e44"}`}}>CDL {cdlDays!==null?`${cdlDays}d`:"—"}</span>}
-                                  {cost>0&&<span style={{fontSize:10,color:"#ef4444"}}>{fmt$(cost)}</span>}
-                                  {stage!=="terminated"&&stage!=="active"&&<button onClick={()=>advanceStage(c.id)} style={{...S.btn,fontSize:9,padding:"3px 10px",background:"#22c55e"}}>Advance</button>}
-                                  <button onClick={()=>setHiringCandidates(p=>p.map(x=>x.id===c.id?{...x,stage:"terminated",stageDate:new Date().toISOString().slice(0,10)}:x))} style={{background:"transparent",border:"1px solid #ef444444",color:"#ef4444",cursor:"pointer",fontSize:9,padding:"3px 8px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Terminate</button>
-                                  <button onClick={()=>setHiringCandidates(p=>p.filter(x=>x.id!==c.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
-                                </div>
-                              </div>
-                              {c.notes&&<div style={{fontSize:10,color:"#555",fontStyle:"italic"}}>{c.notes}</div>}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-                {hiringCandidates.length===0&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No candidates tracked yet. Click "Add Candidate" to start.</div>}
-              </div>
-              );
-            })()}
 
       {/* ══ FLEET / MAINTENANCE ════════════════════════════════════════ */}
       {screen==="fleet"&&(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["log","Maintenance Log"],["schedule","Upcoming Service"],["fuel","Fuel Log"],["odometer","Odometer / Miles"],["tires","Tires"],...(seg.id==="amazon"?[["assets","Assets"]]:[] )]} active={subScreen||"log"} onSelect={setSubScreen}/>
+          <SubNav tabs={[["log","Maintenance Log"],["schedule","Upcoming Service"],["fuel","Fuel Log"],["odometer","Odometer / Miles"],["tires","Tires"]]} active={subScreen||"log"} onSelect={setSubScreen}/>
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             {(!subScreen||subScreen==="log")&&(
               <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -2792,80 +2931,6 @@ function ContractorOS() {
                 </div>
               </div>
             )}
-            {subScreen==="assets"&&seg.id==="amazon"&&(()=>{
-              const activeDrivers=drivers.filter(d=>d.status==="active");
-              const currentAssignments=assetAssignments.filter(a=>!a.checkedOutAt);
-              const driversWithoutAssets=activeDrivers.filter(d=>!currentAssignments.find(a=>String(a.driverId)===String(d.id)));
-              return(
-              <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-                  <div><div style={S.section}>ASSET ALLOCATION</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Track van, Rabbit device, and fuel card assignments per driver.</div></div>
-                  <button className="hov" onClick={()=>setShowAssetAdd(!showAssetAdd)} style={S.btn}>{showAssetAdd?"Cancel":"+ Assign Assets"}</button>
-                </div>
-                {driversWithoutAssets.length>0&&(
-                  <div style={{...S.card,marginBottom:14,background:"#1a0808",border:"1px solid #3a1010"}}>
-                    <div style={{fontSize:10,color:"#f87171",marginBottom:6}}>⚠ Drivers without current asset assignment:</div>
-                    <div style={{fontSize:11,color:"#ef4444"}}>{driversWithoutAssets.map(d=>d.name).join(", ")}</div>
-                  </div>
-                )}
-                {showAssetAdd&&(
-                  <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>Assign Assets</div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                      <div><label style={S.label}>Driver *</label><select value={assetForm.driverId} onChange={e=>setAssetForm(p=>({...p,driverId:e.target.value}))} style={S.input}><option value="">Select driver...</option>{activeDrivers.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
-                      <div><label style={S.label}>Van ID</label><input value={assetForm.vanId} onChange={e=>setAssetForm(p=>({...p,vanId:e.target.value}))} placeholder="Van unit #" style={S.input}/></div>
-                      <div><label style={S.label}>Rabbit Device ID</label><input value={assetForm.rabbitId} onChange={e=>setAssetForm(p=>({...p,rabbitId:e.target.value}))} placeholder="Rabbit device #" style={S.input}/></div>
-                      <div><label style={S.label}>Fuel Card ID</label><input value={assetForm.fuelCardId} onChange={e=>setAssetForm(p=>({...p,fuelCardId:e.target.value}))} placeholder="Fuel card #" style={S.input}/></div>
-                      <div><label style={S.label}>Assigned Date/Time</label><input type="datetime-local" value={assetForm.assignedAt} onChange={e=>setAssetForm(p=>({...p,assignedAt:e.target.value}))} style={S.input}/></div>
-                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={assetForm.notes} onChange={e=>setAssetForm(p=>({...p,notes:e.target.value}))} style={S.input}/></div>
-                    </div>
-                    <div style={{display:"flex",gap:10,marginTop:14}}>
-                      <button className="hov" onClick={()=>{if(!assetForm.driverId){showValidation("Driver is required");return;}const driver=drivers.find(d=>String(d.id)===String(assetForm.driverId));const entry={...assetForm,id:Date.now(),driverName:driver?.name||"",assignedAt:assetForm.assignedAt||new Date().toISOString()};setAssetAssignments(p=>[entry,...p]);setAssetForm({driverId:"",vanId:"",rabbitId:"",fuelCardId:"",assignedAt:"",notes:""});setShowAssetAdd(false);}} style={S.btn}>Save Assignment</button>
-                      <button onClick={()=>setShowAssetAdd(false)} style={S.ghost}>Cancel</button>
-                    </div>
-                  </div>
-                )}
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:10}}>Current Assignments</div>
-                {currentAssignments.length===0&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32,marginBottom:16}}>No active asset assignments.</div>}
-                <div style={{border:"1px solid #1e1e1e",borderRadius:8,overflow:"hidden",marginBottom:20}}>
-                  {currentAssignments.length>0&&(
-                    <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 1fr",background:"#0d0d0d",borderBottom:"1px solid #1e1e1e"}}>
-                      {["Driver","Van","Rabbit","Fuel Card","Assigned",""].map(h=>(<div key={h} style={{padding:"8px 12px",fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</div>))}
-                    </div>
-                  )}
-                  {currentAssignments.map(a=>(
-                    <div key={a.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 1fr",borderBottom:"1px solid #161616",alignItems:"center"}}>
-                      <div style={{padding:"10px 12px",fontSize:12,color:"#c8c4bc",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{a.driverName||drivers.find(d=>String(d.id)===String(a.driverId))?.name||"—"}</div>
-                      <div style={{padding:"10px 12px",fontSize:11,color:"#888"}}>{a.vanId||"—"}</div>
-                      <div style={{padding:"10px 12px",fontSize:11,color:"#888"}}>{a.rabbitId||"—"}</div>
-                      <div style={{padding:"10px 12px",fontSize:11,color:"#888"}}>{a.fuelCardId||"—"}</div>
-                      <div style={{padding:"10px 12px",fontSize:10,color:"#555"}}>{a.assignedAt?new Date(a.assignedAt).toLocaleDateString():"—"}</div>
-                      <div style={{padding:"6px 12px"}}><button onClick={()=>setAssetAssignments(p=>p.map(x=>x.id===a.id?{...x,checkedOutAt:new Date().toISOString()}:x))} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:9,padding:"3px 8px",borderRadius:3,fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap"}}>Check Out</button></div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:10}}>History (Last 20)</div>
-                <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                  {[...assetAssignments].sort((a,b)=>new Date(b.assignedAt)-new Date(a.assignedAt)).slice(0,20).map(a=>(
-                    <div key={a.id} style={{...S.card,borderLeft:`3px solid ${a.checkedOutAt?"#555":accent}`,display:"flex",alignItems:"center",gap:12}}>
-                      <div style={{flex:1}}>
-                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"#e8e4d8"}}>{a.driverName||drivers.find(d=>String(d.id)===String(a.driverId))?.name||"—"}</div>
-                        <div style={{fontSize:10,color:"#555"}}>Van: {a.vanId||"—"} · Rabbit: {a.rabbitId||"—"} · Fuel: {a.fuelCardId||"—"}</div>
-                        {a.notes&&<div style={{fontSize:10,color:"#444",fontStyle:"italic"}}>{a.notes}</div>}
-                      </div>
-                      <div style={{textAlign:"right",flexShrink:0}}>
-                        <div style={{fontSize:10,color:"#888"}}>{a.assignedAt?new Date(a.assignedAt).toLocaleDateString():"—"}</div>
-                        {a.checkedOutAt&&<div style={{fontSize:9,color:"#555"}}>Out: {new Date(a.checkedOutAt).toLocaleDateString()}</div>}
-                        <div style={{fontSize:9,color:a.checkedOutAt?"#555":accent,textTransform:"uppercase",letterSpacing:"0.1em"}}>{a.checkedOutAt?"Checked Out":"Active"}</div>
-                      </div>
-                      <button onClick={()=>setAssetAssignments(p=>p.filter(x=>x.id!==a.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
-                    </div>
-                  ))}
-                  {assetAssignments.length===0&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No assignment history yet.</div>}
-                </div>
-              </div>
-              );
-            })()}
 
 
       {/* ══ CONTRACTS ══════════════════════════════════════════════════ */}
@@ -2939,7 +3004,7 @@ function ContractorOS() {
       {/* ══ FINANCE ════════════════════════════════════════════════════ */}
       {screen==="finance"&&(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["pl","P&L Dashboard"],["revenue","Revenue"],["expenses","Expenses"],["import","Import from Excel/QB"],...(seg.id==="amazon"?[["daily","Daily P&L"]]:[] )]} active={subScreen||"pl"} onSelect={setSubScreen}/>
+          <SubNav tabs={[["pl","P&L Dashboard"],["revenue","Revenue"],["expenses","Expenses"],["import","Import from Excel/QB"]]} active={subScreen||"pl"} onSelect={setSubScreen}/>
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             {(!subScreen||subScreen==="pl")&&(
               <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -3179,110 +3244,54 @@ function ContractorOS() {
                 </div>
               </div>
             )}
-            {subScreen==="daily"&&seg.id==="amazon"&&(()=>{
-              const sel=dailySettlements.find(s=>s.date===settlementViewDate)||null;
-              const settlement=parseFloat(sel?.amount||0);
-              const routes=parseFloat(sel?.routes||0);
-              const packages=parseFloat(sel?.packages||0);
-              const laborCost=payroll.filter(r=>r.periodStart===settlementViewDate||r.date===settlementViewDate).reduce((s,r)=>s+r.gross,0);
-              const fuelCostDay=fuelLog.filter(f=>f.date===settlementViewDate).reduce((s,f)=>s+parseFloat(f.totalCost||0),0);
-              const damageCost=expenses.filter(e=>e.date===settlementViewDate&&(e.category==="maintenance"||e.category==="repairs")).reduce((s,e)=>s+parseFloat(e.amount||0),0);
-              const totalCosts=laborCost+fuelCostDay+damageCost;
-              const netMargin=settlement-totalCosts;
-              const marginPct=settlement>0?(netMargin/settlement)*100:0;
-              const marginColor=marginPct>15?"#22c55e":marginPct>=5?"#f59e0b":"#ef4444";
-              const costPerRoute=routes>0?totalCosts/routes:0;
-              const costPerPackage=packages>0?totalCosts/packages:0;
-              return(
-              <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
-                  <div style={S.section}>DAILY P&L DASHBOARD</div>
-                  <button className="hov" onClick={()=>setShowSettlementAdd(!showSettlementAdd)} style={S.btn}>{showSettlementAdd?"Cancel":"+ Log Settlement"}</button>
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
-                  <label style={{...S.label,marginBottom:0}}>View date:</label>
-                  <input type="date" value={settlementViewDate} onChange={e=>setSettlementViewDate(e.target.value)} style={{...S.input,maxWidth:180}}/>
-                </div>
-                {showSettlementAdd&&(
-                  <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>Log Settlement</div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                      <div><label style={S.label}>Date *</label><input type="date" value={settlementForm.date} onChange={e=>setSettlementForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
-                      <div><label style={S.label}>Amazon Settlement Amount ($)</label><input type="number" value={settlementForm.amount} onChange={e=>setSettlementForm(p=>({...p,amount:e.target.value}))} placeholder="0.00" style={S.input}/></div>
-                      <div><label style={S.label}>Routes Completed</label><input type="number" value={settlementForm.routes} onChange={e=>setSettlementForm(p=>({...p,routes:e.target.value}))} placeholder="0" style={S.input}/></div>
-                      <div><label style={S.label}>Packages Delivered</label><input type="number" value={settlementForm.packages} onChange={e=>setSettlementForm(p=>({...p,packages:e.target.value}))} placeholder="0" style={S.input}/></div>
-                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={settlementForm.notes} onChange={e=>setSettlementForm(p=>({...p,notes:e.target.value}))} style={S.input}/></div>
-                    </div>
-                    <div style={{display:"flex",gap:10,marginTop:14}}>
-                      <button className="hov" onClick={()=>{if(!settlementForm.date||!settlementForm.amount){showValidation("Date and amount are required");return;}const entry={...settlementForm,id:Date.now(),amount:parseFloat(settlementForm.amount),routes:parseFloat(settlementForm.routes||0),packages:parseFloat(settlementForm.packages||0)};setDailySettlements(p=>[entry,...p.filter(s=>s.date!==settlementForm.date)]);setSettlementViewDate(settlementForm.date);setSettlementForm({date:"",amount:"",routes:"",packages:"",notes:""});setShowSettlementAdd(false);}} style={S.btn}>Save</button>
-                      <button onClick={()=>setShowSettlementAdd(false)} style={S.ghost}>Cancel</button>
-                    </div>
-                  </div>
-                )}
-                {sel?(
-                  <div style={{...S.card,marginBottom:20,border:`1px solid ${marginColor}44`,borderTop:`3px solid ${marginColor}`}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:14}}>P&L for {fmtDate(settlementViewDate)}</div>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:14}}>
-                      {[["Amazon Settlement",fmt$(settlement),"#22c55e"],["Driver Labor",fmt$(laborCost),"#ef4444"],["Fuel Cost",fmt$(fuelCostDay),"#f59e0b"],["Damage/Repairs",fmt$(damageCost),"#ef4444"]].map(([lbl,val,col])=>(
-                        <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"10px 12px"}}>
-                          <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>{lbl}</div>
-                          <div style={{fontSize:18,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{val}</div>
-                        </div>
-                      ))}
-                    </div>
-                    <div style={{background:"#0a0a0a",border:`1px solid ${marginColor}33`,borderRadius:6,padding:"14px 18px",marginBottom:12}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                        <div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Net Margin</div><div style={{fontSize:28,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:marginColor}}>{fmt$(netMargin)}</div></div>
-                        <div style={{textAlign:"right"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Margin %</div><div style={{fontSize:28,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:marginColor}}>{marginPct.toFixed(1)}%</div></div>
-                      </div>
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
-                        {[["Cost Per Route",costPerRoute>0?fmt$(costPerRoute):"—"],["Cost Per Package",costPerPackage>0?fmt$(costPerPackage):"—"]].map(([lbl,val])=>(
-                          <div key={lbl}><div style={{fontSize:9,color:"#555",marginBottom:2}}>{lbl}</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#888"}}>{val}</div></div>
-                        ))}
-                      </div>
-                    </div>
-                    {sel.notes&&<div style={{fontSize:11,color:"#555",fontStyle:"italic"}}>Notes: {sel.notes}</div>}
-                  </div>
-                ):(
-                  <div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40,marginBottom:20}}>No settlement logged for {fmtDate(settlementViewDate)}. Click "Log Settlement" to add one.</div>
-                )}
-                <div style={S.section}>Last 14 Days</div>
-                <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:8}}>
-                  {[...dailySettlements].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,14).map(s=>{
-                    const sLaborCost=payroll.filter(r=>r.periodStart===s.date||r.date===s.date).reduce((t,r)=>t+r.gross,0);
-                    const sFuelCost=fuelLog.filter(f=>f.date===s.date).reduce((t,f)=>t+parseFloat(f.totalCost||0),0);
-                    const sDamage=expenses.filter(e=>e.date===s.date&&(e.category==="maintenance"||e.category==="repairs")).reduce((t,e)=>t+parseFloat(e.amount||0),0);
-                    const sNet=s.amount-(sLaborCost+sFuelCost+sDamage);
-                    const sPct=s.amount>0?(sNet/s.amount)*100:0;
-                    const sColor=sPct>15?"#22c55e":sPct>=5?"#f59e0b":"#ef4444";
-                    return(
-                      <div key={s.id} style={{...S.card,borderLeft:`3px solid ${sColor}`,display:"flex",alignItems:"center",gap:12}}>
-                        <div style={{flex:1}}>
-                          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"#e8e4d8"}}>{fmtDate(s.date)}</div>
-                          <div style={{fontSize:10,color:"#555"}}>{s.routes>0?`${s.routes} routes · `:""}{s.packages>0?`${s.packages} pkgs`:""}</div>
-                        </div>
-                        <div style={{textAlign:"right"}}><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e"}}>{fmt$(s.amount)}</div><div style={{fontSize:10,color:sColor}}>Net {fmt$(sNet)} ({sPct.toFixed(0)}%)</div></div>
-                        <button onClick={()=>setDailySettlements(p=>p.filter(x=>x.id!==s.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
-                      </div>
-                    );
-                  })}
-                  {dailySettlements.length===0&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No settlements logged yet.</div>}
-                </div>
-              </div>
-              );
-            })()}
           </div>
         </div>
       )}
-      {screen==="brokers"&&!seg.features.brokerScorecard&&(
-        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16,padding:32}}>
-          <div style={{fontSize:32}}>🚫</div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,color:"#555"}}>Broker tools are for OTR operators</div>
-          <div style={{fontSize:12,color:"#444",textAlign:"center",maxWidth:400,lineHeight:1.7}}>Switch to OTR / Owner Operator mode in Settings to access broker scorecards and lane intelligence.</div>
-          <button onClick={()=>setScreen("settings")} style={S.btn}>Go to Settings →</button>
+      {screen==="brokers"&&seg.id!=="otr"&&(
+        <div style={{flex:1,overflowY:"auto",padding:24,animation:"fadeUp 0.3s ease"}}>
+          <div style={{maxWidth:700,margin:"0 auto"}}>
+            <div style={{...S.section,marginBottom:4}}>CLIENTS</div>
+            <div style={{fontSize:11,color:"#555",marginBottom:20}}>Track your primary client contract details and contact info.</div>
+            {clientDataEditing?(
+              <div style={{...S.card,border:`1px solid ${accent}44`}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+                  <div><label style={S.label}>Weekly Stop Guarantee</label><input type="number" value={clientDataForm.stopGuarantee||""} onChange={e=>setClientDataForm(p=>({...p,stopGuarantee:e.target.value}))} style={S.input}/></div>
+                  <div><label style={S.label}>Revenue Per Stop ($)</label><input type="number" value={clientDataForm.revenuePerStop||""} onChange={e=>setClientDataForm(p=>({...p,revenuePerStop:e.target.value}))} style={S.input}/></div>
+                  <div><label style={S.label}>Fuel Surcharge Rate (%)</label><input type="number" value={clientDataForm.fuelSurchargeRate||""} onChange={e=>setClientDataForm(p=>({...p,fuelSurchargeRate:e.target.value}))} style={S.input}/></div>
+                  <div><label style={S.label}>Contract Expiry Date</label><input type="date" value={clientDataForm.contractExpiry||""} onChange={e=>setClientDataForm(p=>({...p,contractExpiry:e.target.value}))} style={S.input}/></div>
+                  <div><label style={S.label}>Primary Contact Name</label><input value={clientDataForm.contactName||""} onChange={e=>setClientDataForm(p=>({...p,contactName:e.target.value}))} style={S.input}/></div>
+                  <div><label style={S.label}>Primary Contact Phone</label><input value={clientDataForm.contactPhone||""} onChange={e=>setClientDataForm(p=>({...p,contactPhone:e.target.value}))} style={S.input}/></div>
+                  <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><textarea value={clientDataForm.notes||""} onChange={e=>setClientDataForm(p=>({...p,notes:e.target.value}))} style={{...S.input,height:80,resize:"vertical"}}/></div>
+                </div>
+                <div style={{display:"flex",gap:10}}>
+                  <button className="hov" onClick={()=>{setClientData({...clientDataForm});setClientDataEditing(false);}} style={S.btn}>Save</button>
+                  <button onClick={()=>setClientDataEditing(false)} style={S.ghost}>Cancel</button>
+                </div>
+              </div>
+            ):(
+              <div style={{...S.card,border:`1px solid ${accent}33`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:accent}}>
+                    {seg.id==="fedex"?"FedEx Ground":seg.id==="amazon"?"Amazon DSP":seg.id==="lastmile"?"Lowe's / Home Depot":"USPS"}
+                  </div>
+                  <button className="hov" onClick={()=>{setClientDataForm({...clientData});setClientDataEditing(true);}} style={S.btn}>Edit</button>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:12}}>
+                  {[["Weekly Stop Guarantee",clientData.stopGuarantee?`${clientData.stopGuarantee} stops`:"Not set"],["Revenue Per Stop",clientData.revenuePerStop?`$${clientData.revenuePerStop}`:"Not set"],["Fuel Surcharge Rate",clientData.fuelSurchargeRate?`${clientData.fuelSurchargeRate}%`:"Not set"],["Contract Expiry",clientData.contractExpiry?new Date(clientData.contractExpiry).toLocaleDateString():"Not set"],["Primary Contact",clientData.contactName||"Not set"],["Contact Phone",clientData.contactPhone||"Not set"]].map(([lbl,val])=>(
+                    <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}>
+                      <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>{lbl}</div>
+                      <div style={{fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:val==="Not set"?"#444":"#c8c4bc"}}>{val}</div>
+                    </div>
+                  ))}
+                </div>
+                {clientData.notes&&<div style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"10px 14px",fontSize:11,color:"#888",lineHeight:1.7}}>{clientData.notes}</div>}
+                {!clientData.stopGuarantee&&!clientData.revenuePerStop&&<div style={{fontSize:11,color:"#555",marginTop:8}}>Click Edit to fill in your client contract details.</div>}
+              </div>
+            )}
+          </div>
         </div>
       )}
-      {screen==="brokers"&&seg.features.brokerScorecard&&(()=>{
+      {screen==="brokers"&&seg.id==="otr"&&(()=>{
         const laneStats=()=>{
           const lanes={};
           loads.forEach(l=>{ if(!l.load?.origin||!l.load?.destination)return; const k=`${l.load.origin} → ${l.load.destination}`; if(!lanes[k])lanes[k]={count:0,total:0}; lanes[k].count++; lanes[k].total+=l.result?.netRPM||0; });
@@ -3879,9 +3888,7 @@ function ContractorOS() {
 
       {/* ══ PAYROLL ════════════════════════════════════════════════════ */}
       {screen==="payroll"&&(()=>{
-        const calcRunPay=(driver,form)=>{const rate=parseFloat(driver.payRate||0);let gross=0,breakdown="";switch(driver.payType){case"per_mile":gross=rate*parseFloat(form.miles||0);breakdown=`${form.miles} mi × $${rate}/mi`;break;case"hourly":gross=rate*parseFloat(form.hours||0);breakdown=`${form.hours} hrs × $${rate}/hr`;break;case"percentage":gross=(rate/100)*parseFloat(form.loadRevenue||0);breakdown=`${rate}% of $${form.loadRevenue}`;break;case"salary":gross=rate/52;breakdown=`$${rate}/yr ÷ 52 weeks`;break;case"per_stop":gross=rate*parseFloat(form.stops||0);breakdown=`${form.stops} stops × $${rate}/stop`;break;case"per_day":gross=rate*parseFloat(form.days||0);breakdown=`${form.days} days × $${rate}/day`;break;default:gross=parseFloat(form.manualAmount||0);breakdown="Manual entry";}
-          if(seg.id==="amazon"&&driver.payType==="per_stop"){const ptoHrs=parseFloat(form.ptoHours||0);const hourlyEquiv=rate*parseFloat(form.stops||1)/Math.max(parseFloat(form.hours||8),1);const ptoPay=ptoHrs*hourlyEquiv;if(ptoPay>0){gross+=ptoPay;breakdown+=` + PTO ${fmt$(ptoPay)}`;}}
-          return{gross:parseFloat(gross.toFixed(2)),breakdown};};
+        const calcRunPay=(driver,form)=>{const rate=parseFloat(driver.payRate||0);let gross=0,breakdown="";switch(driver.payType){case"per_mile":gross=rate*parseFloat(form.miles||0);breakdown=`${form.miles} mi × $${rate}/mi`;break;case"hourly":gross=rate*parseFloat(form.hours||0);breakdown=`${form.hours} hrs × $${rate}/hr`;break;case"percentage":gross=(rate/100)*parseFloat(form.loadRevenue||0);breakdown=`${rate}% of $${form.loadRevenue}`;break;case"salary":gross=rate/52;breakdown=`$${rate}/yr ÷ 52 weeks`;break;case"per_stop":gross=rate*parseFloat(form.stops||0);breakdown=`${form.stops} stops × $${rate}/stop`;break;case"per_day":gross=rate*parseFloat(form.days||0);breakdown=`${form.days} days × $${rate}/day`;break;default:gross=parseFloat(form.manualAmount||0);breakdown="Manual entry";}return{gross:parseFloat(gross.toFixed(2)),breakdown};};
         const totalUnpaid=payroll.filter(r=>r.status==="unpaid").reduce((s,r)=>s+r.gross,0);
         const totalPaid=payroll.filter(r=>r.status==="paid").reduce((s,r)=>s+r.gross,0);
         const PAY_FIELDS={per_mile:[["miles","Miles Driven","number"]],hourly:[["hours","Hours Worked","number"]],percentage:[["loadRevenue","Route/Load Revenue ($)","number"]],salary:[],per_stop:[["stops","Stops Completed","number"]],per_day:[["days","Days Worked","number"]]};
@@ -3889,7 +3896,7 @@ function ContractorOS() {
         const extraFields=selDriver?(PAY_FIELDS[selDriver.payType]||[["manualAmount","Pay Amount ($)","number"]]):[];
         return(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["runs","Pay Runs"],["summary","Driver Summary"],["ytd","YTD Report"],...(seg.id==="amazon"?[["weekly","Weekly Summary"]]:[] )]} active={payrollSub} onSelect={setPayrollSub}/>
+          <SubNav tabs={[["runs","Pay Runs"],["summary","Driver Summary"],["ytd","YTD Report"]]} active={payrollSub} onSelect={setPayrollSub}/>
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             {payrollSub==="runs"&&(
               <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -3914,10 +3921,6 @@ function ContractorOS() {
                       <div><label style={S.label}>Pay Period Start *</label><input type="date" value={payrollForm.periodStart} onChange={e=>setPayrollForm(p=>({...p,periodStart:e.target.value}))} style={S.input}/></div>
                       <div><label style={S.label}>Pay Period End</label><input type="date" value={payrollForm.periodEnd} onChange={e=>setPayrollForm(p=>({...p,periodEnd:e.target.value}))} style={S.input}/></div>
                       {extraFields.map(([f,lbl,t])=>(<div key={f}><label style={S.label}>{lbl}</label><input type={t} value={payrollForm[f]||""} onChange={e=>setPayrollForm(p=>({...p,[f]:e.target.value}))} style={S.input}/></div>))}
-                      {seg.id==="amazon"&&<>
-                        <div><label style={S.label}>PTO Hours</label><input type="number" value={payrollForm.ptoHours||""} onChange={e=>setPayrollForm(p=>({...p,ptoHours:e.target.value}))} placeholder="0" style={S.input}/></div>
-                        <div><label style={S.label}>Routing Volume (packages/stops from portal)</label><input type="number" value={payrollForm.routingVolume||""} onChange={e=>setPayrollForm(p=>({...p,routingVolume:e.target.value}))} placeholder="Total packages" style={S.input}/></div>
-                      </>}
                       <div><label style={S.label}>Manual Override Amount ($) <span style={{color:"#555",fontSize:8}}>(optional — overrides calculated pay)</span></label><input type="number" value={payrollForm.manualAmount||""} onChange={e=>setPayrollForm(p=>({...p,manualAmount:e.target.value}))} placeholder="Leave blank to use calculated amount" style={S.input}/></div>
                       <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes (bonus, deduction, etc.)</label><input value={payrollForm.notes} onChange={e=>setPayrollForm(p=>({...p,notes:e.target.value}))} style={S.input}/></div>
                     </div>
@@ -3925,7 +3928,7 @@ function ContractorOS() {
                       <button className="hov" onClick={()=>{if(!payrollForm.driverId){showValidation("Please select a driver");return;}const d=drivers.find(x=>String(x.id)===String(payrollForm.driverId));if(!d){showValidation("Driver not found");return;}const{gross,breakdown}=calcRunPay(d,payrollForm);setPayrollPreview({driver:d,gross,breakdown});}} style={{...S.btn,background:"#6366f1"}}>Preview Pay</button>
                       {payrollPreview&&<button className="hov" onClick={()=>{const d=drivers.find(x=>String(x.id)===String(payrollForm.driverId));if(!d)return;const{gross,breakdown}=calcRunPay(d,payrollForm);const run={id:Date.now(),driverId:d.id,driverName:d.name,periodStart:payrollForm.periodStart,periodEnd:payrollForm.periodEnd,gross,breakdown,notes:payrollForm.notes,date:new Date().toISOString().slice(0,10),payType:d.payType,payRate:d.payRate,status:"unpaid"};setPayroll(p=>[run,...p]);
                       setExpenses(p=>[{id:Date.now()+1,date:run.date,category:"driver_pay",amount:gross,description:`Pay — ${d.name}${payrollForm.periodStart?" ("+payrollForm.periodStart+(payrollForm.periodEnd?" → "+payrollForm.periodEnd:"")+")":" "}`,vehicle:"",source:"payroll"},...p]);
-                      setPayrollForm({driverId:"",periodStart:"",periodEnd:"",miles:"",hours:"",stops:"",days:"",loadRevenue:"",manualAmount:"",notes:"",ptoHours:"",routingVolume:""});setPayrollPreview(null);setPayrollShowAdd(false);}} style={S.btn}>Save Pay Run</button>}
+                      setPayrollForm({driverId:"",periodStart:"",periodEnd:"",miles:"",hours:"",stops:"",days:"",loadRevenue:"",manualAmount:"",notes:""});setPayrollPreview(null);setPayrollShowAdd(false);}} style={S.btn}>Save Pay Run</button>}
                       <button onClick={()=>{setPayrollShowAdd(false);setPayrollPreview(null);}} style={S.ghost}>Cancel</button>
                     </div>
                     {payrollPreview&&(<div style={{marginTop:14,background:"#0a1a0a",border:"1px solid #1a3a1a",borderRadius:6,padding:"14px 18px"}}><div style={{fontSize:10,color:"#2d5a2d",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:8}}>Pay Preview — {payrollPreview.driver.name}</div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontSize:11,color:"#888"}}>{payrollPreview.breakdown}</div><div style={{fontSize:24,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#22c55e"}}>{fmt$(payrollPreview.gross)}</div></div></div>)}
@@ -3993,56 +3996,6 @@ function ContractorOS() {
                 </div>
               </div>
             )}
-            {payrollSub==="weekly"&&seg.id==="amazon"&&(()=>{
-              const now=new Date();
-              const dayOfWeek=now.getDay();
-              const weekStart=new Date(now);weekStart.setDate(now.getDate()-dayOfWeek);weekStart.setHours(0,0,0,0);
-              const weekEnd=new Date(weekStart);weekEnd.setDate(weekStart.getDate()+6);
-              const isThisWeek=(dateStr)=>{if(!dateStr)return false;const d=new Date(dateStr);return d>=weekStart&&d<=weekEnd;};
-              const weekRuns=payroll.filter(r=>isThisWeek(r.periodStart)||isThisWeek(r.date));
-              const teamTotal=weekRuns.reduce((s,r)=>s+r.gross,0);
-              return(
-              <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                <div style={{...S.section,marginBottom:4}}>WEEKLY PAYROLL SUMMARY</div>
-                <div style={{fontSize:11,color:"#555",marginBottom:20}}>Current week: {weekStart.toLocaleDateString()} – {weekEnd.toLocaleDateString()}</div>
-                <div style={{...S.card,marginBottom:16,background:"#0a1a0a",border:"1px solid #1a3a1a"}}>
-                  <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.15em",marginBottom:4}}>Team Labor This Week</div>
-                  <div style={{fontSize:28,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#22c55e"}}>{fmt$(teamTotal)}</div>
-                </div>
-                {drivers.length===0&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No drivers yet.</div>}
-                <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                  {drivers.map(d=>{
-                    const driverRuns=weekRuns.filter(r=>String(r.driverId)===String(d.id));
-                    const basePay=driverRuns.reduce((s,r)=>s+r.gross,0);
-                    const weekHours=driverRuns.reduce((s,r)=>s+parseFloat(r.hours||0),0);
-                    const overtime=weekHours>=40;
-                    return(
-                      <div key={d.id} style={{...S.card,borderLeft:`3px solid ${overtime?"#ef4444":accent}`}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
-                          <div>
-                            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8"}}>{d.name}</div>
-                            <div style={{fontSize:10,color:"#555"}}>{(d.payType||"").replace(/_/g," ")} · ${d.payRate||0}</div>
-                          </div>
-                          <div style={{textAlign:"right"}}>
-                            <div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#22c55e"}}>{fmt$(basePay)}</div>
-                            {overtime&&<div style={{fontSize:9,color:"#ef4444",fontWeight:700}}>40+ HRS OVERTIME FLAG</div>}
-                          </div>
-                        </div>
-                        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
-                          {[["Base Pay",fmt$(basePay),"#22c55e"],["Hours",weekHours>0?`${weekHours.toFixed(1)} hrs`:"—","#888"],["Pay Runs",driverRuns.length.toString(),accent]].map(([lbl,val,col])=>(
-                            <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"8px 10px"}}>
-                              <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>{lbl}</div>
-                              <div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{val}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              );
-            })()}
           </div>
           {/* Pay Stub Modal */}
           {payStub&&(<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:20}} onClick={()=>setPayStub(null)}><div style={{background:"#141414",border:`1px solid ${accent}44`,borderRadius:10,padding:"28px 32px",maxWidth:480,width:"100%",animation:"fadeUp 0.2s ease"}} onClick={e=>e.stopPropagation()}><div style={{textAlign:"center",marginBottom:20,paddingBottom:16,borderBottom:"1px solid #222"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:900,color:"#e8e4d8"}}>PAY STUB</div><div style={{fontSize:10,color:"#555",marginTop:4}}>ContractorOS · {new Date().toLocaleDateString()}</div></div><div style={{display:"flex",flexDirection:"column",gap:10}}>{[["Driver",payStub.driverName],["Pay Period",`${payStub.periodStart}${payStub.periodEnd?" → "+payStub.periodEnd:""}`],["Pay Type",payStub.payType?.replace(/_/g," ")],["Calculation",payStub.breakdown],["Status",payStub.status==="paid"?`Paid ${fmtDate(payStub.paidDate)}`:"Unpaid"]].map(([lbl,val])=>(<div key={lbl} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid #1a1a1a",paddingBottom:8}}><span style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>{lbl}</span><span style={{fontSize:12,color:"#c8c4bc"}}>{val}</span></div>))}<div style={{display:"flex",justifyContent:"space-between",marginTop:8,paddingTop:8,borderTop:"2px solid #2a2a2a"}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#e8e4d8"}}>GROSS PAY</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:900,color:"#22c55e"}}>{fmt$(payStub.gross)}</span></div>{payStub.notes&&<div style={{fontSize:11,color:"#555",fontStyle:"italic"}}>Note: {payStub.notes}</div>}</div><button onClick={()=>window.print()} style={{...S.btn,width:"100%",marginTop:20}}>Print / Save as PDF</button></div></div>)}
@@ -4051,10 +4004,7 @@ function ContractorOS() {
 
       {/* ══ DISPATCH ═══════════════════════════════════════════════════ */}
       {screen==="dispatch"&&(
-        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["board","Dispatch Board"],...(seg.id==="amazon"?[["readiness","Readiness"]]:[] )]} active={subScreen||"board"} onSelect={setSubScreen}/>
-          <div style={{flex:1,overflowY:"auto",padding:24}}>
-          {(!subScreen||subScreen==="board")&&(
+        <div style={{flex:1,overflowY:"auto",padding:24}}>
           <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
               <div><div style={S.section}>DISPATCH BOARD</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Assign loads and routes to drivers and trucks. Track run status.</div></div>
@@ -4116,80 +4066,6 @@ function ContractorOS() {
                 </div>
               ));
             })()}
-          </div>
-          )}
-          {subScreen==="readiness"&&seg.id==="amazon"&&(()=>{
-            const activeDrivers=drivers.filter(d=>d.status==="active");
-            const dayEntries=driverReadiness.filter(r=>r.date===readinessDate);
-            const getEntry=(driverId)=>dayEntries.find(r=>String(r.driverId)===String(driverId));
-            const confirmed=dayEntries.filter(r=>r.status==="confirmed").length;
-            const standby=dayEntries.filter(r=>r.status==="standby").length;
-            const calledOff=dayEntries.filter(r=>r.status==="called_off").length;
-            const incompleteChecklist=dayEntries.filter(r=>r.status==="confirmed"&&(!r.vanAssigned||!r.rabbitAssigned||!r.fuelCardAssigned));
-            const noStandbyAlert=calledOff>0&&standby===0;
-            const saveReadiness=(driverId,data)=>{setDriverReadiness(p=>{const without=p.filter(r=>!(String(r.driverId)===String(driverId)&&r.date===readinessDate));return[...without,{id:Date.now(),date:readinessDate,driverId,status:"confirmed",vanAssigned:false,rabbitAssigned:false,fuelCardAssigned:false,...data}];});};
-            return(
-            <div style={{maxWidth:900,margin:"0 auto",padding:24,animation:"fadeUp 0.3s ease"}}>
-              <div style={{...S.section,marginBottom:4}}>DISPATCH READINESS</div>
-              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
-                <label style={{...S.label,marginBottom:0}}>Date:</label>
-                <input type="date" value={readinessDate} onChange={e=>setReadinessDate(e.target.value)} style={{...S.input,maxWidth:180}}/>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
-                {[["Confirmed",confirmed,"#22c55e"],["Standby",standby,"#f59e0b"],["Called Off",calledOff,"#ef4444"]].map(([lbl,val,col])=>(
-                  <div key={lbl} style={S.card}><div style={{fontSize:24,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:col}}>{val}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.15em",marginTop:3}}>{lbl}</div></div>
-                ))}
-              </div>
-              {incompleteChecklist.length>0&&(
-                <div style={{...S.card,marginBottom:12,background:"#1a0f05",border:"1px solid #f59e0b44"}}>
-                  <div style={{fontSize:11,color:"#f59e0b"}}>⚠ Confirmed drivers with incomplete checklist: {incompleteChecklist.map(r=>drivers.find(d=>String(d.id)===String(r.driverId))?.name||"?").join(", ")}</div>
-                </div>
-              )}
-              {noStandbyAlert&&(
-                <div style={{...S.card,marginBottom:12,background:"#1a0808",border:"1px solid #ef444444"}}>
-                  <div style={{fontSize:11,color:"#ef4444"}}>⚠ {calledOff} driver(s) called off with no standby available — routes may be uncovered!</div>
-                </div>
-              )}
-              {activeDrivers.length===0&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No active drivers. Add drivers first.</div>}
-              <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                {activeDrivers.map(d=>{
-                  const entry=getEntry(d.id);
-                  const status=entry?.status||"";
-                  const vanAssigned=entry?.vanAssigned||false;
-                  const rabbitAssigned=entry?.rabbitAssigned||false;
-                  const fuelCardAssigned=entry?.fuelCardAssigned||false;
-                  return(
-                    <div key={d.id} style={{...S.card,borderLeft:`3px solid ${status==="confirmed"?"#22c55e":status==="standby"?"#f59e0b":status==="called_off"?"#ef4444":"#333"}`}}>
-                      <div style={{display:"flex",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",minWidth:140}}>{d.name}</div>
-                        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",flex:1}}>
-                          <select defaultValue={status} key={`${d.id}-${readinessDate}-status`} onChange={e=>{const s=e.target.value;saveReadiness(d.id,{...(entry||{}),status:s,vanAssigned,rabbitAssigned,fuelCardAssigned});}} style={{...S.input,maxWidth:140,padding:"6px 10px"}}>
-                            <option value="">— Status —</option>
-                            <option value="confirmed">Confirmed</option>
-                            <option value="standby">Standby</option>
-                            <option value="called_off">Called Off</option>
-                          </select>
-                          <label style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:"#888",cursor:"pointer"}}>
-                            <input type="checkbox" defaultChecked={vanAssigned} key={`${d.id}-${readinessDate}-van`} onChange={e=>saveReadiness(d.id,{...(entry||{}),vanAssigned:e.target.checked,rabbitAssigned,fuelCardAssigned,status:status||"confirmed"})}/>
-                            Van Assigned
-                          </label>
-                          <label style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:"#888",cursor:"pointer"}}>
-                            <input type="checkbox" defaultChecked={rabbitAssigned} key={`${d.id}-${readinessDate}-rabbit`} onChange={e=>saveReadiness(d.id,{...(entry||{}),vanAssigned,rabbitAssigned:e.target.checked,fuelCardAssigned,status:status||"confirmed"})}/>
-                            Rabbit Device
-                          </label>
-                          <label style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:"#888",cursor:"pointer"}}>
-                            <input type="checkbox" defaultChecked={fuelCardAssigned} key={`${d.id}-${readinessDate}-fuel`} onChange={e=>saveReadiness(d.id,{...(entry||{}),vanAssigned,rabbitAssigned,fuelCardAssigned:e.target.checked,status:status||"confirmed"})}/>
-                            Fuel Card
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            );
-          })()}
           </div>
         </div>
       )}
@@ -4538,6 +4414,401 @@ function ContractorOS() {
           </div>
         </div>
       )})()}
+
+      {/* ══ SCORECARD (all non-OTR) ════════════════════════════════════ */}
+      {screen==="scorecard"&&seg.id!=="otr"&&(()=>{
+        const isFedex = seg.id==="fedex";
+        const isAmazon = seg.id==="amazon";
+        const isLastMile = seg.id==="lastmile";
+        const fedexMetrics = [{key:"pickupCompliance",label:"Pickup Compliance",target:99,unit:"%",color:"#f59e0b"},{key:"deliveryCompliance",label:"Delivery Compliance",target:98,unit:"%",color:"#22c55e"},{key:"packageHandling",label:"Package Handling",target:99,unit:"%",color:"#60a5fa"},{key:"uniformCompliance",label:"Uniform / Vehicle Compliance",target:100,unit:"%",color:"#8888cc"},{key:"onTimePickup",label:"On-Time Pickup",target:97,unit:"%",color:"#f59e0b"},{key:"routeCompletion",label:"Route Completion Rate",target:99,unit:"%",color:"#22c55e"}];
+        const amazonMetrics = [{key:"dart",label:"DART Score",target:98,unit:"%",color:"#f59e0b",desc:"Delivery Associate Reliability Today"},{key:"dcr",label:"DCR — Delivery Completion Rate",target:99,unit:"%",color:"#22c55e"},{key:"pod",label:"POD — Photo On Delivery",target:99,unit:"%",color:"#60a5fa"},{key:"mentor",label:"Mentor Safety Score (avg)",target:800,unit:"pts",color:"#8888cc"},{key:"contactCompliance",label:"Delivery Contact Compliance",target:97,unit:"%",color:"#f59e0b"},{key:"attendanceRate",label:"Driver Attendance Rate",target:98,unit:"%",color:"#22c55e"}];
+        const lastmileMetrics = [{key:"stopCompletion",label:"Stop Completion Rate",target:99,unit:"%",color:"#22c55e"},{key:"onTimeDelivery",label:"On-Time Delivery",target:97,unit:"%",color:"#f59e0b"},{key:"customerSatisfaction",label:"Customer Satisfaction (CSAT)",target:95,unit:"%",color:"#60a5fa"},{key:"damageRate",label:"Damage-Free Rate",target:99,unit:"%",color:"#8888cc"},{key:"signatureCapture",label:"Signature Capture Rate",target:98,unit:"%",color:"#f59e0b"},{key:"callAhead",label:"Call-Ahead Compliance",target:95,unit:"%",color:"#22c55e"}];
+        const uspsMetrics = [{key:"routeCompletion",label:"Route Completion Rate",target:100,unit:"%",color:"#22c55e"},{key:"onTime",label:"On-Time Performance",target:97,unit:"%",color:"#f59e0b"},{key:"vehicleInspection",label:"Vehicle Inspection Compliance",target:100,unit:"%",color:"#60a5fa"},{key:"substituteAvail",label:"Substitute Driver Availability",target:90,unit:"%",color:"#8888cc"},{key:"mailSecurity",label:"Mail Security Compliance",target:100,unit:"%",color:"#ef4444"}];
+        const metrics = isFedex?fedexMetrics:isAmazon?amazonMetrics:isLastMile?lastmileMetrics:uspsMetrics;
+        const segLabel = isFedex?"FedEx Ground":isAmazon?"Amazon DSP":isLastMile?"Last Mile / Lowe's":"USPS Contract";
+        const thisWeek = scorecardData.find(s=>s.week===scorecardWeek)||{week:scorecardWeek};
+        const updateMetric = (key,val) => { const existing = scorecardData.find(s=>s.week===scorecardWeek); if(existing){setScorecardData(p=>p.map(s=>s.week===scorecardWeek?{...s,[key]:val}:s));}else{setScorecardData(p=>[{week:scorecardWeek,[key]:val},...p]);} };
+        const overallScore = metrics.reduce((sum,m)=>{ const val=parseFloat(thisWeek[m.key]||0); const pct=m.unit==="%"?val:Math.min((val/m.target)*100,100); return sum+pct; },0)/metrics.length;
+        return (
+          <div style={{flex:1,overflowY:"auto",padding:24}}>
+            <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+                <div><div style={{...S.section}}>{segLabel.toUpperCase()} SCORECARD</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Track your weekly performance metrics.</div></div>
+                <div style={{textAlign:"center",background:"#141414",border:`1px solid ${accent}44`,borderRadius:8,padding:"12px 18px"}}>
+                  <div style={{fontSize:32,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:overallScore>=95?"#22c55e":overallScore>=85?"#f59e0b":"#ef4444"}}>{isNaN(overallScore)?"-":overallScore.toFixed(0)}%</div>
+                  <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Overall Score</div>
+                </div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+                <label style={{...S.label,marginBottom:0,whiteSpace:"nowrap"}}>Week of:</label>
+                <input type="date" value={scorecardWeek} onChange={e=>setScorecardWeek(e.target.value)} style={{...S.input,maxWidth:180}}/>
+              </div>
+              {/* Amazon AI Import */}
+              {isAmazon&&(
+                <div style={{...S.card,marginBottom:20,border:`1px solid ${accent}44`}}>
+                  <div style={{fontSize:10,color:accent,letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:8}}>Import Weekly Scorecard</div>
+                  <div style={{fontSize:11,color:"#555",marginBottom:12,lineHeight:1.7}}>Upload your Amazon DSP scorecard PDF or screenshot. AI will extract all metrics automatically.</div>
+                  <input type="file" accept=".pdf,image/*" onChange={async(e)=>{
+                    const file = e.target.files?.[0]; if(!file) return;
+                    setScorecardImporting(true); setScorecardImportResult(null);
+                    try {
+                      const reader = new FileReader();
+                      reader.onload = async(ev)=>{
+                        const base64=ev.target.result.split(",")[1]; const mediaType=file.type||"image/jpeg"; const isPdf=file.type==="application/pdf";
+                        const ANTHROPIC_KEY=import.meta.env.VITE_ANTHROPIC_API_KEY;
+                        const response=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1024,messages:[{role:"user",content:[isPdf?{type:"document",source:{type:"base64",media_type:"application/pdf",data:base64}}:{type:"image",source:{type:"base64",media_type:mediaType,data:base64}},{type:"text",text:"This is an Amazon DSP weekly scorecard. Extract ALL performance metrics. Return ONLY a JSON object. No markdown, no explanation."}]}]})});
+                        const data=await response.json(); const text=data?.content?.[0]?.text||"";
+                        try {
+                          const parsed=JSON.parse(text);
+                          const keyMap={"dart":"dart","dcr":"dcr","delivery completion rate":"dcr","pod":"pod","mentor":"mentor","mentor score":"mentor","contact compliance":"contactCompliance","attendance rate":"attendanceRate"};
+                          const newEntry={...(scorecardData.find(w=>w.week===scorecardWeek)||{week:scorecardWeek})};
+                          const imported=[];
+                          Object.entries(parsed).forEach(([k,v])=>{const nk=k.toLowerCase().replace(/[^a-z ]/g,"").trim();const mk=keyMap[nk]||nk.replace(/ /g,"");if(mk){newEntry[mk]=parseFloat(v)||v;imported.push(k);}});
+                          setScorecardData([...scorecardData.filter(w=>w.week!==scorecardWeek),newEntry]);
+                          setScorecardImportResult({success:true,fields:imported});
+                        } catch { setScorecardImportResult({success:false,error:"Could not parse AI response. Fill in manually."}); }
+                        setScorecardImporting(false);
+                      };
+                      reader.readAsDataURL(file);
+                    } catch(err) { setScorecardImportResult({success:false,error:err.message}); setScorecardImporting(false); }
+                  }} style={{fontSize:11,color:"#888",marginBottom:8}}/>
+                  {scorecardImporting&&<div style={{fontSize:11,color:accent,marginTop:8}}>Parsing scorecard with AI...</div>}
+                  {scorecardImportResult?.success&&<div style={{fontSize:11,color:"#22c55e",marginTop:8}}>✓ Imported: {scorecardImportResult.fields.join(", ")}</div>}
+                  {scorecardImportResult?.error&&<div style={{fontSize:11,color:"#ef4444",marginTop:8}}>⚠ {scorecardImportResult.error}</div>}
+                </div>
+              )}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12,marginBottom:24}}>
+                {metrics.map(m=>{
+                  const val=thisWeek[m.key]||""; const numVal=parseFloat(val||0); const pct=m.unit==="%"?numVal:Math.min((numVal/m.target)*100,100); const status=pct>=m.target?"#22c55e":pct>=(m.target-5)?"#f59e0b":"#ef4444";
+                  return(
+                    <div key={m.key} style={{...S.card,borderTop:`3px solid ${m.color}`}}>
+                      <div style={{fontSize:11,color:"#888",marginBottom:8,lineHeight:1.4}}>{m.label}</div>
+                      {m.desc&&<div style={{fontSize:9,color:"#444",marginBottom:6}}>{m.desc}</div>}
+                      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+                        <input type="number" value={val} onChange={e=>updateMetric(m.key,e.target.value)} placeholder={m.target.toString()} style={{...S.input,maxWidth:90}} min={0} max={m.unit==="%"?100:undefined}/>
+                        <div style={{fontSize:9,color:"#555"}}>{m.unit}</div>
+                        <div style={{marginLeft:"auto",fontSize:10,color:val?status:"#444",fontWeight:700}}>Target: {m.target}{m.unit}</div>
+                      </div>
+                      <div style={{height:4,background:"#1e1e1e",borderRadius:2}}><div style={{height:"100%",width:`${Math.min(pct,100)}%`,background:val?status:m.color,borderRadius:2,transition:"width 0.3s"}}/></div>
+                    </div>
+                  );
+                })}
+              </div>
+              {scorecardData.length>0&&(
+                <div style={S.card}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>Score History</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {[...scorecardData].sort((a,b)=>new Date(b.week)-new Date(a.week)).slice(0,8).map(week=>{
+                      const weekAvg=metrics.reduce((sum,m)=>{const v=parseFloat(week[m.key]||0);return sum+(m.unit==="%"?v:Math.min((v/m.target)*100,100));},0)/metrics.length;
+                      return(
+                        <div key={week.week} style={{display:"flex",alignItems:"center",gap:12,padding:"6px 0",borderBottom:"1px solid #1a1a1a"}}>
+                          <div style={{fontSize:11,color:"#888",width:90,flexShrink:0}}>{fmtDate(week.week)}</div>
+                          <div style={{flex:1,height:6,background:"#1e1e1e",borderRadius:3}}><div style={{height:"100%",width:`${Math.min(weekAvg,100)}%`,background:weekAvg>=95?"#22c55e":weekAvg>=85?"#f59e0b":"#ef4444",borderRadius:3}}/></div>
+                          <div style={{fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:weekAvg>=95?"#22c55e":weekAvg>=85?"#f59e0b":"#ef4444",width:40,textAlign:"right"}}>{isNaN(weekAvg)?"-":weekAvg.toFixed(0)}%</div>
+                          <button onClick={()=>setScorecardData(p=>p.filter(s=>s.week!==week.week))} style={{background:"transparent",border:"none",color:"#333",cursor:"pointer",fontSize:11}}>✕</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ══ STOP PROFIT (FedEx + Last Mile) ═══════════════════════════ */}
+      {screen==="stopprofit"&&(
+        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          <SubNav tabs={[["entry","Daily Entry"],["trend","Weekly Trend"]]} active={stopProfitSub} onSelect={setStopProfitSub}/>
+          <div style={{flex:1,overflowY:"auto",padding:24}}>
+            <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+              <div style={{...S.section,marginBottom:4}}>STOP PROFIT TRACKER</div>
+              <div style={{fontSize:11,color:"#555",marginBottom:20}}>Track your daily stop profitability and margin trends.</div>
+              {stopProfitSub==="entry"&&(()=>{
+                const stops = parseFloat(stopProfitForm.stops||0);
+                const rps = parseFloat(stopProfitForm.revenuePerStop||0);
+                const driverPay = parseFloat(stopProfitForm.driverPay||0);
+                const fuelCost = parseFloat(stopProfitForm.fuelCost||0);
+                const vehicleCost = parseFloat(stopProfitForm.vehicleCost||0);
+                const otherCost = parseFloat(stopProfitForm.otherCost||0);
+                const totalRev = stops * rps;
+                const totalCost = driverPay + fuelCost + vehicleCost + otherCost;
+                const grossProfit = totalRev - totalCost;
+                const netPerStop = stops>0?grossProfit/stops:0;
+                const margin = totalRev>0?(grossProfit/totalRev)*100:0;
+                const marginColor = margin>20?"#22c55e":margin>10?"#f59e0b":"#ef4444";
+                return (
+                  <>
+                    <div style={{...S.card,marginBottom:20}}>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                        <div><label style={S.label}>Date</label><input type="date" value={stopProfitForm.date||new Date().toISOString().slice(0,10)} onChange={e=>setStopProfitForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
+                        <div><label style={S.label}>Stops Completed</label><input type="number" value={stopProfitForm.stops} onChange={e=>setStopProfitForm(p=>({...p,stops:e.target.value}))} placeholder="0" style={S.input}/></div>
+                        <div><label style={S.label}>Revenue Per Stop ($)</label><input type="number" value={stopProfitForm.revenuePerStop} onChange={e=>setStopProfitForm(p=>({...p,revenuePerStop:e.target.value}))} placeholder="0.00" style={S.input}/></div>
+                        <div><label style={S.label}>Driver Pay ($)</label><input type="number" value={stopProfitForm.driverPay} onChange={e=>setStopProfitForm(p=>({...p,driverPay:e.target.value}))} placeholder="0.00" style={S.input}/></div>
+                        <div><label style={S.label}>Fuel Cost ($)</label><input type="number" value={stopProfitForm.fuelCost} onChange={e=>setStopProfitForm(p=>({...p,fuelCost:e.target.value}))} placeholder="check fuel log" style={S.input}/></div>
+                        <div><label style={S.label}>Vehicle Cost ($)</label><input type="number" value={stopProfitForm.vehicleCost} onChange={e=>setStopProfitForm(p=>({...p,vehicleCost:e.target.value}))} placeholder="0.00" style={S.input}/></div>
+                        <div><label style={S.label}>Other Cost ($)</label><input type="number" value={stopProfitForm.otherCost} onChange={e=>setStopProfitForm(p=>({...p,otherCost:e.target.value}))} placeholder="0.00" style={S.input}/></div>
+                      </div>
+                    </div>
+                    {stops>0&&rps>0&&(
+                      <div style={{...S.card,marginBottom:20,border:`2px solid ${marginColor}44`}}>
+                        <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>Live Calculation</div>
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:12}}>
+                          {[["Total Revenue",fmt$(totalRev),"#22c55e"],["Total Cost",fmt$(totalCost),"#ef4444"],["Gross Profit",fmt$(grossProfit),grossProfit>=0?"#22c55e":"#ef4444"]].map(([lbl,val,col])=>(
+                            <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>{lbl}</div><div style={{fontSize:18,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div></div>
+                          ))}
+                        </div>
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>
+                          <div style={{background:"#0f0f0f",border:`1px solid ${marginColor}33`,borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>Net Per Stop</div><div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:marginColor}}>{fmt$(netPerStop)}</div></div>
+                          <div style={{background:"#0f0f0f",border:`1px solid ${marginColor}33`,borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>Margin</div><div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:marginColor}}>{margin.toFixed(1)}%</div><div style={{fontSize:9,color:"#555",marginTop:2}}>{margin>20?"Good":"Below target"}</div></div>
+                        </div>
+                      </div>
+                    )}
+                    <button className="hov" onClick={()=>{
+                      if(!stopProfitForm.stops||!stopProfitForm.revenuePerStop){showValidation("Stops and revenue per stop required");return;}
+                      setStopProfitLog(p=>[{id:Date.now(),...stopProfitForm,stops,rps,totalRev,totalCost,grossProfit,netPerStop,margin},...p]);
+                      setStopProfitForm({date:"",stops:"",revenuePerStop:"",driverPay:"",fuelCost:"",vehicleCost:"",otherCost:""});
+                    }} style={S.btn}>Save Day →</button>
+                  </>
+                );
+              })()}
+              {stopProfitSub==="trend"&&(()=>{
+                const sorted = [...stopProfitLog].sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(-14);
+                if(sorted.length===0) return <div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No data yet. Log some days in the Daily Entry tab.</div>;
+                const avgMargin = sorted.reduce((a,e)=>a+(e.margin||0),0)/sorted.length;
+                const avgNetPerStop = sorted.reduce((a,e)=>a+(e.netPerStop||0),0)/sorted.length;
+                const totalProfit = sorted.reduce((a,e)=>a+(e.grossProfit||0),0);
+                const best = [...sorted].sort((a,b)=>(b.margin||0)-(a.margin||0))[0];
+                const worst = [...sorted].sort((a,b)=>(a.margin||0)-(b.margin||0))[0];
+                const maxNPS = Math.max(...sorted.map(e=>Math.abs(e.netPerStop||0)),0.01);
+                return (
+                  <>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+                      <div style={S.card}><div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:avgNetPerStop>=0?"#22c55e":"#ef4444"}}>{fmt$(avgNetPerStop)}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginTop:4}}>Avg Net/Stop</div></div>
+                      <div style={S.card}><div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:avgMargin>20?"#22c55e":avgMargin>10?"#f59e0b":"#ef4444"}}>{avgMargin.toFixed(1)}%</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginTop:4}}>Avg Margin</div></div>
+                      <div style={S.card}><div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:totalProfit>=0?"#22c55e":"#ef4444"}}>{fmt$(totalProfit)}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginTop:4}}>Total Profit</div></div>
+                    </div>
+                    {best&&<div style={{...S.card,marginBottom:12,borderLeft:"3px solid #22c55e"}}><div style={{fontSize:10,color:"#22c55e",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Best Day</div><div style={{fontSize:12,color:"#c8c4bc"}}>{best.date} — {best.margin?.toFixed(1)}% margin · {fmt$(best.netPerStop||0)}/stop</div></div>}
+                    {worst&&<div style={{...S.card,marginBottom:20,borderLeft:"3px solid #ef4444"}}><div style={{fontSize:10,color:"#ef4444",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Worst Day</div><div style={{fontSize:12,color:"#c8c4bc"}}>{worst.date} — {worst.margin?.toFixed(1)}% margin · {fmt$(worst.netPerStop||0)}/stop</div></div>}
+                    <div style={S.card}>
+                      <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:12}}>Net Per Stop — Last 14 Days</div>
+                      <svg width="100%" height="120" style={{overflow:"visible"}}>
+                        {sorted.map((e,i)=>{
+                          const barH = Math.max(4,(Math.abs(e.netPerStop||0)/maxNPS)*90);
+                          const barColor = (e.margin||0)>20?"#22c55e":(e.margin||0)>10?"#f59e0b":"#ef4444";
+                          const x = (i/sorted.length)*100+"%";
+                          const w = (0.7/sorted.length)*100+"%";
+                          return (
+                            <g key={e.id}>
+                              <rect x={x} y={110-barH} width={w} height={barH} fill={barColor} rx="2"/>
+                              {(e.margin||0)<10&&<circle cx={`calc(${x} + ${w}/2)`} cy={105-barH} r="3" fill="#ef4444"/>}
+                            </g>
+                          );
+                        })}
+                        <line x1="0" y1="110" x2="100%" y2="110" stroke="#1e1e1e" strokeWidth="1"/>
+                      </svg>
+                    </div>
+                    <div style={{...S.card,marginTop:16,overflowX:"auto"}}>
+                      <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10}}>Daily Log</div>
+                      {sorted.reverse().map(e=>{
+                        const mc = (e.margin||0)>20?"#22c55e":(e.margin||0)>10?"#f59e0b":"#ef4444";
+                        return <div key={e.id} style={{display:"flex",gap:16,padding:"7px 0",borderBottom:"1px solid #1a1a1a",alignItems:"center"}}>
+                          <div style={{fontSize:11,color:"#888",width:90,flexShrink:0}}>{e.date}</div>
+                          <div style={{flex:1,fontSize:11,color:"#555"}}>{e.stops} stops</div>
+                          <div style={{fontSize:11,color:"#22c55e"}}>{fmt$(e.grossProfit||0)}</div>
+                          <div style={{fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:mc,width:50,textAlign:"right"}}>{(e.margin||0).toFixed(0)}%</div>
+                          <button onClick={()=>setStopProfitLog(p=>p.filter(x=>x.id!==e.id))} style={{background:"transparent",border:"none",color:"#333",cursor:"pointer",fontSize:11}}>✕</button>
+                        </div>;
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ SETTLEMENT (FedEx + Amazon) ════════════════════════════════ */}
+      {screen==="settlement"&&(
+        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          <SubNav tabs={[["entry","Weekly Entry"],["history","History"]]} active={weeklySettlementSub} onSelect={setWeeklySettlementSub}/>
+          <div style={{flex:1,overflowY:"auto",padding:24}}>
+            <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+              <div style={{...S.section,marginBottom:4}}>WEEKLY SETTLEMENT</div>
+              <div style={{fontSize:11,color:"#555",marginBottom:20}}>Track expected vs actual weekly payments from your contractor.</div>
+              {weeklySettlementSub==="entry"&&(()=>{
+                const stops = parseFloat(weeklySettlementForm.stopsCompleted||0);
+                const rps = parseFloat(weeklySettlementForm.ratePerStop||0);
+                const bonuses = parseFloat(weeklySettlementForm.stopBonuses||0);
+                const fuel = parseFloat(weeklySettlementForm.fuelSurcharge||0);
+                const expectedTotal = stops*rps + bonuses + fuel;
+                const actual = parseFloat(weeklySettlementForm.actualDeposit||0);
+                const variance = expectedTotal - actual;
+                const isUnderpaid = actual>0&&variance>0.01;
+                return (
+                  <>
+                    <div style={{...S.card,marginBottom:20}}>
+                      <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:12}}>Expected Pay</div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                        <div><label style={S.label}>Week Ending Date</label><input type="date" value={weeklySettlementForm.weekEnding} onChange={e=>setWeeklySettlementForm(p=>({...p,weekEnding:e.target.value}))} style={S.input}/></div>
+                        <div><label style={S.label}>Stops Completed</label><input type="number" value={weeklySettlementForm.stopsCompleted} onChange={e=>setWeeklySettlementForm(p=>({...p,stopsCompleted:e.target.value}))} placeholder="0" style={S.input}/></div>
+                        <div><label style={S.label}>Rate Per Stop ($)</label><input type="number" value={weeklySettlementForm.ratePerStop} onChange={e=>setWeeklySettlementForm(p=>({...p,ratePerStop:e.target.value}))} placeholder="0.00" style={S.input}/></div>
+                        <div><label style={S.label}>Stop Bonuses ($)</label><input type="number" value={weeklySettlementForm.stopBonuses} onChange={e=>setWeeklySettlementForm(p=>({...p,stopBonuses:e.target.value}))} placeholder="0.00" style={S.input}/></div>
+                        <div><label style={S.label}>Fuel Surcharge Received ($)</label><input type="number" value={weeklySettlementForm.fuelSurcharge} onChange={e=>setWeeklySettlementForm(p=>({...p,fuelSurcharge:e.target.value}))} placeholder="0.00" style={S.input}/></div>
+                      </div>
+                      {expectedTotal>0&&<div style={{marginTop:12,padding:"10px 14px",background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>Expected Total</div><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#22c55e"}}>{fmt$(expectedTotal)}</div></div>}
+                    </div>
+                    <div style={{...S.card,marginBottom:20}}>
+                      <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:12}}>Actual Payment</div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                        <div><label style={S.label}>Amount Deposited ($)</label><input type="number" value={weeklySettlementForm.actualDeposit} onChange={e=>setWeeklySettlementForm(p=>({...p,actualDeposit:e.target.value}))} placeholder="0.00" style={S.input}/></div>
+                        <div><label style={S.label}>Deposit Date</label><input type="date" value={weeklySettlementForm.depositDate} onChange={e=>setWeeklySettlementForm(p=>({...p,depositDate:e.target.value}))} style={S.input}/></div>
+                        <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={weeklySettlementForm.notes} onChange={e=>setWeeklySettlementForm(p=>({...p,notes:e.target.value}))} placeholder="Deductions, dispute notes..." style={S.input}/></div>
+                      </div>
+                      {actual>0&&expectedTotal>0&&(
+                        <div style={{marginTop:14,padding:"12px 16px",background:isUnderpaid?"#1a0808":"#051a05",border:`1px solid ${isUnderpaid?"#ef4444":"#22c55e"}33`,borderRadius:6}}>
+                          <div style={{fontSize:12,color:isUnderpaid?"#ef4444":"#22c55e",fontWeight:700,marginBottom:4}}>{isUnderpaid?`⚠ You may have been underpaid by ${fmt$(variance)}`:"✓ Payment matches or exceeds expected"}</div>
+                          <div style={{fontSize:10,color:"#555"}}>Expected: {fmt$(expectedTotal)} · Actual: {fmt$(actual)} · Variance: {fmt$(Math.abs(variance))}</div>
+                        </div>
+                      )}
+                    </div>
+                    <button className="hov" onClick={()=>{
+                      if(!weeklySettlementForm.weekEnding){showValidation("Week ending date required");return;}
+                      const status = actual>=expectedTotal-0.01?"Matched":actual<expectedTotal?"Underpaid":"Overpaid";
+                      setWeeklySettlementLog(p=>[{id:Date.now(),...weeklySettlementForm,expectedTotal,actual,variance,status},...p]);
+                      setWeeklySettlementForm({weekEnding:"",stopsCompleted:"",ratePerStop:"",stopBonuses:"",fuelSurcharge:"",actualDeposit:"",depositDate:"",notes:""});
+                    }} style={S.btn}>Save Settlement →</button>
+                  </>
+                );
+              })()}
+              {weeklySettlementSub==="history"&&(()=>{
+                if(weeklySettlementLog.length===0) return <div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No settlement history yet.</div>;
+                const cumVariance = weeklySettlementLog.reduce((a,e)=>a+(e.variance||0),0);
+                const sorted = [...weeklySettlementLog].sort((a,b)=>new Date(b.weekEnding)-new Date(a.weekEnding));
+                return (
+                  <>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+                      <div style={S.card}><div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#22c55e"}}>{fmt$(sorted.reduce((a,e)=>a+(e.actual||0),0))}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginTop:4}}>Total Paid</div></div>
+                      <div style={S.card}><div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#e8e4d8"}}>{fmt$(sorted.reduce((a,e)=>a+(e.expectedTotal||0),0))}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginTop:4}}>Total Expected</div></div>
+                      <div style={S.card}><div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:cumVariance>0.01?"#ef4444":"#22c55e"}}>{fmt$(Math.abs(cumVariance))}</div><div style={{fontSize:9,color:cumVariance>0.01?"#ef4444":"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginTop:4}}>{cumVariance>0.01?"Cumulative Underpaid":"Cumulative Variance"}</div></div>
+                    </div>
+                    <div style={S.card}>
+                      <div style={{overflowX:"auto"}}>
+                        <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                          <thead><tr style={{borderBottom:"1px solid #1e1e1e"}}>{["Week","Expected","Actual","Variance","Status"].map(h=><th key={h} style={{padding:"8px 12px",textAlign:"left",fontSize:9,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
+                          <tbody>{sorted.map(e=>{const sc=e.status==="Matched"?"#22c55e":e.status==="Underpaid"?"#ef4444":"#f59e0b";return<tr key={e.id} style={{borderBottom:"1px solid #141414"}}><td style={{padding:"8px 12px",color:"#888"}}>{e.weekEnding}</td><td style={{padding:"8px 12px",color:"#c8c4bc"}}>{fmt$(e.expectedTotal||0)}</td><td style={{padding:"8px 12px",color:"#c8c4bc"}}>{fmt$(e.actual||0)}</td><td style={{padding:"8px 12px",color:sc}}>{fmt$(Math.abs(e.variance||0))}</td><td style={{padding:"8px 12px"}}><span style={{fontSize:9,color:sc,border:`1px solid ${sc}33`,padding:"2px 7px",borderRadius:3}}>{e.status}</span></td></tr>;})}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <button className="hov" onClick={()=>{const csv=["Week,Expected,Actual,Variance,Status",...sorted.map(e=>`${e.weekEnding},${e.expectedTotal||0},${e.actual||0},${e.variance||0},${e.status}`)].join("\n");window.open("data:text/csv;charset=utf-8,"+encodeURIComponent(csv),"_blank");}} style={{...S.ghost,marginTop:14,fontSize:11}}>Export CSV →</button>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ SCHEDULE (FedEx + Amazon) ══════════════════════════════════ */}
+      {screen==="schedule"&&(
+        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          <SubNav tabs={[["weekly","Weekly Schedule"],["availability","Availability"]]} active={scheduleSub} onSelect={setScheduleSub}/>
+          <div style={{flex:1,overflowY:"auto",padding:24}}>
+            <div style={{maxWidth:1000,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+              <div style={{...S.section,marginBottom:4}}>DRIVER SCHEDULE</div>
+              {scheduleSub==="weekly"&&(()=>{
+                const weekStart = new Date();
+                weekStart.setDate(weekStart.getDate() - weekStart.getDay() + scheduleWeekOffset*7);
+                const days = Array.from({length:7},(_, i)=>{const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);return d;});
+                const dayNames=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+                return (
+                  <>
+                    <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:20}}>
+                      <button onClick={()=>setScheduleWeekOffset(p=>p-1)} style={{...S.ghost,fontSize:12,padding:"6px 14px"}}>← Prev</button>
+                      <div style={{flex:1,textAlign:"center",fontSize:12,color:"#888"}}>{days[0].toLocaleDateString()} — {days[6].toLocaleDateString()}</div>
+                      <button onClick={()=>setScheduleWeekOffset(p=>p+1)} style={{...S.ghost,fontSize:12,padding:"6px 14px"}}>Next →</button>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+                      <label style={{...S.label,marginBottom:0,whiteSpace:"nowrap"}}>Min Drivers/Day:</label>
+                      <input type="number" value={minDrivers} onChange={e=>setMinDrivers(parseInt(e.target.value)||1)} style={{...S.input,maxWidth:80}} min={1}/>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:8}}>
+                      {days.map((day,i)=>{
+                        const dateStr = day.toISOString().slice(0,10);
+                        const dayAssignments = scheduleData.filter(e=>e.type==="assignment"&&e.date===dateStr);
+                        const isLow = dayAssignments.length<minDrivers;
+                        return (
+                          <div key={dateStr} style={{...S.card,borderTop:`2px solid ${isLow?"#ef4444":accent}`,minHeight:120}}>
+                            <div style={{fontSize:9,color:isLow?"#ef4444":"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>{dayNames[i]}</div>
+                            <div style={{fontSize:12,color:"#e8e4d8",marginBottom:8}}>{day.getDate()}</div>
+                            {dayAssignments.map(a=>{
+                              const driver = drivers.find(d=>String(d.id)===String(a.driverId));
+                              return <div key={a.id} style={{fontSize:10,color:accent,marginBottom:3,wordBreak:"break-word"}}>{driver?.name||"Driver"}{a.route?` · ${a.route}`:""}</div>;
+                            })}
+                            {scheduleAssignDay===dateStr?(
+                              <div style={{marginTop:6}}>
+                                <select onChange={e=>setScheduleAssignForm(p=>({...p,driverId:e.target.value}))} style={{...S.input,fontSize:10,marginBottom:4}}>
+                                  <option value="">Select driver...</option>
+                                  {drivers.filter(d=>d.status==="active").map(d=><option key={d.id} value={d.id}>{d.name}</option>)}
+                                </select>
+                                <input placeholder="Route" onChange={e=>setScheduleAssignForm(p=>({...p,route:e.target.value}))} style={{...S.input,fontSize:10,marginBottom:4}}/>
+                                <input placeholder="Shift time" onChange={e=>setScheduleAssignForm(p=>({...p,shiftTime:e.target.value}))} style={{...S.input,fontSize:10,marginBottom:6}}/>
+                                <div style={{display:"flex",gap:4}}>
+                                  <button onClick={()=>{if(!scheduleAssignForm.driverId)return;setScheduleData(p=>[...p,{id:Date.now(),type:"assignment",date:dateStr,...scheduleAssignForm}]);setScheduleAssignDay(null);setScheduleAssignForm({});}} style={{...S.btn,fontSize:9,padding:"4px 8px"}}>Add</button>
+                                  <button onClick={()=>setScheduleAssignDay(null)} style={{...S.ghost,fontSize:9,padding:"4px 8px"}}>✕</button>
+                                </div>
+                              </div>
+                            ):(
+                              <button onClick={()=>{setScheduleAssignDay(dateStr);setScheduleAssignForm({});}} style={{...S.ghost,fontSize:9,padding:"3px 8px",marginTop:4,width:"100%",textAlign:"center"}}>+ Assign</button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
+              {scheduleSub==="availability"&&(()=>{
+                const weekStart = new Date();
+                weekStart.setDate(weekStart.getDate() - weekStart.getDay() + scheduleWeekOffset*7);
+                const weekOf = weekStart.toISOString().slice(0,10);
+                const activeDrivers = drivers.filter(d=>d.status==="active");
+                if(activeDrivers.length===0) return <div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No active drivers. Add drivers first.</div>;
+                return (
+                  <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                    {activeDrivers.map(driver=>{
+                      const avail = scheduleData.find(e=>e.type==="availability"&&e.driverId===String(driver.id)&&e.weekOf===weekOf)||{mon:false,tue:false,wed:false,thu:false,fri:false,sat:false,sun:false,status:"available",notes:""};
+                      const update = (field,val) => setScheduleData(p=>{const exists=p.find(e=>e.type==="availability"&&e.driverId===String(driver.id)&&e.weekOf===weekOf);if(exists)return p.map(e=>e.type==="availability"&&e.driverId===String(driver.id)&&e.weekOf===weekOf?{...e,[field]:val}:e);return [...p,{id:Date.now(),type:"availability",driverId:String(driver.id),weekOf,...avail,[field]:val}];});
+                      return (
+                        <div key={driver.id} style={S.card}>
+                          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
+                            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8",flex:1}}>{driver.name}</div>
+                            <select value={avail.status||"available"} onChange={e=>update("status",e.target.value)} style={{...S.input,maxWidth:160,fontSize:10}}>
+                              {["available","unavailable","on_leave","injury"].map(s=><option key={s} value={s}>{s.replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase())}</option>)}
+                            </select>
+                          </div>
+                          <div style={{display:"flex",gap:8,marginBottom:8}}>
+                            {["mon","tue","wed","thu","fri","sat","sun"].map(day=>(
+                              <label key={day} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,cursor:"pointer"}}>
+                                <input type="checkbox" checked={!!avail[day]} onChange={e=>update(day,e.target.checked)} style={{accentColor:accent}}/>
+                                <span style={{fontSize:9,color:"#555",textTransform:"uppercase"}}>{day}</span>
+                              </label>
+                            ))}
+                          </div>
+                          <input placeholder="Notes..." value={avail.notes||""} onChange={e=>update("notes",e.target.value)} style={{...S.input,fontSize:10}}/>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
