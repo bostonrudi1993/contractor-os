@@ -23,11 +23,11 @@ const KEYS = {
   payroll: "cos_payroll", fuelLog: "cos_fuel_log", invoices: "cos_invoices",
   odometer: "cos_odometer", tires: "cos_tires", documents: "cos_documents",
   dispatches: "cos_dispatches", contacts: "cos_contacts", hosLog: "cos_hos_log",
-  // ── v20: FedEx-specific keys ──
+  // ── v21: Amazon DSP keys ──
   hiringCandidates: "cos_hiring_candidates",
-  safetyEvents: "cos_safety_events",
-  stopCostLog: "cos_stop_cost_log",
-  deliveryFailures: "cos_delivery_failures",
+  driverReadiness: "cos_driver_readiness",
+  assetAssignments: "cos_asset_assignments",
+  dailySettlements: "cos_daily_settlements",
 };
 const stor = { get: (k,fb) => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):fb; } catch { return fb; } }, set: (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch {} } };
 
@@ -186,10 +186,269 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
           <button onClick={closeModal} style={S.ghost}>Cancel</button>
         </div>
       </div>
+      {/* ══ FMCSA LOOKUP ══════════════════════════════════════════════ */}
+      {/* ══ SCORECARD (FedEx/Amazon/LastMile) ══════════════════════ */}
+      {screen==="scorecard"&&(()=>{
+        const isFedex = segment==="fedex";
+        const isAmazon = segment==="amazon";
+        const isLastMile = segment==="lastmile";
+        const isUsps = segment==="usps";
+
+        // FedEx metrics
+        const fedexMetrics = [
+          {key:"pickupCompliance",label:"Pickup Compliance",target:99,unit:"%",color:"#f59e0b"},
+          {key:"deliveryCompliance",label:"Delivery Compliance",target:98,unit:"%",color:"#22c55e"},
+          {key:"packageHandling",label:"Package Handling",target:99,unit:"%",color:"#60a5fa"},
+          {key:"uniformCompliance",label:"Uniform / Vehicle Compliance",target:100,unit:"%",color:"#8888cc"},
+          {key:"onTimePickup",label:"On-Time Pickup",target:97,unit:"%",color:"#f59e0b"},
+          {key:"routeCompletion",label:"Route Completion Rate",target:99,unit:"%",color:"#22c55e"},
+        ];
+
+        // Amazon DSP metrics
+        const amazonMetrics = [
+          {key:"dart",label:"DART Score",target:98,unit:"%",color:"#f59e0b",desc:"Delivery Associate Reliability Today"},
+          {key:"dcr",label:"DCR — Delivery Completion Rate",target:99,unit:"%",color:"#22c55e"},
+          {key:"pod",label:"POD — Photo On Delivery",target:99,unit:"%",color:"#60a5fa"},
+          {key:"mentor",label:"Mentor Safety Score (avg)",target:800,unit:"pts",color:"#8888cc"},
+          {key:"contactCompliance",label:"Delivery Contact Compliance",target:97,unit:"%",color:"#f59e0b"},
+          {key:"attendanceRate",label:"Driver Attendance Rate",target:98,unit:"%",color:"#22c55e"},
+        ];
+
+        // Last Mile / Lowe's metrics
+        const lastmileMetrics = [
+          {key:"stopCompletion",label:"Stop Completion Rate",target:99,unit:"%",color:"#22c55e"},
+          {key:"onTimeDelivery",label:"On-Time Delivery",target:97,unit:"%",color:"#f59e0b"},
+          {key:"customerSatisfaction",label:"Customer Satisfaction (CSAT)",target:95,unit:"%",color:"#60a5fa"},
+          {key:"damageRate",label:"Damage-Free Rate",target:99,unit:"%",color:"#8888cc"},
+          {key:"signatureCapture",label:"Signature Capture Rate",target:98,unit:"%",color:"#f59e0b"},
+          {key:"callAhead",label:"Call-Ahead Compliance",target:95,unit:"%",color:"#22c55e"},
+        ];
+
+        // USPS metrics
+        const uspsMetrics = [
+          {key:"routeCompletion",label:"Route Completion Rate",target:100,unit:"%",color:"#22c55e"},
+          {key:"onTime",label:"On-Time Performance",target:97,unit:"%",color:"#f59e0b"},
+          {key:"vehicleInspection",label:"Vehicle Inspection Compliance",target:100,unit:"%",color:"#60a5fa"},
+          {key:"substituteAvail",label:"Substitute Driver Availability",target:90,unit:"%",color:"#8888cc"},
+          {key:"mailSecurity",label:"Mail Security Compliance",target:100,unit:"%",color:"#ef4444"},
+        ];
+
+        const metrics = isFedex?fedexMetrics:isAmazon?amazonMetrics:isLastMile?lastmileMetrics:uspsMetrics;
+        const segLabel = isFedex?"FedEx Ground":isAmazon?"Amazon DSP":isLastMile?"Last Mile / Lowe's":"USPS Contract";
+
+        // Get this week's scorecard entry
+        const thisWeek = scorecardData.find(s=>s.week===scorecardWeek)||{week:scorecardWeek};
+        const updateMetric = (key,val) => {
+          const existing = scorecardData.find(s=>s.week===scorecardWeek);
+          if(existing) {
+            setScorecardData(p=>p.map(s=>s.week===scorecardWeek?{...s,[key]:val}:s));
+          } else {
+            setScorecardData(p=>[{week:scorecardWeek,[key]:val},...p]);
+          }
+        };
+
+        const overallScore = metrics.reduce((sum,m)=>{
+          const val = parseFloat(thisWeek[m.key]||0);
+          const pct = m.unit==="%" ? val : Math.min((val/m.target)*100,100);
+          return sum + pct;
+        },0) / metrics.length;
+
+        return(
+        <div style={{flex:1,overflowY:"auto",padding:24}}>
+          <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+              <div>
+                <div style={{...S.section}}>{segLabel.toUpperCase()} SCORECARD</div>
+                <div style={{fontSize:11,color:"#555",marginTop:4}}>Track your weekly performance metrics. Enter your scores from your contractor portal.</div>
+              </div>
+              <div style={{textAlign:"center",background:"#141414",border:`1px solid ${accent}44`,borderRadius:8,padding:"12px 18px"}}>
+                <div style={{fontSize:32,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:overallScore>=95?"#22c55e":overallScore>=85?"#f59e0b":"#ef4444"}}>{isNaN(overallScore)?"-":overallScore.toFixed(0)}%</div>
+                <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Overall Score</div>
+              </div>
+            </div>
+
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+              <label style={{...S.label,marginBottom:0,whiteSpace:"nowrap"}}>Week of:</label>
+              <input type="date" value={scorecardWeek} onChange={e=>setScorecardWeek(e.target.value)} style={{...S.input,maxWidth:180}}/>
+            </div>
+
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12,marginBottom:24}}>
+              {metrics.map(m=>{
+                const val = thisWeek[m.key]||"";
+                const numVal = parseFloat(val||0);
+                const pct = m.unit==="%"?numVal:Math.min((numVal/m.target)*100,100);
+                const status = pct>=m.target?"#22c55e":pct>=(m.target-5)?"#f59e0b":"#ef4444";
+                return(
+                  <div key={m.key} style={{...S.card,borderTop:`3px solid ${m.color}`}}>
+                    <div style={{fontSize:11,color:"#888",marginBottom:8,lineHeight:1.4}}>{m.label}</div>
+                    {m.desc&&<div style={{fontSize:9,color:"#444",marginBottom:6}}>{m.desc}</div>}
+                    <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+                      <input type="number" value={val} onChange={e=>updateMetric(m.key,e.target.value)} placeholder={m.target.toString()} style={{...S.input,maxWidth:90}} min={0} max={m.unit==="%"?100:undefined}/>
+                      <div style={{fontSize:9,color:"#555"}}>{m.unit}</div>
+                      <div style={{marginLeft:"auto",fontSize:10,color:val?status:"#444",fontWeight:700}}>Target: {m.target}{m.unit}</div>
+                    </div>
+                    <div style={{height:4,background:"#1e1e1e",borderRadius:2}}>
+                      <div style={{height:"100%",width:`${Math.min(pct,100)}%`,background:val?status:m.color,borderRadius:2,transition:"width 0.3s"}}/>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Weekly history */}
+            {scorecardData.length>0&&(
+              <div style={S.card}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>Score History</div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {[...scorecardData].sort((a,b)=>new Date(b.week)-new Date(a.week)).slice(0,8).map(week=>{
+                    const weekAvg = metrics.reduce((sum,m)=>{
+                      const v=parseFloat(week[m.key]||0);
+                      return sum+(m.unit==="%"?v:Math.min((v/m.target)*100,100));
+                    },0)/metrics.length;
+                    return(
+                      <div key={week.week} style={{display:"flex",alignItems:"center",gap:12,padding:"6px 0",borderBottom:"1px solid #1a1a1a"}}>
+                        <div style={{fontSize:11,color:"#888",width:90,flexShrink:0}}>{fmtDate(week.week)}</div>
+                        <div style={{flex:1,height:6,background:"#1e1e1e",borderRadius:3}}>
+                          <div style={{height:"100%",width:`${Math.min(weekAvg,100)}%`,background:weekAvg>=95?"#22c55e":weekAvg>=85?"#f59e0b":"#ef4444",borderRadius:3}}/>
+                        </div>
+                        <div style={{fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:weekAvg>=95?"#22c55e":weekAvg>=85?"#f59e0b":"#ef4444",width:40,textAlign:"right"}}>{isNaN(weekAvg)?"-":weekAvg.toFixed(0)}%</div>
+                        <button onClick={()=>setScorecardData(p=>p.filter(s=>s.week!==week.week))} style={{background:"transparent",border:"none",color:"#333",cursor:"pointer",fontSize:11}}>✕</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Segment-specific tips */}
+            <div style={{marginTop:16,background:"#0a0a14",border:"1px solid #1a1a2a",borderRadius:6,padding:"14px 18px"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"#e8e4d8",marginBottom:10}}>{segLabel} Tips</div>
+              {isFedex&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• Pickup compliance is the most-watched FedEx metric — missing pickups triggers contractor reviews<br/>• Vehicle appearance inspections happen randomly — keep trucks clean and branded<br/>• Route completion below 99% for 3+ weeks can trigger ISP contract review<br/>• Log incidents in the Drivers → Incidents screen immediately — delays hurt your rating</div>}
+              {isAmazon&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• DART below 95% for 2 consecutive weeks flags your DSP for coaching<br/>• Mentor scores below 700 require mandatory retraining — check scores weekly<br/>• POD compliance dropped below 98% is the #1 reason DSPs lose packages<br/>• Keep a rescue driver on standby for unexpected driver callouts</div>}
+              {isLastMile&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• Always call ahead for large item deliveries (appliances, lumber) — it's contractually required<br/>• Log every delivery attempt with timestamp even if no one is home<br/>• Damage claims over 0.5% of stops triggers Lowe's contract review<br/>• White glove delivery requires two-person team — log both drivers</div>}
+              {isUsps&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• HCR routes must be completed regardless of volume — no partial days<br/>• Substitute drivers must be pre-approved by your postmaster before running routes<br/>• Vehicle inspection forms must be completed daily and kept 90 days<br/>• Mail security incidents must be reported within 1 hour — no exceptions</div>}
+            </div>
+          </div>
+        </div>
+        );
+      })()}
+
+      {screen==="fmcsa"&&(
+        <div style={{flex:1,overflowY:"auto",padding:24}}>
+          <div style={{maxWidth:700,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+            <div style={{...S.section,marginBottom:4}}>FMCSA CARRIER LOOKUP</div>
+            <p style={{fontSize:11,color:"#555",marginBottom:20,lineHeight:1.8}}>Enter your USDOT number to pull your carrier profile from the FMCSA SAFER database. Verify your authority status, safety rating, and auto-fill your company name.</p>
+            <div style={{...S.card,marginBottom:20,border:`1px solid ${accent}33`}}>
+              <label style={S.label}>USDOT Number</label>
+              <div style={{display:"flex",gap:10,marginBottom:8}}>
+                <input value={fmcsaDot} onChange={e=>setFmcsaDot(e.target.value.replace(/\D/g,""))} onKeyDown={e=>e.key==="Enter"&&lookupDOT()} placeholder="Enter your DOT number (numbers only)" style={{...S.input,flex:1}} maxLength={10}/>
+                <button className="hov" onClick={lookupDOT} style={{...S.btn,flexShrink:0}}>{fmcsaLoading?"Looking up...":"Lookup →"}</button>
+              </div>
+              <div style={{fontSize:10,color:"#444"}}>Your USDOT number is on your operating authority certificate and cab card. Find it at <a href="https://safer.fmcsa.dot.gov" target="_blank" rel="noreferrer" style={{color:accent}}>safer.fmcsa.dot.gov</a></div>
+            </div>
+            {fmcsaError&&<div style={{...S.card,background:"#1a0808",border:"1px solid #3a1010",color:"#f87171",fontSize:12,marginBottom:16}}>{fmcsaError}</div>}
+            {fmcsaLoading&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32,animation:"fadeUp 0.3s ease"}}>
+              <div style={{width:32,height:32,border:"3px solid #1e1e1e",borderTop:`3px solid ${accent}`,borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 12px"}}/>
+              Querying FMCSA SAFER database...
+              <div style={{fontSize:10,color:"#444",marginTop:8}}>This may take 5–10 seconds. FMCSA's servers can be slow.</div>
+            </div>}
+            {!fmcsaLoading&&!fmcsaResult&&!fmcsaError&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>Enter your USDOT number above and click Lookup → to pull your carrier profile from the FMCSA SAFER database.</div>}
+            {fmcsaResult&&(
+              <div style={{...S.card,border:`1px solid ${accent}33`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
+                  <div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#e8e4d8"}}>{fmcsaResult.legalName||"Unknown"}</div>
+                    {fmcsaResult.dbaName&&<div style={{fontSize:11,color:"#666"}}>DBA: {fmcsaResult.dbaName}</div>}
+                  </div>
+                  <div style={{background:fmcsaResult.opStatus?.toLowerCase().includes("authorized")?"#051a05":"#1a0808",border:`1px solid ${fmcsaResult.opStatus?.toLowerCase().includes("authorized")?"#22c55e44":"#ef444444"}`,borderRadius:6,padding:"6px 14px",textAlign:"center",flexShrink:0}}>
+                    <div style={{fontSize:11,color:fmcsaResult.opStatus?.toLowerCase().includes("authorized")?"#22c55e":"#ef4444",fontWeight:700}}>{fmcsaResult.opStatus||"Unknown"}</div>
+                    <div style={{fontSize:9,color:"#555"}}>Operating Status</div>
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:10,marginBottom:16}}>
+                  {[["USDOT #",fmcsaResult.dotNum],["MC/Docket #",fmcsaResult.mcNum||"—"],["Safety Rating",fmcsaResult.safetyRating||"Not Rated"],["Power Units",fmcsaResult.powerUnits||"—"],["Drivers",fmcsaResult.drivers||"—"],["Phone",fmcsaResult.phone||"—"]].map(([lbl,val])=>val&&(
+                    <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}>
+                      <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>{lbl}</div>
+                      <div style={{fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#c8c4bc"}}>{val}</div>
+                    </div>
+                  ))}
+                </div>
+                {fmcsaResult.address&&<div style={{fontSize:11,color:"#666",marginBottom:16}}>📍 {fmcsaResult.address}</div>}
+                <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                  <button className="hov" onClick={applyToSettings} style={{...S.btn,fontSize:11}}>Apply Company Name to Settings</button>
+                  <a href={`https://safer.fmcsa.dot.gov/query.asp?query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${fmcsaResult.dotNum}`} target="_blank" rel="noreferrer" style={{...S.ghost,textDecoration:"none",fontSize:11,padding:"10px 18px",display:"inline-block"}}>View Full FMCSA Profile ↗</a>
+                </div>
+              </div>
+            )}
+            <div style={{...S.card,marginTop:20,background:"#0a0f1a",border:"1px solid #1a1a3a"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8",marginBottom:10}}>FMCSA Forms Renewal Calendar</div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {[["MCS-150","Every 2 years from USDOT issuance date","Register/update at fmcsa.dot.gov/registration"],["UCR","Annual — renew by Dec 31 each year","Register at ucr.gov"],["IFTA","Quarterly filings + annual license renewal","File with your base state"],["IRP","Annual renewal","File with your base state DMV"],["Drug Clearinghouse","Annual query per driver","Login at clearinghouse.fmcsa.dot.gov"],["BOC-3","One-time, refile if agent changes","Use a registered process agent"],["Insurance (BMC-91)","Keep current — no lapse","Filed by your insurer to FMCSA"]].map(([form,freq,notes])=>(
+                  <div key={form} style={{display:"flex",gap:14,padding:"8px 0",borderBottom:"1px solid #1a1a2a"}}>
+                    <div style={{width:120,flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:accent}}>{form}</div>
+                    <div style={{flex:1}}><div style={{fontSize:11,color:"#c8c4bc"}}>{freq}</div><div style={{fontSize:10,color:"#444"}}>{notes}</div></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ FOOTER + BUG REPORT ════════════════════════════════════════ */}
+      {showBugReport&&(
+        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:500,padding:20}} onClick={()=>setShowBugReport(false)}>
+          <div style={{background:"#141414",border:"1px solid #2a2a2a",borderRadius:10,padding:"28px 32px",maxWidth:480,width:"100%"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#e8e4d8",marginBottom:4}}>Report a Bug / Contact</div>
+            <div style={{fontSize:11,color:"#555",marginBottom:16}}>Found something broken? Have a feature idea? Reach out directly.</div>
+            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
+              <div><label style={S.label}>Your Email (optional)</label><input value={bugForm.email} onChange={e=>setBugForm(p=>({...p,email:e.target.value}))} placeholder="so we can follow up" style={S.input}/></div>
+              <div><label style={S.label}>Subject</label><input value={bugForm.subject} onChange={e=>setBugForm(p=>({...p,subject:e.target.value}))} placeholder="Bug: ..., Feature request: ..." style={S.input}/></div>
+              <div><label style={S.label}>Description *</label><textarea value={bugForm.description} onChange={e=>setBugForm(p=>({...p,description:e.target.value}))} placeholder="Describe what happened, what screen you were on, and what you expected..." style={{...S.input,height:90,resize:"vertical"}}/></div>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <a href={`mailto:bostonrudi1993@gmail.com?subject=${encodeURIComponent(bugForm.subject||"ContractorOS Feedback")}&body=${encodeURIComponent((bugForm.email?"From: "+bugForm.email+"\n\n":"")+bugForm.description)}`} style={{...S.btn,textDecoration:"none",display:"inline-block",fontSize:12}} onClick={()=>setShowBugReport(false)}>Send Email →</a>
+              <button onClick={()=>setShowBugReport(false)} style={{...S.ghost,fontSize:11}}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clerk Org Profile Modal */}
+      {showOrgProfile&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.9)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:600,padding:20}} onClick={()=>setShowOrgProfile(false)}>
+          <div style={{maxWidth:860,width:"100%",maxHeight:"90vh",overflow:"auto",borderRadius:10}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8"}}>Manage Team</div>
+              <button onClick={()=>setShowOrgProfile(false)} style={{background:"transparent",border:"none",color:"#555",fontSize:22,cursor:"pointer"}}>✕</button>
+            </div>
+            <OrganizationProfile routing="virtual" appearance={{elements:{rootBox:{width:"100%"},card:{backgroundColor:"#141414",border:"1px solid #2a2a2a",boxShadow:"none"}}}}/>
+          </div>
+        </div>
+      )}
+
+      {/* Validation Toast */}
+      {validationMsg&&(
+        <div style={{position:"fixed",bottom:80,left:"50%",transform:"translateX(-50%)",background:"#1a0808",border:"1px solid #ef444466",color:"#f87171",padding:"10px 20px",borderRadius:6,fontSize:11,zIndex:600,animation:"fadeUp 0.2s ease",whiteSpace:"nowrap",fontFamily:"'DM Mono',monospace",letterSpacing:"0.05em"}}>
+          ⚠ {validationMsg}
+        </div>
+      )}
+
+      {/* App Footer */}
+      <div style={{flexShrink:0,borderTop:"2px solid #333",background:"#0d0d0d",padding:"16px 24px"}}>
+        <div style={{fontSize:10,color:"#ffffff",lineHeight:1.9,marginBottom:10}}>
+          © 2025–{new Date().getFullYear()} <strong>ContractorOS LLC</strong>. All rights reserved. ContractorOS LLC is a proprietary fleet management platform. Unauthorized reproduction, distribution, modification, or use of this software, its design, code, or content — in whole or in part — is strictly prohibited without express written permission. Built for independent contractors and fleet operators.
+        </div>
+        <div style={{display:"flex",gap:20,alignItems:"center"}}>
+          <button onClick={()=>setShowBugReport(true)} style={{background:"transparent",border:"1px solid #444",color:"#ffffff",fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em",padding:"4px 12px",borderRadius:4}}>Report a Bug</button>
+          <a href="mailto:bostonrudi1993@gmail.com" style={{color:"#ffffff",fontSize:10,textDecoration:"none",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em"}}>Contact Us</a>
+          <div style={{marginLeft:"auto",fontSize:9,color:"#555"}}>contractoroshub.com</div>
+        </div>
+      </div>
+
     </div>
   );
 };
-
 
 // ════════════════════════════════════════════════════════════════════════
 // ── Error Boundary ────────────────────────────────────────────────────────────
@@ -349,6 +608,7 @@ function ContractorOS() {
   const [segment, setSegment] = useState(() => { try { return localStorage.getItem("cos_segment_locked") || null; } catch { return null; } });
   const [onboardStep, setOnboardStep] = useState(0); // 0 = not started, 1-5 = steps, 6 = done
   const [onboardDismissed, setOnboardDismissed] = useState(() => { try { return localStorage.getItem("cos_onboard_done") === "1"; } catch { return false; } });
+
   const [compliance, setCompliance] = useState({trucks:[],drivers:[]});
   const [drivers, setDrivers] = useState([]);
 
@@ -474,23 +734,23 @@ function ContractorOS() {
   const [dispatches, setDispatches] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [hosLog, setHosLog] = useState([]);
-  // ── v20: FedEx-specific state ──
+  // ── v21: Amazon DSP state ──
   const [hiringCandidates, setHiringCandidates] = useState([]);
   const [hiringForm, setHiringForm] = useState({name:"",appliedDate:"",stage:"applied",cdlClass:"",cdlExpiry:"",backgroundCost:"",trainingCost:"",recruitingCost:"",notes:""});
   const [showHiringAdd, setShowHiringAdd] = useState(false);
-  const [safetyEvents, setSafetyEvents] = useState([]);
-  const [safetyForm, setSafetyForm] = useState({driverId:"",week:"",harshBraking:0,speeding:0,seatbelt:100,dashcamFlags:0,coachingNotes:""});
-  const [showSafetyAdd, setShowSafetyAdd] = useState(false);
-  const [stopCostLog, setStopCostLog] = useState([]);
-  const [stopCostForm, setStopCostForm] = useState({date:"",stops:"",fuelCost:"",driverWages:"",vehicleCost:"",revenue:""});
-  const [deliveryFailures, setDeliveryFailures] = useState([]);
-  const [failureForm, setFailureForm] = useState({date:"",driverId:"",routeName:"",failureCode:"",category:"driver_error",packageCount:"",notes:""});
-  const [showFailureAdd, setShowFailureAdd] = useState(false);
-  const [plView, setPlView] = useState("monthly");
+  const [driverReadiness, setDriverReadiness] = useState([]);
+  const [readinessDate, setReadinessDate] = useState(()=>new Date().toISOString().slice(0,10));
+  const [assetAssignments, setAssetAssignments] = useState([]);
+  const [assetForm, setAssetForm] = useState({driverId:"",vanId:"",rabbitId:"",fuelCardId:"",assignedAt:"",notes:""});
+  const [showAssetAdd, setShowAssetAdd] = useState(false);
+  const [dailySettlements, setDailySettlements] = useState([]);
+  const [settlementForm, setSettlementForm] = useState({date:"",amount:"",routes:"",packages:"",notes:""});
+  const [showSettlementAdd, setShowSettlementAdd] = useState(false);
+  const [settlementViewDate, setSettlementViewDate] = useState(()=>new Date().toISOString().slice(0,10));
   // New feature UI state
   const [payrollSub, setPayrollSub] = useState("runs");
   const [payrollShowAdd, setPayrollShowAdd] = useState(false);
-  const [payrollForm, setPayrollForm] = useState({driverId:"",periodStart:"",periodEnd:"",miles:"",hours:"",stops:"",days:"",loadRevenue:"",manualAmount:"",notes:"",stopsCompleted:"",stopBonusThreshold:"",stopBonusRate:"",overtimeHours:""});
+  const [payrollForm, setPayrollForm] = useState({driverId:"",periodStart:"",periodEnd:"",miles:"",hours:"",stops:"",days:"",loadRevenue:"",manualAmount:"",notes:"",ptoHours:"",routingVolume:""});
   const [payrollPreview, setPayrollPreview] = useState(null);
   const [payStub, setPayStub] = useState(null);
   const [fuelSub, setFuelSub] = useState("log");
@@ -531,7 +791,6 @@ function ContractorOS() {
   const [showBugReport, setShowBugReport] = useState(false);
   const [scorecardWeek, setScorecardWeek] = useState(() => new Date().toISOString().slice(0,10));
   const [scorecardData, setScorecardData] = useState(() => { try { return JSON.parse(localStorage.getItem("cos_scorecard")||"[]"); } catch { return []; } });
-  const [scorecardSub, setScorecardSub] = useState("metrics");
   const [bugForm, setBugForm] = useState({subject:"",description:"",email:""});
   const [incidentFollowUpId, setIncidentFollowUpId] = useState(null);
   const [validationMsg, setValidationMsg] = useState("");
@@ -554,7 +813,7 @@ function ContractorOS() {
         _routes, _contracts, _incidents, _brokers, _loads, _users, _currentUser,
         _notifications, _filings, _payroll, _fuelLog, _invoices, _odometer,
         _tires, _documents, _dispatches, _contacts, _hosLog,
-        _hiringCandidates, _safetyEvents, _stopCostLog, _deliveryFailures,
+        _hiringCandidates, _driverReadiness, _assetAssignments, _dailySettlements,
       ] = await Promise.all([
         db.get(D.compliance,  {trucks:[],drivers:[]}),
         db.get(D.vehicles,    []),
@@ -581,9 +840,9 @@ function ContractorOS() {
         db.get(D.contacts,    []),
         db.get(D.hosLog,      []),
         db.get(D.hiringCandidates, []),
-        db.get(D.safetyEvents,     []),
-        db.get(D.stopCostLog,      []),
-        db.get(D.deliveryFailures, []),
+        db.get(D.driverReadiness,  []),
+        db.get(D.assetAssignments, []),
+        db.get(D.dailySettlements, []),
       ]);
       if(cancelled) return;
       setCompliance(_compliance);
@@ -617,9 +876,9 @@ function ContractorOS() {
       setContacts(_contacts);
       setHosLog(_hosLog);
       setHiringCandidates(_hiringCandidates||[]);
-      setSafetyEvents(_safetyEvents||[]);
-      setStopCostLog(_stopCostLog||[]);
-      setDeliveryFailures(_deliveryFailures||[]);
+      setDriverReadiness(_driverReadiness||[]);
+      setAssetAssignments(_assetAssignments||[]);
+      setDailySettlements(_dailySettlements||[]);
       setDbLoaded(true);
     })();
     return ()=>{ cancelled=true; };
@@ -652,9 +911,9 @@ function ContractorOS() {
   useEffect(()=>{if(dbLoaded)db.set(KEYS.contacts,contacts);},[contacts,dbLoaded]);
   useEffect(()=>{if(dbLoaded)db.set(KEYS.hosLog,hosLog);},[hosLog,dbLoaded]);
   useEffect(()=>{if(dbLoaded)db.set(KEYS.hiringCandidates,hiringCandidates);},[hiringCandidates,dbLoaded]);
-  useEffect(()=>{if(dbLoaded)db.set(KEYS.safetyEvents,safetyEvents);},[safetyEvents,dbLoaded]);
-  useEffect(()=>{if(dbLoaded)db.set(KEYS.stopCostLog,stopCostLog);},[stopCostLog,dbLoaded]);
-  useEffect(()=>{if(dbLoaded)db.set(KEYS.deliveryFailures,deliveryFailures);},[deliveryFailures,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.driverReadiness,driverReadiness);},[driverReadiness,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.assetAssignments,assetAssignments);},[assetAssignments,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.dailySettlements,dailySettlements);},[dailySettlements,dbLoaded]);
 
   const seg = segment ? SEGMENTS[segment] : null;
   const S = seg ? mkStyles(seg.color) : mkStyles("#f59e0b");
@@ -1185,317 +1444,6 @@ function ContractorOS() {
     <div style={{minHeight:"100vh",background:"#0a0a0a",fontFamily:"'DM Mono','Courier New',monospace",color:"#d4d0c8",display:"flex",flexDirection:"column"}}>
       <EditModalComp modal={modal} editForm={editForm} setEditForm={setEditForm} saveEdit={saveEdit} closeModal={closeModal} accent={accent} S={S} MODAL_CONFIGS={MODAL_CONFIGS}/>
 
-      {/* ══ FMCSA LOOKUP ══════════════════════════════════════════════ */}
-      {/* ══ SCORECARD (FedEx/Amazon/LastMile) ══════════════════════ */}
-      {screen==="scorecard"&&(()=>{
-        const isFedex = segment==="fedex";
-        const isAmazon = segment==="amazon";
-        const isLastMile = segment==="lastmile";
-        const isUsps = segment==="usps";
-
-        // FedEx metrics
-        const fedexMetrics = [
-          {key:"pickupCompliance",label:"Pickup Compliance",target:99,unit:"%",color:"#f59e0b"},
-          {key:"deliveryCompliance",label:"Delivery Compliance",target:98,unit:"%",color:"#22c55e"},
-          {key:"packageHandling",label:"Package Handling",target:99,unit:"%",color:"#60a5fa"},
-          {key:"uniformCompliance",label:"Uniform / Vehicle Compliance",target:100,unit:"%",color:"#8888cc"},
-          {key:"onTimePickup",label:"On-Time Pickup",target:97,unit:"%",color:"#f59e0b"},
-          {key:"routeCompletion",label:"Route Completion Rate",target:99,unit:"%",color:"#22c55e"},
-        ];
-
-        // Amazon DSP metrics
-        const amazonMetrics = [
-          {key:"dart",label:"DART Score",target:98,unit:"%",color:"#f59e0b",desc:"Delivery Associate Reliability Today"},
-          {key:"dcr",label:"DCR — Delivery Completion Rate",target:99,unit:"%",color:"#22c55e"},
-          {key:"pod",label:"POD — Photo On Delivery",target:99,unit:"%",color:"#60a5fa"},
-          {key:"mentor",label:"Mentor Safety Score (avg)",target:800,unit:"pts",color:"#8888cc"},
-          {key:"contactCompliance",label:"Delivery Contact Compliance",target:97,unit:"%",color:"#f59e0b"},
-          {key:"attendanceRate",label:"Driver Attendance Rate",target:98,unit:"%",color:"#22c55e"},
-        ];
-
-        // Last Mile / Lowe's metrics
-        const lastmileMetrics = [
-          {key:"stopCompletion",label:"Stop Completion Rate",target:99,unit:"%",color:"#22c55e"},
-          {key:"onTimeDelivery",label:"On-Time Delivery",target:97,unit:"%",color:"#f59e0b"},
-          {key:"customerSatisfaction",label:"Customer Satisfaction (CSAT)",target:95,unit:"%",color:"#60a5fa"},
-          {key:"damageRate",label:"Damage-Free Rate",target:99,unit:"%",color:"#8888cc"},
-          {key:"signatureCapture",label:"Signature Capture Rate",target:98,unit:"%",color:"#f59e0b"},
-          {key:"callAhead",label:"Call-Ahead Compliance",target:95,unit:"%",color:"#22c55e"},
-        ];
-
-        // USPS metrics
-        const uspsMetrics = [
-          {key:"routeCompletion",label:"Route Completion Rate",target:100,unit:"%",color:"#22c55e"},
-          {key:"onTime",label:"On-Time Performance",target:97,unit:"%",color:"#f59e0b"},
-          {key:"vehicleInspection",label:"Vehicle Inspection Compliance",target:100,unit:"%",color:"#60a5fa"},
-          {key:"substituteAvail",label:"Substitute Driver Availability",target:90,unit:"%",color:"#8888cc"},
-          {key:"mailSecurity",label:"Mail Security Compliance",target:100,unit:"%",color:"#ef4444"},
-        ];
-
-        const metrics = isFedex?fedexMetrics:isAmazon?amazonMetrics:isLastMile?lastmileMetrics:uspsMetrics;
-        const segLabel = isFedex?"FedEx Ground":isAmazon?"Amazon DSP":isLastMile?"Last Mile / Lowe's":"USPS Contract";
-
-        // Get this week's scorecard entry
-        const thisWeek = scorecardData.find(s=>s.week===scorecardWeek)||{week:scorecardWeek};
-        const updateMetric = (key,val) => {
-          const existing = scorecardData.find(s=>s.week===scorecardWeek);
-          if(existing) {
-            setScorecardData(p=>p.map(s=>s.week===scorecardWeek?{...s,[key]:val}:s));
-          } else {
-            setScorecardData(p=>[{week:scorecardWeek,[key]:val},...p]);
-          }
-        };
-
-        const overallScore = metrics.reduce((sum,m)=>{
-          const val = parseFloat(thisWeek[m.key]||0);
-          const pct = m.unit==="%" ? val : Math.min((val/m.target)*100,100);
-          return sum + pct;
-        },0) / metrics.length;
-
-        return(
-        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          {isFedex&&<SubNavComp tabs={[["metrics","Metrics"],["safety","Safety"]]} active={scorecardSub} accent={accent} onSelect={setScorecardSub}/>}
-          <div style={{flex:1,overflowY:"auto",padding:24}}>
-          {(!isFedex||scorecardSub==="metrics")&&<div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
-              <div>
-                <div style={{...S.section}}>{segLabel.toUpperCase()} SCORECARD</div>
-                <div style={{fontSize:11,color:"#555",marginTop:4}}>Track your weekly performance metrics. Enter your scores from your contractor portal.</div>
-              </div>
-              <div style={{textAlign:"center",background:"#141414",border:`1px solid ${accent}44`,borderRadius:8,padding:"12px 18px"}}>
-                <div style={{fontSize:32,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:overallScore>=95?"#22c55e":overallScore>=85?"#f59e0b":"#ef4444"}}>{isNaN(overallScore)?"-":overallScore.toFixed(0)}%</div>
-                <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Overall Score</div>
-              </div>
-            </div>
-
-            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
-              <label style={{...S.label,marginBottom:0,whiteSpace:"nowrap"}}>Week of:</label>
-              <input type="date" value={scorecardWeek} onChange={e=>setScorecardWeek(e.target.value)} style={{...S.input,maxWidth:180}}/>
-            </div>
-
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12,marginBottom:24}}>
-              {metrics.map(m=>{
-                const val = thisWeek[m.key]||"";
-                const numVal = parseFloat(val||0);
-                const pct = m.unit==="%"?numVal:Math.min((numVal/m.target)*100,100);
-                const status = pct>=m.target?"#22c55e":pct>=(m.target-5)?"#f59e0b":"#ef4444";
-                return(
-                  <div key={m.key} style={{...S.card,borderTop:`3px solid ${m.color}`}}>
-                    <div style={{fontSize:11,color:"#888",marginBottom:8,lineHeight:1.4}}>{m.label}</div>
-                    {m.desc&&<div style={{fontSize:9,color:"#444",marginBottom:6}}>{m.desc}</div>}
-                    <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
-                      <input type="number" value={val} onChange={e=>updateMetric(m.key,e.target.value)} placeholder={m.target.toString()} style={{...S.input,maxWidth:90}} min={0} max={m.unit==="%"?100:undefined}/>
-                      <div style={{fontSize:9,color:"#555"}}>{m.unit}</div>
-                      <div style={{marginLeft:"auto",fontSize:10,color:val?status:"#444",fontWeight:700}}>Target: {m.target}{m.unit}</div>
-                    </div>
-                    <div style={{height:4,background:"#1e1e1e",borderRadius:2}}>
-                      <div style={{height:"100%",width:`${Math.min(pct,100)}%`,background:val?status:m.color,borderRadius:2,transition:"width 0.3s"}}/>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Weekly history */}
-            {scorecardData.length>0&&(
-              <div style={S.card}>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>Score History</div>
-                <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                  {[...scorecardData].sort((a,b)=>new Date(b.week)-new Date(a.week)).slice(0,8).map(week=>{
-                    const weekAvg = metrics.reduce((sum,m)=>{
-                      const v=parseFloat(week[m.key]||0);
-                      return sum+(m.unit==="%"?v:Math.min((v/m.target)*100,100));
-                    },0)/metrics.length;
-                    return(
-                      <div key={week.week} style={{display:"flex",alignItems:"center",gap:12,padding:"6px 0",borderBottom:"1px solid #1a1a1a"}}>
-                        <div style={{fontSize:11,color:"#888",width:90,flexShrink:0}}>{fmtDate(week.week)}</div>
-                        <div style={{flex:1,height:6,background:"#1e1e1e",borderRadius:3}}>
-                          <div style={{height:"100%",width:`${Math.min(weekAvg,100)}%`,background:weekAvg>=95?"#22c55e":weekAvg>=85?"#f59e0b":"#ef4444",borderRadius:3}}/>
-                        </div>
-                        <div style={{fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:weekAvg>=95?"#22c55e":weekAvg>=85?"#f59e0b":"#ef4444",width:40,textAlign:"right"}}>{isNaN(weekAvg)?"-":weekAvg.toFixed(0)}%</div>
-                        <button onClick={()=>setScorecardData(p=>p.filter(s=>s.week!==week.week))} style={{background:"transparent",border:"none",color:"#333",cursor:"pointer",fontSize:11}}>✕</button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Segment-specific tips */}
-            <div style={{marginTop:16,background:"#0a0a14",border:"1px solid #1a1a2a",borderRadius:6,padding:"14px 18px"}}>
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"#e8e4d8",marginBottom:10}}>{segLabel} Tips</div>
-              {isFedex&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• Pickup compliance is the most-watched FedEx metric — missing pickups triggers contractor reviews<br/>• Vehicle appearance inspections happen randomly — keep trucks clean and branded<br/>• Route completion below 99% for 3+ weeks can trigger ISP contract review<br/>• Log incidents in the Drivers → Incidents screen immediately — delays hurt your rating</div>}
-              {isAmazon&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• DART below 95% for 2 consecutive weeks flags your DSP for coaching<br/>• Mentor scores below 700 require mandatory retraining — check scores weekly<br/>• POD compliance dropped below 98% is the #1 reason DSPs lose packages<br/>• Keep a rescue driver on standby for unexpected driver callouts</div>}
-              {isLastMile&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• Always call ahead for large item deliveries (appliances, lumber) — it's contractually required<br/>• Log every delivery attempt with timestamp even if no one is home<br/>• Damage claims over 0.5% of stops triggers Lowe's contract review<br/>• White glove delivery requires two-person team — log both drivers</div>}
-              {isUsps&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• HCR routes must be completed regardless of volume — no partial days<br/>• Substitute drivers must be pre-approved by your postmaster before running routes<br/>• Vehicle inspection forms must be completed daily and kept 90 days<br/>• Mail security incidents must be reported within 1 hour — no exceptions</div>}
-            </div>
-          </div>}
-          {isFedex&&scorecardSub==="safety"&&(()=>{
-            const safetyColor=(val,thresholds,colors)=>{for(let i=0;i<thresholds.length;i++){if(val<=thresholds[i])return colors[i];}return colors[colors.length-1];};
-            return(
-            <div style={{maxWidth:900,margin:"0 auto",padding:24,animation:"fadeUp 0.3s ease"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-                <div style={{...S.section}}>SAFETY SCORECARD</div>
-                <button className="hov" onClick={()=>setShowSafetyAdd(!showSafetyAdd)} style={S.btn}>{showSafetyAdd?"Cancel":"+ Log Safety Week"}</button>
-              </div>
-              {showSafetyAdd&&(
-                <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                    <div><label style={S.label}>Driver</label><select value={safetyForm.driverId} onChange={e=>setSafetyForm(p=>({...p,driverId:e.target.value}))} style={S.input}><option value="">Select driver...</option>{(drivers||[]).map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
-                    <div><label style={S.label}>Week (date)</label><input type="date" value={safetyForm.week} onChange={e=>setSafetyForm(p=>({...p,week:e.target.value}))} style={S.input}/></div>
-                    <div><label style={S.label}>Harsh Braking Events</label><input type="number" value={safetyForm.harshBraking} onChange={e=>setSafetyForm(p=>({...p,harshBraking:e.target.value}))} style={S.input} min={0}/></div>
-                    <div><label style={S.label}>Speeding Events</label><input type="number" value={safetyForm.speeding} onChange={e=>setSafetyForm(p=>({...p,speeding:e.target.value}))} style={S.input} min={0}/></div>
-                    <div><label style={S.label}>Seatbelt %</label><input type="number" value={safetyForm.seatbelt} onChange={e=>setSafetyForm(p=>({...p,seatbelt:e.target.value}))} style={S.input} min={0} max={100}/></div>
-                    <div><label style={S.label}>Dashcam Flags</label><input type="number" value={safetyForm.dashcamFlags} onChange={e=>setSafetyForm(p=>({...p,dashcamFlags:e.target.value}))} style={S.input} min={0}/></div>
-                    <div style={{gridColumn:"1/-1"}}><label style={S.label}>Coaching Notes</label><input value={safetyForm.coachingNotes} onChange={e=>setSafetyForm(p=>({...p,coachingNotes:e.target.value}))} style={S.input}/></div>
-                  </div>
-                  <button className="hov" onClick={()=>{if(!safetyForm.driverId||!safetyForm.week){showValidation("Driver and week are required");return;}setSafetyEvents(p=>[...p,{...safetyForm,id:Date.now(),harshBraking:parseFloat(safetyForm.harshBraking||0),speeding:parseFloat(safetyForm.speeding||0),seatbelt:parseFloat(safetyForm.seatbelt||100),dashcamFlags:parseFloat(safetyForm.dashcamFlags||0)}]);setSafetyForm({driverId:"",week:"",harshBraking:0,speeding:0,seatbelt:100,dashcamFlags:0,coachingNotes:""});setShowSafetyAdd(false);}} style={{...S.btn,marginTop:14}}>Save</button>
-                </div>
-              )}
-              {/* Per-driver table */}
-              <div style={S.card}>
-                <div style={{fontSize:9,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:12}}>Driver Safety Table — Latest Week</div>
-                {(drivers||[]).length===0&&<div style={{color:"#555",fontSize:12,padding:20,textAlign:"center"}}>No drivers yet.</div>}
-                {(drivers||[]).map(d=>{
-                  const latestEvent=safetyEvents.filter(e=>String(e.driverId)===String(d.id)).sort((a,b)=>new Date(b.week)-new Date(a.week))[0];
-                  if(!latestEvent) return null;
-                  const hbColor=safetyColor(latestEvent.harshBraking,[3,6],["#22c55e","#f59e0b","#ef4444"]);
-                  const spColor=safetyColor(latestEvent.speeding,[2,4],["#22c55e","#f59e0b","#ef4444"]);
-                  const sbColor=latestEvent.seatbelt>98?"#22c55e":latestEvent.seatbelt>=95?"#f59e0b":"#ef4444";
-                  const dcColor=safetyColor(latestEvent.dashcamFlags,[0,2],["#22c55e","#f59e0b","#ef4444"]);
-                  const flagged=hbColor==="#ef4444"||spColor==="#ef4444"||sbColor==="#ef4444"||dcColor==="#ef4444";
-                  return(
-                    <div key={d.id} style={{borderLeft:`3px solid ${flagged?"#ef4444":accent}`,background:flagged?"#1a0808":"transparent",borderRadius:4,padding:"10px 14px",marginBottom:8}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                        {flagged&&<span style={{color:"#ef4444",fontSize:12}}>⚠</span>}
-                        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{d.name}</span>
-                        <span style={{fontSize:9,color:"#555"}}>Week: {latestEvent.week}</span>
-                      </div>
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-                        {[["Harsh Braking",latestEvent.harshBraking,hbColor],["Speeding",latestEvent.speeding,spColor],["Seatbelt %",latestEvent.seatbelt+"%",sbColor],["Dashcam Flags",latestEvent.dashcamFlags,dcColor]].map(([lbl,val,col])=>(
-                          <div key={lbl} style={{textAlign:"center"}}>
-                            <div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div>
-                            <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>{lbl}</div>
-                          </div>
-                        ))}
-                      </div>
-                      {latestEvent.coachingNotes&&<div style={{fontSize:10,color:"#888",marginTop:8,fontStyle:"italic"}}>📋 {latestEvent.coachingNotes}</div>}
-                    </div>
-                  );
-                })}
-              </div>
-              {/* Legend */}
-              <div style={{...S.card,marginTop:12}}>
-                <div style={{fontSize:9,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:8}}>FedEx Safety Thresholds</div>
-                {[["Harsh Braking","<3 = Good","3-6 = Warning","6+ = Alert"],["Speeding","<2 = Good","2-4 = Warning","4+ = Alert"],["Seatbelt %",">98% = Good","95-98% = Warning","<95% = Alert"],["Dashcam Flags","0 = Good","1-2 = Warning","3+ = Alert"]].map(([metric,...vals])=>(
-                  <div key={metric} style={{display:"flex",gap:12,padding:"4px 0",borderBottom:"1px solid #1a1a1a",alignItems:"center"}}>
-                    <span style={{fontSize:10,color:"#888",width:120,flexShrink:0}}>{metric}</span>
-                    {vals.map((v,i)=><span key={i} style={{fontSize:9,color:["#22c55e","#f59e0b","#ef4444"][i]}}>{v}</span>)}
-                  </div>
-                ))}
-              </div>
-            </div>
-            );
-          })()}
-          </div>
-        </div>
-        );
-      })()}
-
-      {screen==="fmcsa"&&(
-        <div style={{flex:1,overflowY:"auto",padding:24}}>
-          <div style={{maxWidth:700,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-            <div style={{...S.section,marginBottom:4}}>FMCSA CARRIER LOOKUP</div>
-            <p style={{fontSize:11,color:"#555",marginBottom:20,lineHeight:1.8}}>Enter your USDOT number to pull your carrier profile from the FMCSA SAFER database. Verify your authority status, safety rating, and auto-fill your company name.</p>
-            <div style={{...S.card,marginBottom:20,border:`1px solid ${accent}33`}}>
-              <label style={S.label}>USDOT Number</label>
-              <div style={{display:"flex",gap:10,marginBottom:8}}>
-                <input value={fmcsaDot} onChange={e=>setFmcsaDot(e.target.value.replace(/\D/g,""))} onKeyDown={e=>e.key==="Enter"&&lookupDOT()} placeholder="Enter your DOT number (numbers only)" style={{...S.input,flex:1}} maxLength={10}/>
-                <button className="hov" onClick={lookupDOT} style={{...S.btn,flexShrink:0}}>{fmcsaLoading?"Looking up...":"Lookup →"}</button>
-              </div>
-              <div style={{fontSize:10,color:"#444"}}>Your USDOT number is on your operating authority certificate and cab card. Find it at <a href="https://safer.fmcsa.dot.gov" target="_blank" rel="noreferrer" style={{color:accent}}>safer.fmcsa.dot.gov</a></div>
-            </div>
-            {fmcsaError&&<div style={{...S.card,background:"#1a0808",border:"1px solid #3a1010",color:"#f87171",fontSize:12,marginBottom:16}}>{fmcsaError}</div>}
-            {fmcsaLoading&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32,animation:"fadeUp 0.3s ease"}}>
-              <div style={{width:32,height:32,border:"3px solid #1e1e1e",borderTop:`3px solid ${accent}`,borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 12px"}}/>
-              Querying FMCSA SAFER database...
-              <div style={{fontSize:10,color:"#444",marginTop:8}}>This may take 5–10 seconds. FMCSA's servers can be slow.</div>
-            </div>}
-            {!fmcsaLoading&&!fmcsaResult&&!fmcsaError&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>Enter your USDOT number above and click Lookup → to pull your carrier profile from the FMCSA SAFER database.</div>}
-            {fmcsaResult&&(
-              <div style={{...S.card,border:`1px solid ${accent}33`}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
-                  <div>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#e8e4d8"}}>{fmcsaResult.legalName||"Unknown"}</div>
-                    {fmcsaResult.dbaName&&<div style={{fontSize:11,color:"#666"}}>DBA: {fmcsaResult.dbaName}</div>}
-                  </div>
-                  <div style={{background:fmcsaResult.opStatus?.toLowerCase().includes("authorized")?"#051a05":"#1a0808",border:`1px solid ${fmcsaResult.opStatus?.toLowerCase().includes("authorized")?"#22c55e44":"#ef444444"}`,borderRadius:6,padding:"6px 14px",textAlign:"center",flexShrink:0}}>
-                    <div style={{fontSize:11,color:fmcsaResult.opStatus?.toLowerCase().includes("authorized")?"#22c55e":"#ef4444",fontWeight:700}}>{fmcsaResult.opStatus||"Unknown"}</div>
-                    <div style={{fontSize:9,color:"#555"}}>Operating Status</div>
-                  </div>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:10,marginBottom:16}}>
-                  {[["USDOT #",fmcsaResult.dotNum],["MC/Docket #",fmcsaResult.mcNum||"—"],["Safety Rating",fmcsaResult.safetyRating||"Not Rated"],["Power Units",fmcsaResult.powerUnits||"—"],["Drivers",fmcsaResult.drivers||"—"],["Phone",fmcsaResult.phone||"—"]].map(([lbl,val])=>val&&(
-                    <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}>
-                      <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>{lbl}</div>
-                      <div style={{fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#c8c4bc"}}>{val}</div>
-                    </div>
-                  ))}
-                </div>
-                {fmcsaResult.address&&<div style={{fontSize:11,color:"#666",marginBottom:16}}>📍 {fmcsaResult.address}</div>}
-                <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                  <button className="hov" onClick={applyToSettings} style={{...S.btn,fontSize:11}}>Apply Company Name to Settings</button>
-                  <a href={`https://safer.fmcsa.dot.gov/query.asp?query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${fmcsaResult.dotNum}`} target="_blank" rel="noreferrer" style={{...S.ghost,textDecoration:"none",fontSize:11,padding:"10px 18px",display:"inline-block"}}>View Full FMCSA Profile ↗</a>
-                </div>
-              </div>
-            )}
-            <div style={{...S.card,marginTop:20,background:"#0a0f1a",border:"1px solid #1a1a3a"}}>
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8",marginBottom:10}}>FMCSA Forms Renewal Calendar</div>
-              <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                {[["MCS-150","Every 2 years from USDOT issuance date","Register/update at fmcsa.dot.gov/registration"],["UCR","Annual — renew by Dec 31 each year","Register at ucr.gov"],["IFTA","Quarterly filings + annual license renewal","File with your base state"],["IRP","Annual renewal","File with your base state DMV"],["Drug Clearinghouse","Annual query per driver","Login at clearinghouse.fmcsa.dot.gov"],["BOC-3","One-time, refile if agent changes","Use a registered process agent"],["Insurance (BMC-91)","Keep current — no lapse","Filed by your insurer to FMCSA"]].map(([form,freq,notes])=>(
-                  <div key={form} style={{display:"flex",gap:14,padding:"8px 0",borderBottom:"1px solid #1a1a2a"}}>
-                    <div style={{width:120,flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:accent}}>{form}</div>
-                    <div style={{flex:1}}><div style={{fontSize:11,color:"#c8c4bc"}}>{freq}</div><div style={{fontSize:10,color:"#444"}}>{notes}</div></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══ FOOTER + BUG REPORT ════════════════════════════════════════ */}
-      {showBugReport&&(
-        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:500,padding:20}} onClick={()=>setShowBugReport(false)}>
-          <div style={{background:"#141414",border:"1px solid #2a2a2a",borderRadius:10,padding:"28px 32px",maxWidth:480,width:"100%"}} onClick={e=>e.stopPropagation()}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#e8e4d8",marginBottom:4}}>Report a Bug / Contact</div>
-            <div style={{fontSize:11,color:"#555",marginBottom:16}}>Found something broken? Have a feature idea? Reach out directly.</div>
-            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
-              <div><label style={S.label}>Your Email (optional)</label><input value={bugForm.email} onChange={e=>setBugForm(p=>({...p,email:e.target.value}))} placeholder="so we can follow up" style={S.input}/></div>
-              <div><label style={S.label}>Subject</label><input value={bugForm.subject} onChange={e=>setBugForm(p=>({...p,subject:e.target.value}))} placeholder="Bug: ..., Feature request: ..." style={S.input}/></div>
-              <div><label style={S.label}>Description *</label><textarea value={bugForm.description} onChange={e=>setBugForm(p=>({...p,description:e.target.value}))} placeholder="Describe what happened, what screen you were on, and what you expected..." style={{...S.input,height:90,resize:"vertical"}}/></div>
-            </div>
-            <div style={{display:"flex",gap:10}}>
-              <a href={`mailto:bostonrudi1993@gmail.com?subject=${encodeURIComponent(bugForm.subject||"ContractorOS Feedback")}&body=${encodeURIComponent((bugForm.email?"From: "+bugForm.email+"\n\n":"")+bugForm.description)}`} style={{...S.btn,textDecoration:"none",display:"inline-block",fontSize:12}} onClick={()=>setShowBugReport(false)}>Send Email →</a>
-              <button onClick={()=>setShowBugReport(false)} style={{...S.ghost,fontSize:11}}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Clerk Org Profile Modal */}
-      {showOrgProfile&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.9)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:600,padding:20}} onClick={()=>setShowOrgProfile(false)}>
-          <div style={{maxWidth:860,width:"100%",maxHeight:"90vh",overflow:"auto",borderRadius:10}} onClick={e=>e.stopPropagation()}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8"}}>Manage Team</div>
-              <button onClick={()=>setShowOrgProfile(false)} style={{background:"transparent",border:"none",color:"#555",fontSize:22,cursor:"pointer"}}>✕</button>
-            </div>
-            <OrganizationProfile routing="virtual" appearance={{elements:{rootBox:{width:"100%"},card:{backgroundColor:"#141414",border:"1px solid #2a2a2a",boxShadow:"none"}}}}/>
-          </div>
-        </div>
-      )}
-
       {/* ══ ONBOARDING MODAL ════════════════════════════════════════ */}
       {onboardStep > 0 && onboardStep <= 5 && !onboardDismissed && (()=>{
         const steps = [
@@ -1624,11 +1572,8 @@ function ContractorOS() {
             <div style={{fontSize:8,color:"#444",letterSpacing:"0.15em",textTransform:"uppercase"}}>{seg.icon} {seg.label}</div>
           </div>
         </div>
-        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
           <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:16,color:"#e8e4d8",textTransform:"uppercase",letterSpacing:"0.08em"}}>{navLabels[screen]||screen}</span>
-          {user?.emailAddresses?.[0]?.emailAddress==="bostonrudi1993@gmail.com"&&(
-            <button onClick={()=>{setSegment(null);localStorage.removeItem("cos_segment_locked");}} style={{background:"transparent",border:"1px solid #f59e0b44",color:"#f59e0b",fontSize:9,padding:"2px 8px",borderRadius:3,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em",flexShrink:0}}>👑 SWITCH TYPE</button>
-          )}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
           {urgentItems.length>0&&<button onClick={()=>handleNav("compliance")} style={{background:"#1a0808",border:"1px solid #ef444433",color:"#ef4444",padding:"4px 10px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>🔴 {urgentItems.length}</button>}
@@ -1837,7 +1782,7 @@ function ContractorOS() {
       {/* ══ ROUTES (Non-OTR segments) ═══════════════════════════════════ */}
       {screen==="routes"&&(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["list","My Routes"],["add","Add Route"],["performance","Performance"],...(seg.id==="fedex"?[["failures","Failure Codes"]]:[] )]} active={subScreen||"list"} onSelect={setSubScreen}/>
+          <SubNav tabs={[["list","My Routes"],["add","Add Route"],["performance","Performance"]]} active={subScreen||"list"} onSelect={setSubScreen}/>
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             {(!subScreen||subScreen==="list")&&(
               <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -1937,66 +1882,6 @@ function ContractorOS() {
                 </div>}
               </div>
             )}
-            {subScreen==="failures"&&seg.id==="fedex"&&(()=>{
-              const now=new Date();
-              const weekAgo=new Date(now-7*86400000);
-              const twoWeeksAgo=new Date(now-14*86400000);
-              const thisWeekFails=deliveryFailures.filter(f=>new Date(f.date)>=weekAgo);
-              const lastWeekFails=deliveryFailures.filter(f=>new Date(f.date)>=twoWeeksAgo&&new Date(f.date)<weekAgo);
-              const catColors={driver_error:"#ef4444",volume_spike:"#f59e0b",route_issue:"#8888cc",vehicle_issue:"#f97316",customer_unavailable:"#22c55e",weather:"#60a5fa"};
-              const catLabels={driver_error:"Driver Error",volume_spike:"Volume Spike",route_issue:"Route Issue",vehicle_issue:"Vehicle Issue",customer_unavailable:"Customer Unavailable",weather:"Weather"};
-              const catCounts=deliveryFailures.reduce((acc,f)=>({...acc,[f.category]:(acc[f.category]||0)+1}),{});
-              const trend=thisWeekFails.length>lastWeekFails.length?"↑":thisWeekFails.length<lastWeekFails.length?"↓":"→";
-              const trendColor=thisWeekFails.length>lastWeekFails.length?"#ef4444":"#22c55e";
-              return(
-              <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-                  <div style={S.section}>FAILURE CODE TRACKER</div>
-                  <button className="hov" onClick={()=>setShowFailureAdd(!showFailureAdd)} style={S.btn}>{showFailureAdd?"Cancel":"+ Log Failure"}</button>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-                  <div style={S.card}><div style={{fontSize:28,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#ef4444"}}>{thisWeekFails.length} <span style={{fontSize:16,color:trendColor}}>{trend}</span></div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.15em",marginTop:4}}>This Week</div></div>
-                  <div style={S.card}><div style={{fontSize:28,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#888"}}>{lastWeekFails.length}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.15em",marginTop:4}}>Last Week</div></div>
-                </div>
-                {thisWeekFails.length>=3&&<div style={{background:"#1a0808",border:"1px solid #3a1010",borderRadius:6,padding:"10px 16px",marginBottom:16,color:"#ef4444",fontSize:12}}>⚠ Contract risk threshold reached — review failures with your FedEx station manager.</div>}
-                {showFailureAdd&&(
-                  <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                      <div><label style={S.label}>Date</label><input type="date" value={failureForm.date} onChange={e=>setFailureForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
-                      <div><label style={S.label}>Driver</label><select value={failureForm.driverId} onChange={e=>setFailureForm(p=>({...p,driverId:e.target.value}))} style={S.input}><option value="">Select driver...</option>{drivers.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
-                      <div><label style={S.label}>Route Name</label><input value={failureForm.routeName} onChange={e=>setFailureForm(p=>({...p,routeName:e.target.value}))} style={S.input}/></div>
-                      <div><label style={S.label}>Failure Code</label><input value={failureForm.failureCode} onChange={e=>setFailureForm(p=>({...p,failureCode:e.target.value}))} placeholder="e.g. P-010" style={S.input}/></div>
-                      <div><label style={S.label}>Category</label><select value={failureForm.category} onChange={e=>setFailureForm(p=>({...p,category:e.target.value}))} style={S.input}>{Object.entries(catLabels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></div>
-                      <div><label style={S.label}>Packages Affected</label><input type="number" value={failureForm.packageCount} onChange={e=>setFailureForm(p=>({...p,packageCount:e.target.value}))} style={S.input}/></div>
-                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={failureForm.notes} onChange={e=>setFailureForm(p=>({...p,notes:e.target.value}))} style={S.input}/></div>
-                    </div>
-                    <button className="hov" onClick={()=>{if(!failureForm.date){showValidation("Date is required");return;}const d=drivers.find(x=>String(x.id)===String(failureForm.driverId));setDeliveryFailures(p=>[{...failureForm,id:Date.now(),driverName:d?.name||"Unknown"},...p]);setFailureForm({date:"",driverId:"",routeName:"",failureCode:"",category:"driver_error",packageCount:"",notes:""});setShowFailureAdd(false);}} style={{...S.btn,marginTop:14}}>Save Failure</button>
-                  </div>
-                )}
-                <div style={S.card}>
-                  <div style={{fontSize:9,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:10}}>Root Cause Breakdown</div>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                    {Object.entries(catCounts).sort((a,b)=>b[1]-a[1]).map(([cat,count])=>(
-                      <span key={cat} style={{background:(catColors[cat]||"#555")+"22",border:`1px solid ${(catColors[cat]||"#555")}44`,color:catColors[cat]||"#888",padding:"4px 10px",borderRadius:4,fontSize:10}}>{catLabels[cat]||cat}: {count}</span>
-                    ))}
-                  </div>
-                </div>
-                <div style={{...S.card,marginTop:12}}>
-                  {[...deliveryFailures].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(f=>(
-                    <div key={f.id} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:"1px solid #1a1a1a"}}>
-                      <span style={{fontSize:10,color:"#888",width:80,flexShrink:0}}>{f.date}</span>
-                      <span style={{fontSize:10,color:"#c8c4bc"}}>{f.driverName||"—"}</span>
-                      <span style={{fontSize:10,color:"#555"}}>{f.routeName}</span>
-                      <span style={{fontSize:10,color:"#888",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{f.failureCode}</span>
-                      <span style={{fontSize:9,background:(catColors[f.category]||"#555")+"22",color:catColors[f.category]||"#888",padding:"2px 7px",borderRadius:3}}>{catLabels[f.category]||f.category}</span>
-                      {f.packageCount&&<span style={{fontSize:9,color:"#555"}}>{f.packageCount} pkgs</span>}
-                      <button onClick={()=>setDeliveryFailures(p=>p.filter(x=>x.id!==f.id))} style={{marginLeft:"auto",background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              );
-            })()}
           </div>
         </div>
       )}
@@ -2272,7 +2157,7 @@ function ContractorOS() {
       {/* ══ DRIVERS ════════════════════════════════════════════════════ */}
       {screen==="drivers"&&(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["list","All Drivers"],["scorecards","Scorecards"],["incidents","Incidents"],["onboarding","Onboarding"],["hos","HOS Log"],...(seg.id==="fedex"?[["hiring","Hiring Pipeline"]]:[] )]} active={subScreen||"list"} onSelect={setSubScreen}/>
+          <SubNav tabs={[["list","All Drivers"],["scorecards","Scorecards"],["incidents","Incidents"],["onboarding","Onboarding"],["hos","HOS Log"],...(seg.id==="amazon"?[["lifecycle","Lifecycle"]]:[] )]} active={subScreen||"list"} onSelect={setSubScreen}/>
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             {(!subScreen||subScreen==="list")&&(
               <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -2485,87 +2370,6 @@ function ContractorOS() {
         </div>
       )}
 
-            {subScreen==="hiring"&&seg.id==="fedex"&&(()=>{
-              const STAGES=["applied","interviewed","background_check","onboarding","active"];
-              const STAGE_LABELS={applied:"Applied",interviewed:"Interviewed",background_check:"Background Check",onboarding:"Onboarding",active:"Active"};
-              const stageCounts=STAGES.reduce((acc,s)=>({...acc,[s]:hiringCandidates.filter(c=>c.stage===s).length}),{});
-              const totalCost=c=>(parseFloat(c.backgroundCost||0)+parseFloat(c.trainingCost||0)+parseFloat(c.recruitingCost||0));
-              const activeCandidates=hiringCandidates.filter(c=>c.stage==="active");
-              const totalCostSum=activeCandidates.reduce((s,c)=>s+totalCost(c),0);
-              const avgCostPerHire=activeCandidates.length?totalCostSum/activeCandidates.length:0;
-              const daysSince=c=>c.appliedDate?Math.floor((Date.now()-new Date(c.appliedDate))/(86400000)):null;
-              const activeWithDays=activeCandidates.filter(c=>c.appliedDate);
-              const avgDaysToFill=activeWithDays.length?activeWithDays.reduce((s,c)=>s+daysSince(c),0)/activeWithDays.length:0;
-              const cdlColor=c=>{if(!c.cdlExpiry)return"#555";const d=daysUntil(c.cdlExpiry);return d<30?"#ef4444":d<90?"#f59e0b":"#22c55e";};
-              const nextStage=s=>{const i=STAGES.indexOf(s);return STAGES[Math.min(i+1,STAGES.length-1)];};
-              return(
-              <div style={{maxWidth:900,margin:"0 auto",padding:24,animation:"fadeUp 0.3s ease"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-                  <div style={S.section}>HIRING PIPELINE</div>
-                  <button className="hov" onClick={()=>setShowHiringAdd(!showHiringAdd)} style={S.btn}>{showHiringAdd?"Cancel":"+ Add Candidate"}</button>
-                </div>
-                {/* Pipeline visual */}
-                <div style={{display:"flex",gap:4,marginBottom:24,overflowX:"auto"}}>
-                  {STAGES.map((s,i)=>(
-                    <div key={s} style={{flex:1,minWidth:100,textAlign:"center",background:"#141414",border:"1px solid #222",borderTop:`3px solid ${accent}`,borderRadius:6,padding:"10px 8px"}}>
-                      <div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:accent}}>{stageCounts[s]||0}</div>
-                      <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",lineHeight:1.3}}>{STAGE_LABELS[s]}</div>
-                      {i<STAGES.length-1&&<div style={{fontSize:10,color:"#333",marginTop:4}}>→</div>}
-                    </div>
-                  ))}
-                </div>
-                {/* Summary stats */}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
-                  <div style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#22c55e"}}>{fmt$(avgCostPerHire)}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.15em",marginTop:4}}>Avg Cost Per Hire</div></div>
-                  <div style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:accent}}>{avgDaysToFill?avgDaysToFill.toFixed(0):"—"} days</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.15em",marginTop:4}}>Avg Days to Fill</div></div>
-                </div>
-                {showHiringAdd&&(
-                  <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Candidate Name *</label><input value={hiringForm.name} onChange={e=>setHiringForm(p=>({...p,name:e.target.value}))} style={S.input}/></div>
-                      <div><label style={S.label}>Applied Date</label><input type="date" value={hiringForm.appliedDate} onChange={e=>setHiringForm(p=>({...p,appliedDate:e.target.value}))} style={S.input}/></div>
-                      <div><label style={S.label}>Stage</label><select value={hiringForm.stage} onChange={e=>setHiringForm(p=>({...p,stage:e.target.value}))} style={S.input}>{STAGES.map(s=><option key={s} value={s}>{STAGE_LABELS[s]}</option>)}</select></div>
-                      <div><label style={S.label}>CDL Class</label><input value={hiringForm.cdlClass} onChange={e=>setHiringForm(p=>({...p,cdlClass:e.target.value}))} placeholder="A, B, C" style={S.input}/></div>
-                      <div><label style={S.label}>CDL Expiry</label><input type="date" value={hiringForm.cdlExpiry} onChange={e=>setHiringForm(p=>({...p,cdlExpiry:e.target.value}))} style={S.input}/></div>
-                      <div><label style={S.label}>Background Cost ($)</label><input type="number" value={hiringForm.backgroundCost} onChange={e=>setHiringForm(p=>({...p,backgroundCost:e.target.value}))} placeholder="0" style={S.input}/></div>
-                      <div><label style={S.label}>Training Cost ($)</label><input type="number" value={hiringForm.trainingCost} onChange={e=>setHiringForm(p=>({...p,trainingCost:e.target.value}))} placeholder="0" style={S.input}/></div>
-                      <div><label style={S.label}>Recruiting Cost ($)</label><input type="number" value={hiringForm.recruitingCost} onChange={e=>setHiringForm(p=>({...p,recruitingCost:e.target.value}))} placeholder="0" style={S.input}/></div>
-                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={hiringForm.notes} onChange={e=>setHiringForm(p=>({...p,notes:e.target.value}))} style={S.input}/></div>
-                    </div>
-                    <button className="hov" onClick={()=>{if(!hiringForm.name){showValidation("Name is required");return;}setHiringCandidates(p=>[...p,{...hiringForm,id:Date.now()}]);setHiringForm({name:"",appliedDate:"",stage:"applied",cdlClass:"",cdlExpiry:"",backgroundCost:"",trainingCost:"",recruitingCost:"",notes:""});setShowHiringAdd(false);}} style={{...S.btn,marginTop:14}}>Save Candidate</button>
-                  </div>
-                )}
-                {hiringCandidates.length===0&&!showHiringAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No candidates yet. Click "+ Add Candidate" to start tracking your pipeline.</div>}
-                {STAGES.map(stage=>{
-                  const cands=hiringCandidates.filter(c=>c.stage===stage);
-                  if(!cands.length) return null;
-                  return(
-                    <div key={stage} style={{marginBottom:20}}>
-                      <div style={{fontSize:10,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:8}}>{STAGE_LABELS[stage]} ({cands.length})</div>
-                      {cands.map(c=>(
-                        <div key={c.id} style={{...S.card,marginBottom:8,borderLeft:`3px solid ${accent}`}}>
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                            <div style={{flex:1}}>
-                              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8"}}>{c.name}</div>
-                              <div style={{fontSize:10,color:"#555",marginTop:2}}>CDL {c.cdlClass||"—"} · Applied {c.appliedDate||"—"} · {daysSince(c)!==null?`${daysSince(c)}d in pipeline`:"—"}</div>
-                              {c.cdlExpiry&&<span style={{fontSize:9,background:cdlColor(c)+"22",border:`1px solid ${cdlColor(c)}44`,color:cdlColor(c),padding:"1px 6px",borderRadius:3,marginTop:4,display:"inline-block"}}>CDL exp {c.cdlExpiry}</span>}
-                              <div style={{fontSize:10,color:"#22c55e",marginTop:4}}>Total cost: {fmt$(totalCost(c))}</div>
-                              {c.notes&&<div style={{fontSize:10,color:"#555",marginTop:2}}>{c.notes}</div>}
-                            </div>
-                            <div style={{display:"flex",gap:6,flexShrink:0}}>
-                              {c.stage!=="active"&&<button onClick={()=>setHiringCandidates(p=>p.map(x=>x.id===c.id?{...x,stage:nextStage(x.stage)}:x))} style={{...S.btn,fontSize:10,padding:"4px 10px"}}>Promote →</button>}
-                              <button onClick={()=>setHiringCandidates(p=>p.filter(x=>x.id!==c.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-              );
-            })()}
-
             {(subScreen==="onboarding"||subScreen==="hos")&&(()=>{
               const ONBOARDING_STEPS=[{id:"application",label:"Employment Application",req:true},{id:"background",label:"Background Check Ordered",req:true},{id:"background_clear",label:"Background Check — Cleared",req:true},{id:"pre_drug_test",label:"Pre-Employment Drug Test",req:true},{id:"drug_clear",label:"Drug Test — Negative Result",req:true},{id:"clearinghouse_query",label:"FMCSA Drug Clearinghouse Query",req:true},{id:"cdl_copy",label:"CDL Copy on File",req:true},{id:"medical_card",label:"Medical Card Copy on File",req:true},{id:"mvr",label:"MVR (Motor Vehicle Record) Pulled",req:true},{id:"driving_history_3yr",label:"3-Year Driving/Employment History Verified",req:true},{id:"orientation",label:"Orientation / Safety Training Completed",req:true},{id:"orientation_signed",label:"Orientation Sign-off Form Signed",req:true},{id:"i9",label:"I-9 Employment Eligibility",req:true},{id:"direct_deposit",label:"Direct Deposit / Pay Setup",req:false},{id:"uniform",label:"Uniform / Equipment Issued",req:false},{id:"eld_training",label:"ELD / HOS Training",req:false},{id:"handbook",label:"Company Handbook Acknowledged",req:false}];
               const toggleStep=(driverId,stepId)=>setDrivers(prev=>prev.map(d=>{if(String(d.id)!==String(driverId))return d;const checklist=d.onboarding||{};return{...d,onboarding:{...checklist,[stepId]:checklist[stepId]?null:new Date().toISOString().slice(0,10)}};}));
@@ -2663,11 +2467,106 @@ function ContractorOS() {
               </div>
               );
             })()}
+            {subScreen==="lifecycle"&&seg.id==="amazon"&&(()=>{
+              const STAGES=["applied","background_check","onboarding","active","terminated"];
+              const STAGE_LABELS={applied:"Applied",background_check:"Background Check",onboarding:"Onboarding",active:"Active",terminated:"Terminated"};
+              const STAGE_COLORS={applied:"#60a5fa",background_check:"#f59e0b",onboarding:"#8888cc",active:"#22c55e",terminated:"#ef4444"};
+              const stageCounts=STAGES.reduce((o,s)=>({...o,[s]:hiringCandidates.filter(c=>c.stage===s).length}),{});
+              const now=new Date();
+              const daysInStage=(c)=>{const d=c.stageDate?Math.floor((now-new Date(c.stageDate))/86400000):null;return d;};
+              const totalCost=(c)=>(parseFloat(c.backgroundCost||0)+parseFloat(c.trainingCost||0)+parseFloat(c.recruitingCost||0));
+              const activeDriversArr=drivers.filter(d=>d.status==="active");
+              const avgTenure=activeDriversArr.length>0?activeDriversArr.reduce((s,d)=>{if(!d.hireDate)return s;const months=Math.floor((now-new Date(d.hireDate))/(30.44*864e5));return s+months;},0)/activeDriversArr.length:0;
+              const thisYear=now.getFullYear();
+              const terminated=hiringCandidates.filter(c=>c.stage==="terminated"&&c.stageDate&&new Date(c.stageDate).getFullYear()===thisYear).length;
+              const avgHeadcount=Math.max(activeDriversArr.length,1);
+              const turnoverRate=((terminated/avgHeadcount)*100).toFixed(1);
+              const advanceStage=(id)=>{setHiringCandidates(p=>p.map(c=>{if(c.id!==id)return c;const idx=STAGES.indexOf(c.stage);const next=STAGES[Math.min(idx+1,STAGES.length-2)];return{...c,stage:next,stageDate:new Date().toISOString().slice(0,10)};}));};
+              return(
+              <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+                  <div><div style={S.section}>DRIVER LIFECYCLE</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Track candidates from application through active status. Monitor retention metrics.</div></div>
+                  <button className="hov" onClick={()=>setShowHiringAdd(!showHiringAdd)} style={S.btn}>{showHiringAdd?"Cancel":"+ Add Candidate"}</button>
+                </div>
+                {/* Stage pipeline */}
+                <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:20}}>
+                  {STAGES.map(s=>(
+                    <div key={s} style={{...S.card,textAlign:"center",borderTop:`3px solid ${STAGE_COLORS[s]}`}}>
+                      <div style={{fontSize:24,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:STAGE_COLORS[s]}}>{stageCounts[s]||0}</div>
+                      <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginTop:3}}>{STAGE_LABELS[s]}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Retention metrics */}
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:20}}>
+                  {[["Avg Tenure",`${avgTenure.toFixed(1)} mo`,"#22c55e"],["Turnover Rate",`${turnoverRate}%`,parseFloat(turnoverRate)>25?"#ef4444":"#f59e0b"],["Active Drivers",activeDriversArr.length.toString(),accent]].map(([lbl,val,col])=>(
+                    <div key={lbl} style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div><div style={{fontSize:9,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginTop:4}}>{lbl}</div></div>
+                  ))}
+                </div>
+                {showHiringAdd&&(
+                  <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>Add Candidate</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                      <div><label style={S.label}>Name *</label><input value={hiringForm.name} onChange={e=>setHiringForm(p=>({...p,name:e.target.value}))} placeholder="Candidate name" style={S.input}/></div>
+                      <div><label style={S.label}>Applied Date</label><input type="date" value={hiringForm.appliedDate} onChange={e=>setHiringForm(p=>({...p,appliedDate:e.target.value}))} style={S.input}/></div>
+                      <div><label style={S.label}>Stage</label><select value={hiringForm.stage} onChange={e=>setHiringForm(p=>({...p,stage:e.target.value}))} style={S.input}>{STAGES.filter(s=>s!=="terminated").map(s=><option key={s} value={s}>{STAGE_LABELS[s]}</option>)}</select></div>
+                      <div><label style={S.label}>CDL Required</label><select value={hiringForm.cdlClass} onChange={e=>setHiringForm(p=>({...p,cdlClass:e.target.value}))} style={S.input}><option value="">No CDL</option><option value="A">Class A</option><option value="B">Class B</option><option value="C">Class C</option></select></div>
+                      <div><label style={S.label}>CDL Expiry</label><input type="date" value={hiringForm.cdlExpiry} onChange={e=>setHiringForm(p=>({...p,cdlExpiry:e.target.value}))} style={S.input}/></div>
+                      <div><label style={S.label}>Background Check Cost ($)</label><input type="number" value={hiringForm.backgroundCost} onChange={e=>setHiringForm(p=>({...p,backgroundCost:e.target.value}))} placeholder="0" style={S.input}/></div>
+                      <div><label style={S.label}>Training Cost ($)</label><input type="number" value={hiringForm.trainingCost} onChange={e=>setHiringForm(p=>({...p,trainingCost:e.target.value}))} placeholder="0" style={S.input}/></div>
+                      <div><label style={S.label}>Recruiting Cost ($)</label><input type="number" value={hiringForm.recruitingCost} onChange={e=>setHiringForm(p=>({...p,recruitingCost:e.target.value}))} placeholder="0" style={S.input}/></div>
+                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><textarea value={hiringForm.notes} onChange={e=>setHiringForm(p=>({...p,notes:e.target.value}))} style={{...S.input,height:60,resize:"vertical"}}/></div>
+                    </div>
+                    <div style={{display:"flex",gap:10,marginTop:14}}>
+                      <button className="hov" onClick={()=>{if(!hiringForm.name){showValidation("Name is required");return;}setHiringCandidates(p=>[...p,{...hiringForm,id:Date.now(),stageDate:new Date().toISOString().slice(0,10)}]);setHiringForm({name:"",appliedDate:"",stage:"applied",cdlClass:"",cdlExpiry:"",backgroundCost:"",trainingCost:"",recruitingCost:"",notes:""});setShowHiringAdd(false);}} style={S.btn}>Save</button>
+                      <button onClick={()=>setShowHiringAdd(false)} style={S.ghost}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+                {/* Candidate list grouped by stage */}
+                {STAGES.map(stage=>{
+                  const stageCandidates=hiringCandidates.filter(c=>c.stage===stage);
+                  if(stageCandidates.length===0)return null;
+                  return(
+                    <div key={stage} style={{marginBottom:20}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:STAGE_COLORS[stage],marginBottom:8,letterSpacing:"0.05em",textTransform:"uppercase"}}>{STAGE_LABELS[stage]} ({stageCandidates.length})</div>
+                      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                        {stageCandidates.map(c=>{
+                          const days=daysInStage(c);
+                          const cost=totalCost(c);
+                          const cdlDays=c.cdlExpiry?daysUntil(c.cdlExpiry):null;
+                          return(
+                            <div key={c.id} style={{...S.card,borderLeft:`3px solid ${STAGE_COLORS[stage]}`}}>
+                              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                                <div>
+                                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8"}}>{c.name}</div>
+                                  <div style={{fontSize:10,color:"#555"}}>{c.appliedDate?`Applied ${fmtDate(c.appliedDate)}`:""}{days!==null?` · ${days}d in stage`:""}</div>
+                                </div>
+                                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                                  {c.stage==="active"&&c.cdlExpiry&&<span style={{fontSize:9,padding:"2px 7px",borderRadius:3,background:cdlDays!==null&&cdlDays<30?"#1a0808":cdlDays!==null&&cdlDays<90?"#1a1005":"#0a1a0a",color:cdlDays!==null&&cdlDays<30?"#ef4444":cdlDays!==null&&cdlDays<90?"#f59e0b":"#22c55e",border:`1px solid ${cdlDays!==null&&cdlDays<30?"#ef444444":cdlDays!==null&&cdlDays<90?"#f59e0b44":"#22c55e44"}`}}>CDL {cdlDays!==null?`${cdlDays}d`:"—"}</span>}
+                                  {cost>0&&<span style={{fontSize:10,color:"#ef4444"}}>{fmt$(cost)}</span>}
+                                  {stage!=="terminated"&&stage!=="active"&&<button onClick={()=>advanceStage(c.id)} style={{...S.btn,fontSize:9,padding:"3px 10px",background:"#22c55e"}}>Advance</button>}
+                                  <button onClick={()=>setHiringCandidates(p=>p.map(x=>x.id===c.id?{...x,stage:"terminated",stageDate:new Date().toISOString().slice(0,10)}:x))} style={{background:"transparent",border:"1px solid #ef444444",color:"#ef4444",cursor:"pointer",fontSize:9,padding:"3px 8px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Terminate</button>
+                                  <button onClick={()=>setHiringCandidates(p=>p.filter(x=>x.id!==c.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                                </div>
+                              </div>
+                              {c.notes&&<div style={{fontSize:10,color:"#555",fontStyle:"italic"}}>{c.notes}</div>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+                {hiringCandidates.length===0&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No candidates tracked yet. Click "Add Candidate" to start.</div>}
+              </div>
+              );
+            })()}
 
       {/* ══ FLEET / MAINTENANCE ════════════════════════════════════════ */}
       {screen==="fleet"&&(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["log","Maintenance Log"],["schedule","Upcoming Service"],["fuel","Fuel Log"],["odometer","Odometer / Miles"],["tires","Tires"]]} active={subScreen||"log"} onSelect={setSubScreen}/>
+          <SubNav tabs={[["log","Maintenance Log"],["schedule","Upcoming Service"],["fuel","Fuel Log"],["odometer","Odometer / Miles"],["tires","Tires"],...(seg.id==="amazon"?[["assets","Assets"]]:[] )]} active={subScreen||"log"} onSelect={setSubScreen}/>
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             {(!subScreen||subScreen==="log")&&(
               <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -2893,6 +2792,80 @@ function ContractorOS() {
                 </div>
               </div>
             )}
+            {subScreen==="assets"&&seg.id==="amazon"&&(()=>{
+              const activeDrivers=drivers.filter(d=>d.status==="active");
+              const currentAssignments=assetAssignments.filter(a=>!a.checkedOutAt);
+              const driversWithoutAssets=activeDrivers.filter(d=>!currentAssignments.find(a=>String(a.driverId)===String(d.id)));
+              return(
+              <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+                  <div><div style={S.section}>ASSET ALLOCATION</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Track van, Rabbit device, and fuel card assignments per driver.</div></div>
+                  <button className="hov" onClick={()=>setShowAssetAdd(!showAssetAdd)} style={S.btn}>{showAssetAdd?"Cancel":"+ Assign Assets"}</button>
+                </div>
+                {driversWithoutAssets.length>0&&(
+                  <div style={{...S.card,marginBottom:14,background:"#1a0808",border:"1px solid #3a1010"}}>
+                    <div style={{fontSize:10,color:"#f87171",marginBottom:6}}>⚠ Drivers without current asset assignment:</div>
+                    <div style={{fontSize:11,color:"#ef4444"}}>{driversWithoutAssets.map(d=>d.name).join(", ")}</div>
+                  </div>
+                )}
+                {showAssetAdd&&(
+                  <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>Assign Assets</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                      <div><label style={S.label}>Driver *</label><select value={assetForm.driverId} onChange={e=>setAssetForm(p=>({...p,driverId:e.target.value}))} style={S.input}><option value="">Select driver...</option>{activeDrivers.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
+                      <div><label style={S.label}>Van ID</label><input value={assetForm.vanId} onChange={e=>setAssetForm(p=>({...p,vanId:e.target.value}))} placeholder="Van unit #" style={S.input}/></div>
+                      <div><label style={S.label}>Rabbit Device ID</label><input value={assetForm.rabbitId} onChange={e=>setAssetForm(p=>({...p,rabbitId:e.target.value}))} placeholder="Rabbit device #" style={S.input}/></div>
+                      <div><label style={S.label}>Fuel Card ID</label><input value={assetForm.fuelCardId} onChange={e=>setAssetForm(p=>({...p,fuelCardId:e.target.value}))} placeholder="Fuel card #" style={S.input}/></div>
+                      <div><label style={S.label}>Assigned Date/Time</label><input type="datetime-local" value={assetForm.assignedAt} onChange={e=>setAssetForm(p=>({...p,assignedAt:e.target.value}))} style={S.input}/></div>
+                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={assetForm.notes} onChange={e=>setAssetForm(p=>({...p,notes:e.target.value}))} style={S.input}/></div>
+                    </div>
+                    <div style={{display:"flex",gap:10,marginTop:14}}>
+                      <button className="hov" onClick={()=>{if(!assetForm.driverId){showValidation("Driver is required");return;}const driver=drivers.find(d=>String(d.id)===String(assetForm.driverId));const entry={...assetForm,id:Date.now(),driverName:driver?.name||"",assignedAt:assetForm.assignedAt||new Date().toISOString()};setAssetAssignments(p=>[entry,...p]);setAssetForm({driverId:"",vanId:"",rabbitId:"",fuelCardId:"",assignedAt:"",notes:""});setShowAssetAdd(false);}} style={S.btn}>Save Assignment</button>
+                      <button onClick={()=>setShowAssetAdd(false)} style={S.ghost}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:10}}>Current Assignments</div>
+                {currentAssignments.length===0&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32,marginBottom:16}}>No active asset assignments.</div>}
+                <div style={{border:"1px solid #1e1e1e",borderRadius:8,overflow:"hidden",marginBottom:20}}>
+                  {currentAssignments.length>0&&(
+                    <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 1fr",background:"#0d0d0d",borderBottom:"1px solid #1e1e1e"}}>
+                      {["Driver","Van","Rabbit","Fuel Card","Assigned",""].map(h=>(<div key={h} style={{padding:"8px 12px",fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</div>))}
+                    </div>
+                  )}
+                  {currentAssignments.map(a=>(
+                    <div key={a.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 1fr",borderBottom:"1px solid #161616",alignItems:"center"}}>
+                      <div style={{padding:"10px 12px",fontSize:12,color:"#c8c4bc",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{a.driverName||drivers.find(d=>String(d.id)===String(a.driverId))?.name||"—"}</div>
+                      <div style={{padding:"10px 12px",fontSize:11,color:"#888"}}>{a.vanId||"—"}</div>
+                      <div style={{padding:"10px 12px",fontSize:11,color:"#888"}}>{a.rabbitId||"—"}</div>
+                      <div style={{padding:"10px 12px",fontSize:11,color:"#888"}}>{a.fuelCardId||"—"}</div>
+                      <div style={{padding:"10px 12px",fontSize:10,color:"#555"}}>{a.assignedAt?new Date(a.assignedAt).toLocaleDateString():"—"}</div>
+                      <div style={{padding:"6px 12px"}}><button onClick={()=>setAssetAssignments(p=>p.map(x=>x.id===a.id?{...x,checkedOutAt:new Date().toISOString()}:x))} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:9,padding:"3px 8px",borderRadius:3,fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap"}}>Check Out</button></div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:10}}>History (Last 20)</div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {[...assetAssignments].sort((a,b)=>new Date(b.assignedAt)-new Date(a.assignedAt)).slice(0,20).map(a=>(
+                    <div key={a.id} style={{...S.card,borderLeft:`3px solid ${a.checkedOutAt?"#555":accent}`,display:"flex",alignItems:"center",gap:12}}>
+                      <div style={{flex:1}}>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"#e8e4d8"}}>{a.driverName||drivers.find(d=>String(d.id)===String(a.driverId))?.name||"—"}</div>
+                        <div style={{fontSize:10,color:"#555"}}>Van: {a.vanId||"—"} · Rabbit: {a.rabbitId||"—"} · Fuel: {a.fuelCardId||"—"}</div>
+                        {a.notes&&<div style={{fontSize:10,color:"#444",fontStyle:"italic"}}>{a.notes}</div>}
+                      </div>
+                      <div style={{textAlign:"right",flexShrink:0}}>
+                        <div style={{fontSize:10,color:"#888"}}>{a.assignedAt?new Date(a.assignedAt).toLocaleDateString():"—"}</div>
+                        {a.checkedOutAt&&<div style={{fontSize:9,color:"#555"}}>Out: {new Date(a.checkedOutAt).toLocaleDateString()}</div>}
+                        <div style={{fontSize:9,color:a.checkedOutAt?"#555":accent,textTransform:"uppercase",letterSpacing:"0.1em"}}>{a.checkedOutAt?"Checked Out":"Active"}</div>
+                      </div>
+                      <button onClick={()=>setAssetAssignments(p=>p.filter(x=>x.id!==a.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                    </div>
+                  ))}
+                  {assetAssignments.length===0&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No assignment history yet.</div>}
+                </div>
+              </div>
+              );
+            })()}
 
 
       {/* ══ CONTRACTS ══════════════════════════════════════════════════ */}
@@ -2966,7 +2939,7 @@ function ContractorOS() {
       {/* ══ FINANCE ════════════════════════════════════════════════════ */}
       {screen==="finance"&&(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["pl","P&L Dashboard"],["revenue","Revenue"],["expenses","Expenses"],["import","Import from Excel/QB"],...(seg.id==="fedex"?[["costperstop","Cost Per Stop"]]:[] )]} active={subScreen||"pl"} onSelect={setSubScreen}/>
+          <SubNav tabs={[["pl","P&L Dashboard"],["revenue","Revenue"],["expenses","Expenses"],["import","Import from Excel/QB"],...(seg.id==="amazon"?[["daily","Daily P&L"]]:[] )]} active={subScreen||"pl"} onSelect={setSubScreen}/>
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             {(!subScreen||subScreen==="pl")&&(
               <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -3003,54 +2976,6 @@ function ContractorOS() {
                   <button className="hov" onClick={()=>setSubScreen("revenue")} style={S.btn}>+ Add Revenue</button>
                   <button className="hov" onClick={()=>setSubScreen("expenses")} style={{...S.btn,background:"#ef4444"}}>+ Add Expense</button>
                 </div>
-                {seg.id==="fedex"&&(()=>{
-                  const totalRev=revenue.reduce((s,r)=>s+parseFloat(r.amount||0),0);
-                  const catTotals={};
-                  expenses.forEach(e=>{const cat=e.category||"other";if(!catTotals[cat])catTotals[cat]=0;catTotals[cat]+=parseFloat(e.amount||0);});
-                  const highlight=["insurance","fuel","maintenance","driver_pay"];
-                  const pct=(v)=>totalRev>0?((v/totalRev)*100).toFixed(1):0;
-                  // Weekly vs Monthly toggle
-                  const groups={};
-                  const groupKey=(date)=>plView==="monthly"?date.slice(0,7):(()=>{const d=new Date(date);const mon=new Date(d);mon.setDate(d.getDate()-d.getDay());return mon.toISOString().slice(0,10);})();
-                  revenue.forEach(r=>{if(!r.date)return;const k=groupKey(r.date);if(!groups[k])groups[k]={rev:0,exp:0};groups[k].rev+=parseFloat(r.amount||0);});
-                  expenses.forEach(e=>{if(!e.date)return;const k=groupKey(e.date);if(!groups[k])groups[k]={rev:0,exp:0};groups[k].exp+=parseFloat(e.amount||0);});
-                  const sortedGroups=Object.entries(groups).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,8);
-                  return(
-                  <div style={{marginTop:20}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-                      <div style={{fontSize:10,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase"}}>FedEx Cost Breakdown</div>
-                      <div style={{display:"flex",gap:4}}>
-                        {["monthly","weekly"].map(v=><button key={v} onClick={()=>setPlView(v)} style={{background:plView===v?accent:"transparent",color:plView===v?"#0a0a0a":"#555",border:`1px solid ${plView===v?accent:"#2a2a2a"}`,borderRadius:4,padding:"4px 10px",fontSize:9,cursor:"pointer",fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{v}</button>)}
-                      </div>
-                    </div>
-                    <div style={S.card}>
-                      {sortedGroups.map(([k,d])=>{
-                        const net=d.rev-d.exp;
-                        return <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #1a1a1a"}}>
-                          <span style={{fontSize:10,color:"#888"}}>{k}</span>
-                          <div style={{display:"flex",gap:16}}>
-                            <span style={{fontSize:10,color:"#22c55e"}}>{fmt$(d.rev)}</span>
-                            <span style={{fontSize:10,color:"#ef4444"}}>{fmt$(d.exp)}</span>
-                            <span style={{fontSize:11,fontWeight:700,color:net>=0?"#22c55e":"#ef4444"}}>{fmt$(net)}</span>
-                          </div>
-                        </div>;
-                      })}
-                    </div>
-                    <div style={{...S.card,marginTop:12}}>
-                      <div style={{fontSize:9,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:10}}>Cost Category Breakdown (% of Revenue)</div>
-                      {Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>(
-                        <div key={cat} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:"1px solid #1a1a1a"}}>
-                          <span style={{fontSize:10,color:highlight.includes(cat)?accent:"#888",textTransform:"uppercase",letterSpacing:"0.08em"}}>{cat.replace(/_/g," ")}{highlight.includes(cat)?" ★":""}</span>
-                          <div style={{display:"flex",gap:12}}>
-                            <span style={{fontSize:10,color:"#555"}}>{fmt$(amt)}</span>
-                            <span style={{fontSize:10,fontWeight:700,color:parseFloat(pct(amt))>30?"#ef4444":"#22c55e"}}>{pct(amt)}%</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  );
-                })()}
               </div>
             )}
 
@@ -3254,73 +3179,95 @@ function ContractorOS() {
                 </div>
               </div>
             )}
-            {subScreen==="costperstop"&&seg.id==="fedex"&&(()=>{
-              const entries=[...stopCostLog].sort((a,b)=>new Date(b.date)-new Date(a.date));
-              const calcEntry=e=>{
-                const stops=parseFloat(e.stops||1);
-                const totalCost=parseFloat(e.fuelCost||0)+parseFloat(e.driverWages||0)+parseFloat(e.vehicleCost||0);
-                const rev=parseFloat(e.revenue||0);
-                const cps=stops>0?totalCost/stops:0;
-                const rps=stops>0?rev/stops:0;
-                const nps=rps-cps;
-                const margin=rev>0?((nps/rps)*100):0;
-                return{totalCost,rev,cps,rps,nps,margin};
-              };
-              const avgCPS=entries.length?entries.reduce((s,e)=>s+calcEntry(e).cps,0)/entries.length:0;
-              const avgRPS=entries.length?entries.reduce((s,e)=>s+calcEntry(e).rps,0)/entries.length:0;
-              const avgNPS=avgRPS-avgCPS;
-              // weekly rollup
-              const weeks={};
-              entries.forEach(e=>{const d=new Date(e.date);const mon=new Date(d);mon.setDate(d.getDate()-d.getDay());const k=mon.toISOString().slice(0,10);if(!weeks[k])weeks[k]=[];weeks[k].push(e);});
-              const weekKeys=Object.keys(weeks).sort((a,b)=>b.localeCompare(a));
-              const weekAvg=(key)=>{const es=weeks[key];const avg=es.reduce((s,e)=>s+calcEntry(e).nps,0)/es.length;return avg;};
-              const latestEntry=entries[0];
-              const latestCalc=latestEntry?calcEntry(latestEntry):null;
+            {subScreen==="daily"&&seg.id==="amazon"&&(()=>{
+              const sel=dailySettlements.find(s=>s.date===settlementViewDate)||null;
+              const settlement=parseFloat(sel?.amount||0);
+              const routes=parseFloat(sel?.routes||0);
+              const packages=parseFloat(sel?.packages||0);
+              const laborCost=payroll.filter(r=>r.periodStart===settlementViewDate||r.date===settlementViewDate).reduce((s,r)=>s+r.gross,0);
+              const fuelCostDay=fuelLog.filter(f=>f.date===settlementViewDate).reduce((s,f)=>s+parseFloat(f.totalCost||0),0);
+              const damageCost=expenses.filter(e=>e.date===settlementViewDate&&(e.category==="maintenance"||e.category==="repairs")).reduce((s,e)=>s+parseFloat(e.amount||0),0);
+              const totalCosts=laborCost+fuelCostDay+damageCost;
+              const netMargin=settlement-totalCosts;
+              const marginPct=settlement>0?(netMargin/settlement)*100:0;
+              const marginColor=marginPct>15?"#22c55e":marginPct>=5?"#f59e0b":"#ef4444";
+              const costPerRoute=routes>0?totalCosts/routes:0;
+              const costPerPackage=packages>0?totalCosts/packages:0;
               return(
               <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                <div style={{...S.section,marginBottom:20}}>COST PER STOP</div>
-                {latestCalc&&latestCalc.cps>latestCalc.rps&&<div style={{background:"#1a0808",border:"1px solid #3a1010",borderRadius:6,padding:"10px 16px",marginBottom:16,color:"#ef4444",fontSize:12}}>⚠ Alert: Latest day's cost-per-stop exceeds revenue-per-stop. Review expenses immediately.</div>}
-                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
-                  {[["Avg Cost/Stop",fmt$(avgCPS),"#ef4444"],["Avg Rev/Stop",fmt$(avgRPS),"#22c55e"],["Avg Net/Stop",fmt$(avgNPS),avgNPS>=0?"#22c55e":"#ef4444"],["Days Logged",entries.length.toString(),accent]].map(([lbl,val,col])=>(
-                    <div key={lbl} style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.15em",marginTop:4}}>{lbl}</div></div>
-                  ))}
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+                  <div style={S.section}>DAILY P&L DASHBOARD</div>
+                  <button className="hov" onClick={()=>setShowSettlementAdd(!showSettlementAdd)} style={S.btn}>{showSettlementAdd?"Cancel":"+ Log Settlement"}</button>
                 </div>
-                <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
-                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>Log Day</div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                    <div><label style={S.label}>Date</label><input type="date" value={stopCostForm.date} onChange={e=>setStopCostForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
-                    <div><label style={S.label}>Stops Completed</label><input type="number" value={stopCostForm.stops} onChange={e=>setStopCostForm(p=>({...p,stops:e.target.value}))} style={S.input}/></div>
-                    <div><label style={S.label}>Fuel Cost ($)</label><input type="number" value={stopCostForm.fuelCost} onChange={e=>setStopCostForm(p=>({...p,fuelCost:e.target.value}))} style={S.input}/></div>
-                    <div><label style={S.label}>Driver Wages ($)</label><input type="number" value={stopCostForm.driverWages} onChange={e=>setStopCostForm(p=>({...p,driverWages:e.target.value}))} style={S.input}/></div>
-                    <div><label style={S.label}>Vehicle Cost ($)</label><input type="number" value={stopCostForm.vehicleCost} onChange={e=>setStopCostForm(p=>({...p,vehicleCost:e.target.value}))} style={S.input}/></div>
-                    <div><label style={S.label}>Revenue ($)</label><input type="number" value={stopCostForm.revenue} onChange={e=>setStopCostForm(p=>({...p,revenue:e.target.value}))} style={S.input}/></div>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+                  <label style={{...S.label,marginBottom:0}}>View date:</label>
+                  <input type="date" value={settlementViewDate} onChange={e=>setSettlementViewDate(e.target.value)} style={{...S.input,maxWidth:180}}/>
+                </div>
+                {showSettlementAdd&&(
+                  <div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>Log Settlement</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                      <div><label style={S.label}>Date *</label><input type="date" value={settlementForm.date} onChange={e=>setSettlementForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
+                      <div><label style={S.label}>Amazon Settlement Amount ($)</label><input type="number" value={settlementForm.amount} onChange={e=>setSettlementForm(p=>({...p,amount:e.target.value}))} placeholder="0.00" style={S.input}/></div>
+                      <div><label style={S.label}>Routes Completed</label><input type="number" value={settlementForm.routes} onChange={e=>setSettlementForm(p=>({...p,routes:e.target.value}))} placeholder="0" style={S.input}/></div>
+                      <div><label style={S.label}>Packages Delivered</label><input type="number" value={settlementForm.packages} onChange={e=>setSettlementForm(p=>({...p,packages:e.target.value}))} placeholder="0" style={S.input}/></div>
+                      <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={settlementForm.notes} onChange={e=>setSettlementForm(p=>({...p,notes:e.target.value}))} style={S.input}/></div>
+                    </div>
+                    <div style={{display:"flex",gap:10,marginTop:14}}>
+                      <button className="hov" onClick={()=>{if(!settlementForm.date||!settlementForm.amount){showValidation("Date and amount are required");return;}const entry={...settlementForm,id:Date.now(),amount:parseFloat(settlementForm.amount),routes:parseFloat(settlementForm.routes||0),packages:parseFloat(settlementForm.packages||0)};setDailySettlements(p=>[entry,...p.filter(s=>s.date!==settlementForm.date)]);setSettlementViewDate(settlementForm.date);setSettlementForm({date:"",amount:"",routes:"",packages:"",notes:""});setShowSettlementAdd(false);}} style={S.btn}>Save</button>
+                      <button onClick={()=>setShowSettlementAdd(false)} style={S.ghost}>Cancel</button>
+                    </div>
                   </div>
-                  <button className="hov" onClick={()=>{if(!stopCostForm.date||!stopCostForm.stops){showValidation("Date and stops are required");return;}setStopCostLog(p=>[...p,{...stopCostForm,id:Date.now()}]);setStopCostForm({date:"",stops:"",fuelCost:"",driverWages:"",vehicleCost:"",revenue:""});}} style={{...S.btn,marginTop:14}}>Save Day</button>
+                )}
+                {sel?(
+                  <div style={{...S.card,marginBottom:20,border:`1px solid ${marginColor}44`,borderTop:`3px solid ${marginColor}`}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:14}}>P&L for {fmtDate(settlementViewDate)}</div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:14}}>
+                      {[["Amazon Settlement",fmt$(settlement),"#22c55e"],["Driver Labor",fmt$(laborCost),"#ef4444"],["Fuel Cost",fmt$(fuelCostDay),"#f59e0b"],["Damage/Repairs",fmt$(damageCost),"#ef4444"]].map(([lbl,val,col])=>(
+                        <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"10px 12px"}}>
+                          <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>{lbl}</div>
+                          <div style={{fontSize:18,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{val}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{background:"#0a0a0a",border:`1px solid ${marginColor}33`,borderRadius:6,padding:"14px 18px",marginBottom:12}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                        <div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Net Margin</div><div style={{fontSize:28,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:marginColor}}>{fmt$(netMargin)}</div></div>
+                        <div style={{textAlign:"right"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Margin %</div><div style={{fontSize:28,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:marginColor}}>{marginPct.toFixed(1)}%</div></div>
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
+                        {[["Cost Per Route",costPerRoute>0?fmt$(costPerRoute):"—"],["Cost Per Package",costPerPackage>0?fmt$(costPerPackage):"—"]].map(([lbl,val])=>(
+                          <div key={lbl}><div style={{fontSize:9,color:"#555",marginBottom:2}}>{lbl}</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#888"}}>{val}</div></div>
+                        ))}
+                      </div>
+                    </div>
+                    {sel.notes&&<div style={{fontSize:11,color:"#555",fontStyle:"italic"}}>Notes: {sel.notes}</div>}
+                  </div>
+                ):(
+                  <div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40,marginBottom:20}}>No settlement logged for {fmtDate(settlementViewDate)}. Click "Log Settlement" to add one.</div>
+                )}
+                <div style={S.section}>Last 14 Days</div>
+                <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:8}}>
+                  {[...dailySettlements].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,14).map(s=>{
+                    const sLaborCost=payroll.filter(r=>r.periodStart===s.date||r.date===s.date).reduce((t,r)=>t+r.gross,0);
+                    const sFuelCost=fuelLog.filter(f=>f.date===s.date).reduce((t,f)=>t+parseFloat(f.totalCost||0),0);
+                    const sDamage=expenses.filter(e=>e.date===s.date&&(e.category==="maintenance"||e.category==="repairs")).reduce((t,e)=>t+parseFloat(e.amount||0),0);
+                    const sNet=s.amount-(sLaborCost+sFuelCost+sDamage);
+                    const sPct=s.amount>0?(sNet/s.amount)*100:0;
+                    const sColor=sPct>15?"#22c55e":sPct>=5?"#f59e0b":"#ef4444";
+                    return(
+                      <div key={s.id} style={{...S.card,borderLeft:`3px solid ${sColor}`,display:"flex",alignItems:"center",gap:12}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"#e8e4d8"}}>{fmtDate(s.date)}</div>
+                          <div style={{fontSize:10,color:"#555"}}>{s.routes>0?`${s.routes} routes · `:""}{s.packages>0?`${s.packages} pkgs`:""}</div>
+                        </div>
+                        <div style={{textAlign:"right"}}><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e"}}>{fmt$(s.amount)}</div><div style={{fontSize:10,color:sColor}}>Net {fmt$(sNet)} ({sPct.toFixed(0)}%)</div></div>
+                        <button onClick={()=>setDailySettlements(p=>p.filter(x=>x.id!==s.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                      </div>
+                    );
+                  })}
+                  {dailySettlements.length===0&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No settlements logged yet.</div>}
                 </div>
-                {entries.length>0&&<div style={S.card}>
-                  <div style={{fontSize:9,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:10}}>Day-by-Day Log</div>
-                  {entries.map(e=>{const c=calcEntry(e);return(
-                    <div key={e.id} style={{display:"flex",gap:12,padding:"7px 0",borderBottom:"1px solid #1a1a1a",alignItems:"center"}}>
-                      <span style={{fontSize:10,color:"#888",width:90,flexShrink:0}}>{e.date}</span>
-                      <span style={{fontSize:10,color:"#555"}}>{e.stops} stops</span>
-                      <span style={{fontSize:10,color:"#ef4444"}}>{fmt$(c.cps)}/stop cost</span>
-                      <span style={{fontSize:10,color:"#22c55e"}}>{fmt$(c.rps)}/stop rev</span>
-                      <span style={{fontSize:11,fontWeight:700,color:c.nps>=0?"#22c55e":"#ef4444"}}>{fmt$(c.nps)} net</span>
-                      <span style={{fontSize:9,color:"#555"}}>{c.margin.toFixed(1)}%</span>
-                      {c.cps>c.rps&&<span style={{fontSize:9,background:"#ef444422",color:"#ef4444",padding:"1px 6px",borderRadius:3}}>⚠ LOSS</span>}
-                      <button onClick={()=>setStopCostLog(p=>p.filter(x=>x.id!==e.id))} style={{marginLeft:"auto",background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
-                    </div>
-                  );})}
-                </div>}
-                {weekKeys.length>1&&<div style={{...S.card,marginTop:12}}>
-                  <div style={{fontSize:9,color:"#555",letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:10}}>Weekly Trend</div>
-                  {weekKeys.slice(0,4).map((k,i)=>{const avg=weekAvg(k);const prev=i<weekKeys.length-1?weekAvg(weekKeys[i+1]):null;const trend=prev!==null?(avg>prev?"↑":"↓"):"";const trendColor=avg>0?"#22c55e":"#ef4444";return(
-                    <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #1a1a1a"}}>
-                      <span style={{fontSize:10,color:"#888"}}>Week of {k}</span>
-                      <span style={{fontSize:11,fontWeight:700,color:trendColor}}>{fmt$(avg)} net/stop {trend&&<span style={{color:trendColor}}>{trend}</span>}</span>
-                    </div>
-                  );})}
-                </div>}
               </div>
               );
             })()}
@@ -3932,19 +3879,8 @@ function ContractorOS() {
 
       {/* ══ PAYROLL ════════════════════════════════════════════════════ */}
       {screen==="payroll"&&(()=>{
-        const retentionMonths=(d)=>d.hireDate?Math.floor((Date.now()-new Date(d.hireDate))/(30.44*864e5)):null;
         const calcRunPay=(driver,form)=>{const rate=parseFloat(driver.payRate||0);let gross=0,breakdown="";switch(driver.payType){case"per_mile":gross=rate*parseFloat(form.miles||0);breakdown=`${form.miles} mi × $${rate}/mi`;break;case"hourly":gross=rate*parseFloat(form.hours||0);breakdown=`${form.hours} hrs × $${rate}/hr`;break;case"percentage":gross=(rate/100)*parseFloat(form.loadRevenue||0);breakdown=`${rate}% of $${form.loadRevenue}`;break;case"salary":gross=rate/52;breakdown=`$${rate}/yr ÷ 52 weeks`;break;case"per_stop":gross=rate*parseFloat(form.stops||0);breakdown=`${form.stops} stops × $${rate}/stop`;break;case"per_day":gross=rate*parseFloat(form.days||0);breakdown=`${form.days} days × $${rate}/day`;break;default:gross=parseFloat(form.manualAmount||0);breakdown="Manual entry";}
-          // FedEx W-2 enhancements
-          if(seg.id==="fedex"){
-            const stopsCompleted=parseFloat(form.stopsCompleted||0);
-            const threshold=parseFloat(form.stopBonusThreshold||0);
-            const bonusRate=parseFloat(form.stopBonusRate||0);
-            const overtimeHours=parseFloat(form.overtimeHours||0);
-            const stopBonus=Math.max(0,stopsCompleted-threshold)*bonusRate;
-            const overtimePay=overtimeHours*(rate*1.5);
-            if(stopBonus>0){gross+=stopBonus;breakdown+=` + Stop Bonus ${fmt$(stopBonus)}`;}
-            if(overtimePay>0){gross+=overtimePay;breakdown+=` + OT ${fmt$(overtimePay)}`;}
-          }
+          if(seg.id==="amazon"&&driver.payType==="per_stop"){const ptoHrs=parseFloat(form.ptoHours||0);const hourlyEquiv=rate*parseFloat(form.stops||1)/Math.max(parseFloat(form.hours||8),1);const ptoPay=ptoHrs*hourlyEquiv;if(ptoPay>0){gross+=ptoPay;breakdown+=` + PTO ${fmt$(ptoPay)}`;}}
           return{gross:parseFloat(gross.toFixed(2)),breakdown};};
         const totalUnpaid=payroll.filter(r=>r.status==="unpaid").reduce((s,r)=>s+r.gross,0);
         const totalPaid=payroll.filter(r=>r.status==="paid").reduce((s,r)=>s+r.gross,0);
@@ -3953,7 +3889,7 @@ function ContractorOS() {
         const extraFields=selDriver?(PAY_FIELDS[selDriver.payType]||[["manualAmount","Pay Amount ($)","number"]]):[];
         return(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["runs","Pay Runs"],["summary","Driver Summary"],["ytd","YTD Report"]]} active={payrollSub} onSelect={setPayrollSub}/>
+          <SubNav tabs={[["runs","Pay Runs"],["summary","Driver Summary"],["ytd","YTD Report"],...(seg.id==="amazon"?[["weekly","Weekly Summary"]]:[] )]} active={payrollSub} onSelect={setPayrollSub}/>
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             {payrollSub==="runs"&&(
               <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -3972,17 +3908,15 @@ function ContractorOS() {
                       <div><label style={S.label}>Driver *</label>
                         <select value={payrollForm.driverId} onChange={e=>{setPayrollForm(p=>({...p,driverId:e.target.value}));setPayrollPreview(null);}} style={S.input}>
                           <option value="">Select driver...</option>
-                          {(drivers.filter(d=>d.status==="active").length>0?drivers.filter(d=>d.status==="active"):drivers).map(d=><option key={d.id} value={d.id}>{d.name}{seg.id==="fedex"&&retentionMonths(d)!==null?` (${retentionMonths(d)}mo)`:""} — {(d.payType||"manual").replace(/_/g," ")} @ ${d.payRate||0}</option>)}
+                          {(drivers.filter(d=>d.status==="active").length>0?drivers.filter(d=>d.status==="active"):drivers).map(d=><option key={d.id} value={d.id}>{d.name} — {(d.payType||"manual").replace(/_/g," ")} @ ${d.payRate||0}</option>)}
                         </select>
                       </div>
                       <div><label style={S.label}>Pay Period Start *</label><input type="date" value={payrollForm.periodStart} onChange={e=>setPayrollForm(p=>({...p,periodStart:e.target.value}))} style={S.input}/></div>
                       <div><label style={S.label}>Pay Period End</label><input type="date" value={payrollForm.periodEnd} onChange={e=>setPayrollForm(p=>({...p,periodEnd:e.target.value}))} style={S.input}/></div>
                       {extraFields.map(([f,lbl,t])=>(<div key={f}><label style={S.label}>{lbl}</label><input type={t} value={payrollForm[f]||""} onChange={e=>setPayrollForm(p=>({...p,[f]:e.target.value}))} style={S.input}/></div>))}
-                      {seg.id==="fedex"&&<>
-                        <div><label style={S.label}>Stops Completed</label><input type="number" value={payrollForm.stopsCompleted||""} onChange={e=>setPayrollForm(p=>({...p,stopsCompleted:e.target.value}))} style={S.input}/></div>
-                        <div><label style={S.label}>Stop Bonus Threshold</label><input type="number" value={payrollForm.stopBonusThreshold||""} onChange={e=>setPayrollForm(p=>({...p,stopBonusThreshold:e.target.value}))} placeholder="Stops before bonus kicks in" style={S.input}/></div>
-                        <div><label style={S.label}>Stop Bonus Rate ($/stop)</label><input type="number" value={payrollForm.stopBonusRate||""} onChange={e=>setPayrollForm(p=>({...p,stopBonusRate:e.target.value}))} placeholder="0.00" style={S.input}/></div>
-                        <div><label style={S.label}>Overtime Hours (over 40)</label><input type="number" value={payrollForm.overtimeHours||""} onChange={e=>setPayrollForm(p=>({...p,overtimeHours:e.target.value}))} placeholder="0" style={S.input}/></div>
+                      {seg.id==="amazon"&&<>
+                        <div><label style={S.label}>PTO Hours</label><input type="number" value={payrollForm.ptoHours||""} onChange={e=>setPayrollForm(p=>({...p,ptoHours:e.target.value}))} placeholder="0" style={S.input}/></div>
+                        <div><label style={S.label}>Routing Volume (packages/stops from portal)</label><input type="number" value={payrollForm.routingVolume||""} onChange={e=>setPayrollForm(p=>({...p,routingVolume:e.target.value}))} placeholder="Total packages" style={S.input}/></div>
                       </>}
                       <div><label style={S.label}>Manual Override Amount ($) <span style={{color:"#555",fontSize:8}}>(optional — overrides calculated pay)</span></label><input type="number" value={payrollForm.manualAmount||""} onChange={e=>setPayrollForm(p=>({...p,manualAmount:e.target.value}))} placeholder="Leave blank to use calculated amount" style={S.input}/></div>
                       <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes (bonus, deduction, etc.)</label><input value={payrollForm.notes} onChange={e=>setPayrollForm(p=>({...p,notes:e.target.value}))} style={S.input}/></div>
@@ -3991,7 +3925,7 @@ function ContractorOS() {
                       <button className="hov" onClick={()=>{if(!payrollForm.driverId){showValidation("Please select a driver");return;}const d=drivers.find(x=>String(x.id)===String(payrollForm.driverId));if(!d){showValidation("Driver not found");return;}const{gross,breakdown}=calcRunPay(d,payrollForm);setPayrollPreview({driver:d,gross,breakdown});}} style={{...S.btn,background:"#6366f1"}}>Preview Pay</button>
                       {payrollPreview&&<button className="hov" onClick={()=>{const d=drivers.find(x=>String(x.id)===String(payrollForm.driverId));if(!d)return;const{gross,breakdown}=calcRunPay(d,payrollForm);const run={id:Date.now(),driverId:d.id,driverName:d.name,periodStart:payrollForm.periodStart,periodEnd:payrollForm.periodEnd,gross,breakdown,notes:payrollForm.notes,date:new Date().toISOString().slice(0,10),payType:d.payType,payRate:d.payRate,status:"unpaid"};setPayroll(p=>[run,...p]);
                       setExpenses(p=>[{id:Date.now()+1,date:run.date,category:"driver_pay",amount:gross,description:`Pay — ${d.name}${payrollForm.periodStart?" ("+payrollForm.periodStart+(payrollForm.periodEnd?" → "+payrollForm.periodEnd:"")+")":" "}`,vehicle:"",source:"payroll"},...p]);
-                      setPayrollForm({driverId:"",periodStart:"",periodEnd:"",miles:"",hours:"",stops:"",days:"",loadRevenue:"",manualAmount:"",notes:"",stopsCompleted:"",stopBonusThreshold:"",stopBonusRate:"",overtimeHours:""});setPayrollPreview(null);setPayrollShowAdd(false);}} style={S.btn}>Save Pay Run</button>}
+                      setPayrollForm({driverId:"",periodStart:"",periodEnd:"",miles:"",hours:"",stops:"",days:"",loadRevenue:"",manualAmount:"",notes:"",ptoHours:"",routingVolume:""});setPayrollPreview(null);setPayrollShowAdd(false);}} style={S.btn}>Save Pay Run</button>}
                       <button onClick={()=>{setPayrollShowAdd(false);setPayrollPreview(null);}} style={S.ghost}>Cancel</button>
                     </div>
                     {payrollPreview&&(<div style={{marginTop:14,background:"#0a1a0a",border:"1px solid #1a3a1a",borderRadius:6,padding:"14px 18px"}}><div style={{fontSize:10,color:"#2d5a2d",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:8}}>Pay Preview — {payrollPreview.driver.name}</div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontSize:11,color:"#888"}}>{payrollPreview.breakdown}</div><div style={{fontSize:24,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#22c55e"}}>{fmt$(payrollPreview.gross)}</div></div></div>)}
@@ -4001,7 +3935,7 @@ function ContractorOS() {
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {payroll.map(run=>(
                     <div key={run.id} style={{...S.card,borderLeft:`3px solid ${run.status==="paid"?"#22c55e":"#f59e0b"}`,display:"flex",alignItems:"center",gap:14}}>
-                      <div style={{flex:1}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{run.driverName}{seg.id==="fedex"&&(()=>{const d=drivers.find(x=>String(x.id)===String(run.driverId));const mo=d?retentionMonths(d):null;return mo!==null?<span style={{fontSize:10,color:"#555",marginLeft:8}}>{mo}mo tenure</span>:null;})()}</div><div style={{fontSize:10,color:"#555"}}>{run.periodStart}{run.periodEnd?` → ${run.periodEnd}`:""} · {run.breakdown}{run.notes&&` · ${run.notes}`}</div></div>
+                      <div style={{flex:1}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{run.driverName}</div><div style={{fontSize:10,color:"#555"}}>{run.periodStart}{run.periodEnd?` → ${run.periodEnd}`:""} · {run.breakdown}{run.notes&&` · ${run.notes}`}</div></div>
                       <div style={{textAlign:"right"}}><div style={{fontSize:18,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#22c55e"}}>{fmt$(run.gross)}</div><div style={{fontSize:9,color:run.status==="paid"?"#22c55e":"#f59e0b",textTransform:"uppercase",letterSpacing:"0.1em"}}>{run.status==="paid"?`✓ Paid ${fmtDate(run.paidDate)}`:"Unpaid"}</div></div>
                       <div style={{display:"flex",gap:6,flexShrink:0}}>
                         {run.status==="unpaid"&&<button onClick={()=>setPayroll(p=>p.map(r=>r.id===run.id?{...r,status:"paid",paidDate:new Date().toISOString().slice(0,10)}:r))} style={{...S.btn,background:"#22c55e",fontSize:10,padding:"5px 12px"}}>Mark Paid</button>}
@@ -4059,6 +3993,56 @@ function ContractorOS() {
                 </div>
               </div>
             )}
+            {payrollSub==="weekly"&&seg.id==="amazon"&&(()=>{
+              const now=new Date();
+              const dayOfWeek=now.getDay();
+              const weekStart=new Date(now);weekStart.setDate(now.getDate()-dayOfWeek);weekStart.setHours(0,0,0,0);
+              const weekEnd=new Date(weekStart);weekEnd.setDate(weekStart.getDate()+6);
+              const isThisWeek=(dateStr)=>{if(!dateStr)return false;const d=new Date(dateStr);return d>=weekStart&&d<=weekEnd;};
+              const weekRuns=payroll.filter(r=>isThisWeek(r.periodStart)||isThisWeek(r.date));
+              const teamTotal=weekRuns.reduce((s,r)=>s+r.gross,0);
+              return(
+              <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
+                <div style={{...S.section,marginBottom:4}}>WEEKLY PAYROLL SUMMARY</div>
+                <div style={{fontSize:11,color:"#555",marginBottom:20}}>Current week: {weekStart.toLocaleDateString()} – {weekEnd.toLocaleDateString()}</div>
+                <div style={{...S.card,marginBottom:16,background:"#0a1a0a",border:"1px solid #1a3a1a"}}>
+                  <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.15em",marginBottom:4}}>Team Labor This Week</div>
+                  <div style={{fontSize:28,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#22c55e"}}>{fmt$(teamTotal)}</div>
+                </div>
+                {drivers.length===0&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No drivers yet.</div>}
+                <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                  {drivers.map(d=>{
+                    const driverRuns=weekRuns.filter(r=>String(r.driverId)===String(d.id));
+                    const basePay=driverRuns.reduce((s,r)=>s+r.gross,0);
+                    const weekHours=driverRuns.reduce((s,r)=>s+parseFloat(r.hours||0),0);
+                    const overtime=weekHours>=40;
+                    return(
+                      <div key={d.id} style={{...S.card,borderLeft:`3px solid ${overtime?"#ef4444":accent}`}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                          <div>
+                            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8"}}>{d.name}</div>
+                            <div style={{fontSize:10,color:"#555"}}>{(d.payType||"").replace(/_/g," ")} · ${d.payRate||0}</div>
+                          </div>
+                          <div style={{textAlign:"right"}}>
+                            <div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#22c55e"}}>{fmt$(basePay)}</div>
+                            {overtime&&<div style={{fontSize:9,color:"#ef4444",fontWeight:700}}>40+ HRS OVERTIME FLAG</div>}
+                          </div>
+                        </div>
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+                          {[["Base Pay",fmt$(basePay),"#22c55e"],["Hours",weekHours>0?`${weekHours.toFixed(1)} hrs`:"—","#888"],["Pay Runs",driverRuns.length.toString(),accent]].map(([lbl,val,col])=>(
+                            <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"8px 10px"}}>
+                              <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>{lbl}</div>
+                              <div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{val}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              );
+            })()}
           </div>
           {/* Pay Stub Modal */}
           {payStub&&(<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:20}} onClick={()=>setPayStub(null)}><div style={{background:"#141414",border:`1px solid ${accent}44`,borderRadius:10,padding:"28px 32px",maxWidth:480,width:"100%",animation:"fadeUp 0.2s ease"}} onClick={e=>e.stopPropagation()}><div style={{textAlign:"center",marginBottom:20,paddingBottom:16,borderBottom:"1px solid #222"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:900,color:"#e8e4d8"}}>PAY STUB</div><div style={{fontSize:10,color:"#555",marginTop:4}}>ContractorOS · {new Date().toLocaleDateString()}</div></div><div style={{display:"flex",flexDirection:"column",gap:10}}>{[["Driver",payStub.driverName],["Pay Period",`${payStub.periodStart}${payStub.periodEnd?" → "+payStub.periodEnd:""}`],["Pay Type",payStub.payType?.replace(/_/g," ")],["Calculation",payStub.breakdown],["Status",payStub.status==="paid"?`Paid ${fmtDate(payStub.paidDate)}`:"Unpaid"]].map(([lbl,val])=>(<div key={lbl} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid #1a1a1a",paddingBottom:8}}><span style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>{lbl}</span><span style={{fontSize:12,color:"#c8c4bc"}}>{val}</span></div>))}<div style={{display:"flex",justifyContent:"space-between",marginTop:8,paddingTop:8,borderTop:"2px solid #2a2a2a"}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#e8e4d8"}}>GROSS PAY</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:900,color:"#22c55e"}}>{fmt$(payStub.gross)}</span></div>{payStub.notes&&<div style={{fontSize:11,color:"#555",fontStyle:"italic"}}>Note: {payStub.notes}</div>}</div><button onClick={()=>window.print()} style={{...S.btn,width:"100%",marginTop:20}}>Print / Save as PDF</button></div></div>)}
@@ -4067,7 +4051,10 @@ function ContractorOS() {
 
       {/* ══ DISPATCH ═══════════════════════════════════════════════════ */}
       {screen==="dispatch"&&(
-        <div style={{flex:1,overflowY:"auto",padding:24}}>
+        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          <SubNav tabs={[["board","Dispatch Board"],...(seg.id==="amazon"?[["readiness","Readiness"]]:[] )]} active={subScreen||"board"} onSelect={setSubScreen}/>
+          <div style={{flex:1,overflowY:"auto",padding:24}}>
+          {(!subScreen||subScreen==="board")&&(
           <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
               <div><div style={S.section}>DISPATCH BOARD</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Assign loads and routes to drivers and trucks. Track run status.</div></div>
@@ -4129,6 +4116,80 @@ function ContractorOS() {
                 </div>
               ));
             })()}
+          </div>
+          )}
+          {subScreen==="readiness"&&seg.id==="amazon"&&(()=>{
+            const activeDrivers=drivers.filter(d=>d.status==="active");
+            const dayEntries=driverReadiness.filter(r=>r.date===readinessDate);
+            const getEntry=(driverId)=>dayEntries.find(r=>String(r.driverId)===String(driverId));
+            const confirmed=dayEntries.filter(r=>r.status==="confirmed").length;
+            const standby=dayEntries.filter(r=>r.status==="standby").length;
+            const calledOff=dayEntries.filter(r=>r.status==="called_off").length;
+            const incompleteChecklist=dayEntries.filter(r=>r.status==="confirmed"&&(!r.vanAssigned||!r.rabbitAssigned||!r.fuelCardAssigned));
+            const noStandbyAlert=calledOff>0&&standby===0;
+            const saveReadiness=(driverId,data)=>{setDriverReadiness(p=>{const without=p.filter(r=>!(String(r.driverId)===String(driverId)&&r.date===readinessDate));return[...without,{id:Date.now(),date:readinessDate,driverId,status:"confirmed",vanAssigned:false,rabbitAssigned:false,fuelCardAssigned:false,...data}];});};
+            return(
+            <div style={{maxWidth:900,margin:"0 auto",padding:24,animation:"fadeUp 0.3s ease"}}>
+              <div style={{...S.section,marginBottom:4}}>DISPATCH READINESS</div>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+                <label style={{...S.label,marginBottom:0}}>Date:</label>
+                <input type="date" value={readinessDate} onChange={e=>setReadinessDate(e.target.value)} style={{...S.input,maxWidth:180}}/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+                {[["Confirmed",confirmed,"#22c55e"],["Standby",standby,"#f59e0b"],["Called Off",calledOff,"#ef4444"]].map(([lbl,val,col])=>(
+                  <div key={lbl} style={S.card}><div style={{fontSize:24,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:col}}>{val}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.15em",marginTop:3}}>{lbl}</div></div>
+                ))}
+              </div>
+              {incompleteChecklist.length>0&&(
+                <div style={{...S.card,marginBottom:12,background:"#1a0f05",border:"1px solid #f59e0b44"}}>
+                  <div style={{fontSize:11,color:"#f59e0b"}}>⚠ Confirmed drivers with incomplete checklist: {incompleteChecklist.map(r=>drivers.find(d=>String(d.id)===String(r.driverId))?.name||"?").join(", ")}</div>
+                </div>
+              )}
+              {noStandbyAlert&&(
+                <div style={{...S.card,marginBottom:12,background:"#1a0808",border:"1px solid #ef444444"}}>
+                  <div style={{fontSize:11,color:"#ef4444"}}>⚠ {calledOff} driver(s) called off with no standby available — routes may be uncovered!</div>
+                </div>
+              )}
+              {activeDrivers.length===0&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No active drivers. Add drivers first.</div>}
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {activeDrivers.map(d=>{
+                  const entry=getEntry(d.id);
+                  const status=entry?.status||"";
+                  const vanAssigned=entry?.vanAssigned||false;
+                  const rabbitAssigned=entry?.rabbitAssigned||false;
+                  const fuelCardAssigned=entry?.fuelCardAssigned||false;
+                  return(
+                    <div key={d.id} style={{...S.card,borderLeft:`3px solid ${status==="confirmed"?"#22c55e":status==="standby"?"#f59e0b":status==="called_off"?"#ef4444":"#333"}`}}>
+                      <div style={{display:"flex",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",minWidth:140}}>{d.name}</div>
+                        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",flex:1}}>
+                          <select defaultValue={status} key={`${d.id}-${readinessDate}-status`} onChange={e=>{const s=e.target.value;saveReadiness(d.id,{...(entry||{}),status:s,vanAssigned,rabbitAssigned,fuelCardAssigned});}} style={{...S.input,maxWidth:140,padding:"6px 10px"}}>
+                            <option value="">— Status —</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="standby">Standby</option>
+                            <option value="called_off">Called Off</option>
+                          </select>
+                          <label style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:"#888",cursor:"pointer"}}>
+                            <input type="checkbox" defaultChecked={vanAssigned} key={`${d.id}-${readinessDate}-van`} onChange={e=>saveReadiness(d.id,{...(entry||{}),vanAssigned:e.target.checked,rabbitAssigned,fuelCardAssigned,status:status||"confirmed"})}/>
+                            Van Assigned
+                          </label>
+                          <label style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:"#888",cursor:"pointer"}}>
+                            <input type="checkbox" defaultChecked={rabbitAssigned} key={`${d.id}-${readinessDate}-rabbit`} onChange={e=>saveReadiness(d.id,{...(entry||{}),vanAssigned,rabbitAssigned:e.target.checked,fuelCardAssigned,status:status||"confirmed"})}/>
+                            Rabbit Device
+                          </label>
+                          <label style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:"#888",cursor:"pointer"}}>
+                            <input type="checkbox" defaultChecked={fuelCardAssigned} key={`${d.id}-${readinessDate}-fuel`} onChange={e=>saveReadiness(d.id,{...(entry||{}),vanAssigned,rabbitAssigned,fuelCardAssigned:e.target.checked,status:status||"confirmed"})}/>
+                            Fuel Card
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            );
+          })()}
           </div>
         </div>
       )}
