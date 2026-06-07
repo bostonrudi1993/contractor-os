@@ -537,6 +537,9 @@ function ContractorOS() {
   const [deadMilesLog, setDeadMilesLog] = useState([]);
   const [loadHistory, setLoadHistory] = useState([]);
   const [whiteGloveLog, setWhiteGloveLog] = useState([]);
+  const [calloutLog, setCalloutLog] = useState([]);
+  const [damageClaims, setDamageClaims] = useState([]);
+  const [fuelCardImports, setFuelCardImports] = useState([]);
 
   // Sub-tab UI state for v24
   const [subTab_drivers, setSubTab_drivers] = useState("list");
@@ -606,6 +609,11 @@ function ContractorOS() {
   const [scorecardImporting, setScorecardImporting] = useState(false);
   const [scorecardImportResult, setScorecardImportResult] = useState(null);
   const [scorecardImportError, setScorecardImportError] = useState("");
+  const [claimsTab, setClaimsTab] = useState("open");
+  const [showAddClaim, setShowAddClaim] = useState(false);
+  const [claimForm, setClaimForm] = useState({date:"",driverId:"",customerAddress:"",deliveryType:"Appliance",itemDescription:"",damageDescription:"",estimatedValue:"",claimStatus:"Open",claimAmount:"",resolution:"",notes:""});
+  const [showCalloutAdd, setShowCalloutAdd] = useState(false);
+  const [calloutFormMain, setCalloutFormMain] = useState({date:"",driverId:"",calloutTime:"",reason:"Sick",routeAffected:"",wasRescued:false,rescuedBy:"",overtimeCost:"",notes:""});
 
   // Persist all state
   // ── Segment & settings stay in localStorage (tiny, sync, no cloud needed) ──
@@ -625,6 +633,7 @@ function ContractorOS() {
         _tires, _documents, _dispatches, _contacts, _hosLog,
         _stopProfitLog, _settlementLog, _scheduleData, _coachingLog, _appearanceLog,
         _dnrLog, _tripSheets, _vanInspectionLog, _bidTracker, _deadMilesLog, _loadHistory, _whiteGloveLog,
+        _calloutLog, _damageClaims, _fuelCardImports,
       ] = await Promise.all([
         db.get(D.compliance,  {trucks:[],drivers:[]}),
         db.get(D.vehicles,    []),
@@ -662,6 +671,9 @@ function ContractorOS() {
         db.get(D.deadMilesLog, []),
         db.get(D.loadHistory, []),
         db.get(D.whiteGloveLog, []),
+        db.get(D.calloutLog, []),
+        db.get(D.damageClaims, []),
+        db.get(D.fuelCardImports, []),
       ]);
       if(cancelled) return;
       setCompliance(_compliance);
@@ -706,6 +718,9 @@ function ContractorOS() {
       setDeadMilesLog(_deadMilesLog);
       setLoadHistory(_loadHistory);
       setWhiteGloveLog(_whiteGloveLog);
+      setCalloutLog(_calloutLog);
+      setDamageClaims(_damageClaims);
+      setFuelCardImports(_fuelCardImports);
       setDbLoaded(true);
     })();
     return ()=>{ cancelled=true; };
@@ -749,6 +764,9 @@ function ContractorOS() {
   useEffect(()=>{if(dbLoaded)db.set(KEYS.deadMilesLog,deadMilesLog);},[deadMilesLog,dbLoaded]);
   useEffect(()=>{if(dbLoaded)db.set(KEYS.loadHistory,loadHistory);},[loadHistory,dbLoaded]);
   useEffect(()=>{if(dbLoaded)db.set(KEYS.whiteGloveLog,whiteGloveLog);},[whiteGloveLog,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.calloutLog,calloutLog);},[calloutLog,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.damageClaims,damageClaims);},[damageClaims,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.fuelCardImports,fuelCardImports);},[fuelCardImports,dbLoaded]);
 
   const seg = segment ? SEGMENTS[segment] : null;
   const S = seg ? mkStyles(seg.color) : mkStyles("#f59e0b");
