@@ -1709,7 +1709,9 @@ function ContractorOS() {
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
           {urgentItems.length>0&&<button onClick={()=>handleNav("compliance")} style={{background:"#1a0808",border:"1px solid #ef444433",color:"#ef4444",padding:"4px 10px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>🔴 {urgentItems.length}</button>}
-          
+          {user?.emailAddresses?.[0]?.emailAddress==="bostonrudi1993@gmail.com"&&(
+            <button onClick={()=>{setSegment(null);localStorage.removeItem("cos_segment_locked");}} style={{background:"#1a0a00",border:"1px solid #f59e0b44",color:"#f59e0b",padding:"4px 10px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>👑 SWITCH TYPE</button>
+          )}
         </div>
       </div>
 
