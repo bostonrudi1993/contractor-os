@@ -48,7 +48,7 @@ const SEGMENTS = {
     id: "otr", label: "OTR / Owner Operator", icon: "🚛",
     tagline: "Load board hauling with your own authority",
     color: "#f59e0b", darkColor: "#92400e",
-    nav: ["dashboard","analyze","boards","compliance","brokers","fleet","finance","payroll","invoices","dispatch","contacts","documents","reports","trends","users","settings","fmcsa","data","deadmiles"],
+    nav: ["dashboard","analyze","boards","compliance","brokers","fleet","finance","payroll","invoices","dispatch","contacts","documents","reports","trends","users","settings","fmcsa","data"],
     features: { loadAnalysis:true, brokerScorecard:true, loadBoards:true, routeProfit:false, contractTracker:false, dspMetrics:false, stopMetrics:false },
   },
   fedex: {
@@ -62,14 +62,14 @@ const SEGMENTS = {
     id: "amazon", label: "Amazon DSP", icon: "📬",
     tagline: "Delivery Service Partner operations",
     color: "#f97316", darkColor: "#9a3412",
-    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","settlement","driverschedule","scorecard","reports","trends","users","settings","fmcsa","data"],
+    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","stopprofit","settlement","driverschedule","scorecard","reports","trends","users","settings","fmcsa","data"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:true, stopMetrics:true },
   },
   lastmile: {
     id: "lastmile", label: "Last Mile (Lowe's / Home Depot)", icon: "🏠",
     tagline: "Home delivery contractor management",
     color: "#22c55e", darkColor: "#14532d",
-    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","stopprofit","reports","trends","users","settings","fmcsa","data"],
+    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","claims","stopprofit","reports","trends","users","settings","fmcsa","data"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:false, stopMetrics:true },
   },
   usps: {
@@ -1710,7 +1710,7 @@ function ContractorOS() {
         <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
           {urgentItems.length>0&&<button onClick={()=>handleNav("compliance")} style={{background:"#1a0808",border:"1px solid #ef444433",color:"#ef4444",padding:"4px 10px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>🔴 {urgentItems.length}</button>}
           {user?.emailAddresses?.[0]?.emailAddress==="bostonrudi1993@gmail.com"&&(
-            <button onClick={()=>{setSegment(null);localStorage.removeItem("cos_segment_locked");}} style={{background:"#1a0a00",border:"1px solid #f59e0b44",color:"#f59e0b",padding:"4px 10px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>👑 SWITCH TYPE</button>
+            <button onClick={()=>{setSegment(null);setScreen("dashboard");localStorage.removeItem("cos_segment_locked");}} style={{background:"#1a0a00",border:"1px solid #f59e0b44",color:"#f59e0b",padding:"4px 10px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>👑 SWITCH TYPE</button>
           )}
         </div>
       </div>
