@@ -23,12 +23,19 @@ const KEYS = {
   payroll: "cos_payroll", fuelLog: "cos_fuel_log", invoices: "cos_invoices",
   odometer: "cos_odometer", tires: "cos_tires", documents: "cos_documents",
   dispatches: "cos_dispatches", contacts: "cos_contacts", hosLog: "cos_hos_log",
-  // ── v22: new feature keys ──
-  clientData: "cos_client_data",
-  stopProfitLog: "cos_stop_profit_log",
-  weeklySettlementLog: "cos_weekly_settlement_log",
-  scheduleData: "cos_schedule_data",
-  segmentChecklist: "cos_segment_checklist",
+  // v23
+  calloutLog: "cos_callout_log",
+  dnrLog: "cos_dnr_log",
+  vanInspectionLog: "cos_van_inspection_log",
+  damageClaims: "cos_damage_claims",
+  coachingLog: "cos_coaching_log",
+  appearanceLog: "cos_appearance_log",
+  loadHistory: "cos_load_history",
+  deadMilesLog: "cos_dead_miles",
+  tripSheets: "cos_trip_sheets",
+  bidTracker: "cos_bid_tracker",
+  fuelCardImports: "cos_fuel_card_imports",
+  whiteGloveLog: "cos_white_glove_log",
 };
 const stor = { get: (k,fb) => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):fb; } catch { return fb; } }, set: (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch {} } };
 
@@ -44,37 +51,6 @@ const DEFAULT_FILINGS = [
   {id:"eld",     name:"ELD Log Retention", dueDate:"Ongoing — 6 months", frequency:"Ongoing", notes:"Keep all HOS logs minimum 6 months", federal:true, filedDate:"", confirmationNum:"", filedNotes:""},
 ];
 
-// ─── SEGMENT COMPLIANCE CHECKLISTS ───────────────────────────────────
-const SEGMENT_CHECKLISTS = {
-  fedex: [
-    {id:"fx1",label:"Vehicle appearance inspection (FedEx branding standards)",freq:"Weekly"},
-    {id:"fx2",label:"VEDR (Vehicle Event Data Recorder) system check",freq:"Monthly"},
-    {id:"fx3",label:"FedEx ISP contract performance review",freq:"Quarterly"},
-    {id:"fx4",label:"Driver uniform compliance check",freq:"Weekly"},
-    {id:"fx5",label:"Background check renewals (every 2 years per driver)",freq:"Biennial"},
-    {id:"fx6",label:"Drug test random selection compliance",freq:"Ongoing"},
-  ],
-  amazon: [
-    {id:"amz1",label:"Van photo inspection (daily via Mentor/Netradyne)",freq:"Daily"},
-    {id:"amz2",label:"DSP scorecard review with drivers",freq:"Weekly"},
-    {id:"amz3",label:"Engine Off Compliance (EOC) review",freq:"Weekly"},
-    {id:"amz4",label:"Proper Parking Sequence (PPS) training",freq:"Monthly"},
-    {id:"amz5",label:"Netradyne camera system operational check",freq:"Weekly"},
-  ],
-  lastmile: [
-    {id:"lm1",label:"Delivery vehicle condition report",freq:"Weekly"},
-    {id:"lm2",label:"White glove delivery certification per driver",freq:"Annual"},
-    {id:"lm3",label:"Lowe's/Home Depot vendor compliance review",freq:"Quarterly"},
-    {id:"lm4",label:"Customer signature capture rate review",freq:"Weekly"},
-  ],
-  usps: [
-    {id:"usps1",label:"Daily vehicle inspection form (required before each route)",freq:"Daily"},
-    {id:"usps2",label:"Mail security training acknowledgment",freq:"Annual"},
-    {id:"usps3",label:"Substitute driver pre-approval list update",freq:"Monthly"},
-    {id:"usps4",label:"HCR route contract compliance review",freq:"Quarterly"},
-  ],
-};
-
 // ─── SEGMENT CONFIG ───────────────────────────────────────────────────
 const SEGMENTS = {
   otr: {
@@ -88,28 +64,28 @@ const SEGMENTS = {
     id: "fedex", label: "FedEx Ground / HD Contractor", icon: "📦",
     tagline: "ISP route management & compliance",
     color: "#6366f1", darkColor: "#3730a3",
-    nav: ["dashboard","routes","compliance","brokers","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","scorecard","stopprofit","settlement","schedule","reports","trends","users","settings","fmcsa","data"],
+    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","reports","trends","users","settings","fmcsa","data"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:false, stopMetrics:true },
   },
   amazon: {
     id: "amazon", label: "Amazon DSP", icon: "📬",
     tagline: "Delivery Service Partner operations",
     color: "#f97316", darkColor: "#9a3412",
-    nav: ["dashboard","routes","compliance","brokers","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","scorecard","settlement","schedule","reports","trends","users","settings","fmcsa","data"],
+    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","reports","trends","users","settings","fmcsa","data"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:true, stopMetrics:true },
   },
   lastmile: {
     id: "lastmile", label: "Last Mile (Lowe's / Home Depot)", icon: "🏠",
     tagline: "Home delivery contractor management",
     color: "#22c55e", darkColor: "#14532d",
-    nav: ["dashboard","routes","compliance","brokers","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","scorecard","stopprofit","reports","trends","users","settings","fmcsa","data"],
+    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","claims","reports","trends","users","settings","fmcsa","data"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:false, stopMetrics:true },
   },
   usps: {
     id: "usps", label: "USPS HCR Contractor", icon: "📮",
     tagline: "Highway Contract Route operations",
     color: "#3b82f6", darkColor: "#1e3a8a",
-    nav: ["dashboard","routes","compliance","brokers","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","scorecard","reports","trends","users","settings","fmcsa","data"],
+    nav: ["dashboard","routes","compliance","drivers","dispatch","fleet","finance","payroll","invoices","contacts","documents","contracts","reports","trends","users","settings","fmcsa","data"],
     features: { loadAnalysis:false, brokerScorecard:false, loadBoards:false, routeProfit:true, contractTracker:true, dspMetrics:false, stopMetrics:false },
   },
 };
@@ -303,64 +279,6 @@ const EditModalComp = ({modal,editForm,setEditForm,saveEdit,closeModal,accent,S,
               <label style={{...S.label,marginBottom:0,whiteSpace:"nowrap"}}>Week of:</label>
               <input type="date" value={scorecardWeek} onChange={e=>setScorecardWeek(e.target.value)} style={{...S.input,maxWidth:180}}/>
             </div>
-
-            {/* Amazon AI Import */}
-            {isAmazon&&(
-              <div style={{...S.card,marginBottom:20,border:`1px solid ${accent}44`}}>
-                <div style={{fontSize:10,color:accent,letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:8}}>Import Weekly Scorecard</div>
-                <div style={{fontSize:11,color:"#555",marginBottom:12,lineHeight:1.7}}>Upload your Amazon DSP scorecard PDF or screenshot. AI will extract all metrics automatically.</div>
-                <input type="file" accept=".pdf,image/*" onChange={async(e)=>{
-                  const file = e.target.files?.[0];
-                  if(!file) return;
-                  setScorecardImporting(true);
-                  setScorecardImportResult(null);
-                  try {
-                    const reader = new FileReader();
-                    reader.onload = async(ev)=>{
-                      const base64 = ev.target.result.split(",")[1];
-                      const mediaType = file.type || "image/jpeg";
-                      const isPdf = file.type==="application/pdf";
-                      const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
-                      const response = await fetch("https://api.anthropic.com/v1/messages",{
-                        method:"POST",
-                        headers:{"Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-                        body: JSON.stringify({
-                          model:"claude-sonnet-4-20250514",
-                          max_tokens:1024,
-                          messages:[{role:"user",content:[
-                            isPdf
-                              ? {type:"document",source:{type:"base64",media_type:"application/pdf",data:base64}}
-                              : {type:"image",source:{type:"base64",media_type:mediaType,data:base64}},
-                            {type:"text",text:`This is an Amazon DSP weekly scorecard. Extract ALL performance metrics you can find including: DART, DCR, POD compliance rate, Contact Compliance, Delivered Not Received (DNR), Customer Escalations, Mentor score average, Seatbelt compliance, Speeding events, Harsh braking events, Delivery Completion Rate, and any other metrics present. Return ONLY a JSON object with metric names as keys and their values as numbers or strings. No markdown, no explanation.`}
-                          ]}]
-                        })
-                      });
-                      const data = await response.json();
-                      const text = data?.content?.[0]?.text||"";
-                      try {
-                        const parsed = JSON.parse(text);
-                        const keyMap = {"dart":"dart","dcr":"dcr","delivery completion rate":"dcr","pod":"pod","photo on delivery":"pod","mentor":"mentor","mentor score":"mentor","contactcompliance":"contactCompliance","contact compliance":"contactCompliance","attendancerate":"attendanceRate","attendance rate":"attendanceRate"};
-                        const newEntry = {...(scorecardData.find(w=>w.week===scorecardWeek)||{week:scorecardWeek})};
-                        const imported = [];
-                        Object.entries(parsed).forEach(([k,v])=>{
-                          const normKey = k.toLowerCase().replace(/[^a-z ]/g,"").trim();
-                          const mappedKey = keyMap[normKey] || normKey.replace(/ /g,"");
-                          if(mappedKey) { newEntry[mappedKey] = parseFloat(v)||v; imported.push(k); }
-                        });
-                        const updated = scorecardData.filter(w=>w.week!==scorecardWeek);
-                        setScorecardData([...updated, newEntry]);
-                        setScorecardImportResult({success:true, fields:imported, raw:parsed});
-                      } catch { setScorecardImportResult({success:false,error:"Could not parse AI response. Fill in manually."}); }
-                      setScorecardImporting(false);
-                    };
-                    reader.readAsDataURL(file);
-                  } catch(err) { setScorecardImportResult({success:false,error:err.message}); setScorecardImporting(false); }
-                }} style={{fontSize:11,color:"#888",marginBottom:8}}/>
-                {scorecardImporting&&<div style={{fontSize:11,color:accent,marginTop:8}}>⏳ Parsing scorecard with AI...</div>}
-                {scorecardImportResult?.success&&<div style={{fontSize:11,color:"#22c55e",marginTop:8}}>✓ Imported: {scorecardImportResult.fields.join(", ")}</div>}
-                {scorecardImportResult?.error&&<div style={{fontSize:11,color:"#ef4444",marginTop:8}}>⚠ {scorecardImportResult.error}</div>}
-              </div>
-            )}
 
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12,marginBottom:24}}>
               {metrics.map(m=>{
@@ -824,6 +742,52 @@ function ContractorOS() {
   const [dispatches, setDispatches] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [hosLog, setHosLog] = useState([]);
+  // v23 new data state
+  const [calloutLog, setCalloutLog] = useState([]);
+  const [dnrLog, setDnrLog] = useState([]);
+  const [vanInspectionLog, setVanInspectionLog] = useState([]);
+  const [damageClaims, setDamageClaims] = useState([]);
+  const [coachingLog, setCoachingLog] = useState([]);
+  const [appearanceLog, setAppearanceLog] = useState([]);
+  const [loadHistory, setLoadHistory] = useState([]);
+  const [deadMilesLog, setDeadMilesLog] = useState([]);
+  const [tripSheets, setTripSheets] = useState([]);
+  const [bidTracker, setBidTracker] = useState([]);
+  const [fuelCardImports, setFuelCardImports] = useState([]);
+  const [whiteGloveLog, setWhiteGloveLog] = useState([]);
+  // v23 UI state
+  const [claimsTab, setClaimsTab] = useState("open");
+  const [showAddClaim, setShowAddClaim] = useState(false);
+  const [claimForm, setClaimForm] = useState({date:"",driverId:"",customerAddress:"",deliveryType:"Appliance",itemDescription:"",damageDescription:"",estimatedValue:"",claimStatus:"Open",claimAmount:"",resolution:"",notes:""});
+  const [showCoachingAdd, setShowCoachingAdd] = useState(false);
+  const [coachingForm, setCoachingForm] = useState({date:"",driverId:"",issueType:"Harsh Braking",description:"",actionTaken:"",followUpDate:"",followUpComplete:false,outcome:""});
+  const [showCalloutAdd, setShowCalloutAdd] = useState(false);
+  const [calloutFormMain, setCalloutFormMain] = useState({date:"",driverId:"",calloutTime:"",reason:"Sick",routeAffected:"",wasRescued:false,rescuedBy:"",overtimeCost:"",notes:""});
+  const [showDnrAdd, setShowDnrAdd] = useState(false);
+  const [dnrForm, setDnrForm] = useState({date:"",driverId:"",address:"",packageId:"",description:"",responseSubmittedToAmazon:false,responseDate:"",resolution:"Pending",notes:""});
+  const [vanInspectVehicle, setVanInspectVehicle] = useState("");
+  const [vanInspectDate, setVanInspectDate] = useState("");
+  const [vanInspectItems, setVanInspectItems] = useState({exterior:false,tires:"Good",lights:false,cargo:false,device:false,seatbelt:false,noWarnings:false,driverAck:false});
+  const [appearVehicle, setAppearVehicle] = useState("");
+  const [appearDate, setAppearDate] = useState("");
+  const [appearItems, setAppearItems] = useState({decals:false,noStickers:false,exterior:false,cab:false,uniform:false,noUnreportedDamage:false,cargo:false});
+  const [analyzeSubTab, setAnalyzeSubTab] = useState("analyze");
+  const [loadHistoryUpdateId, setLoadHistoryUpdateId] = useState(null);
+  const [loadHistoryUpdateForm, setLoadHistoryUpdateForm] = useState({actualNet:"",notes:""});
+  const [financeSubTab, setFinanceSubTab] = useState("revenue");
+  const [deadMilesForm, setDeadMilesForm] = useState({date:"",fromLocation:"",toLocation:"",emptyMiles:"",reason:"Looking for load",notes:""});
+  const [showDeadMilesAdd, setShowDeadMilesAdd] = useState(false);
+  const [routesSubTab, setRoutesSubTab] = useState("routes");
+  const [tripSheetForm, setTripSheetForm] = useState({date:"",driverId:"",routeId:"",origin:"",destination:"",scheduledDeparture:"",actualDeparture:"",scheduledArrival:"",actualArrival:"",miles:"",vehicleId:"",fuelAdded:"",incidents:"",supervisorNotes:"",mailClasses:[]});
+  const [showTripSheetAdd, setShowTripSheetAdd] = useState(false);
+  const [bidsTab, setBidsTab] = useState("active");
+  const [showBidAdd, setShowBidAdd] = useState(false);
+  const [bidForm, setBidForm] = useState({routeId:"",routeDescription:"",bidSubmittedDate:"",bidAmount:"",estimatedMilesPerYear:"",estimatedFuelCost:"",estimatedLaborCost:"",estimatedVehicleCost:"",estimatedTotalCost:"",estimatedNetAnnual:"",awardStatus:"Pending",awardDate:"",actualCostAfter30Days:"",actualCostAfter60Days:"",lessonLearned:"",notes:""});
+  const [contractsSubTab, setContractsSubTab] = useState("contracts");
+  const [fleetSubTab, setFleetSubTab] = useState("vehicles");
+  const [fuelCardPasteText, setFuelCardPasteText] = useState("");
+  const [fuelCardParsed, setFuelCardParsed] = useState([]);
+  const [subTab_drivers, setSubTab_drivers] = useState("all");
   // New feature UI state
   const [payrollSub, setPayrollSub] = useState("runs");
   const [payrollShowAdd, setPayrollShowAdd] = useState(false);
@@ -874,27 +838,6 @@ function ContractorOS() {
   const showValidation = (msg) => { setValidationMsg(msg); setTimeout(()=>setValidationMsg(""), 3000); };
   const [showOrgProfile, setShowOrgProfile] = useState(false);
 
-  // ── v22: new feature state ──
-  const [clientData, setClientData] = useState({stopGuarantee:"",revenuePerStop:"",fuelSurchargeRate:"",contractExpiry:"",contactName:"",contactPhone:"",notes:""});
-  const [clientDataEditing, setClientDataEditing] = useState(false);
-  const [clientDataForm, setClientDataForm] = useState({});
-  const [stopProfitLog, setStopProfitLog] = useState([]);
-  const [stopProfitForm, setStopProfitForm] = useState({date:"",stops:"",revenuePerStop:"",driverPay:"",fuelCost:"",vehicleCost:"",otherCost:""});
-  const [stopProfitSub, setStopProfitSub] = useState("entry");
-  const [weeklySettlementLog, setWeeklySettlementLog] = useState([]);
-  const [weeklySettlementForm, setWeeklySettlementForm] = useState({weekEnding:"",stopsCompleted:"",ratePerStop:"",stopBonuses:"",fuelSurcharge:"",actualDeposit:"",depositDate:"",notes:""});
-  const [weeklySettlementSub, setWeeklySettlementSub] = useState("entry");
-  const [scheduleData, setScheduleData] = useState([]);
-  const [scheduleWeekOffset, setScheduleWeekOffset] = useState(0);
-  const [scheduleSub, setScheduleSub] = useState("weekly");
-  const [minDrivers, setMinDrivers] = useState(3);
-  const [scheduleAssignForm, setScheduleAssignForm] = useState({});
-  const [scheduleAssignDay, setScheduleAssignDay] = useState(null);
-  const [segmentChecklist, setSegmentChecklist] = useState([]);
-  const [scorecardImporting, setScorecardImporting] = useState(false);
-  const [scorecardImportResult, setScorecardImportResult] = useState(null);
-  const [scorecardSub, setScorecardSub] = useState("metrics");
-
   // Persist all state
   // ── Segment & settings stay in localStorage (tiny, sync, no cloud needed) ──
   useEffect(()=>{if(segment)stor.set(KEYS.segment,segment);},[segment]);
@@ -911,7 +854,9 @@ function ContractorOS() {
         _routes, _contracts, _incidents, _brokers, _loads, _users, _currentUser,
         _notifications, _filings, _payroll, _fuelLog, _invoices, _odometer,
         _tires, _documents, _dispatches, _contacts, _hosLog,
-        _clientData, _stopProfitLog, _weeklySettlementLog, _scheduleData, _segmentChecklist,
+        _calloutLog, _dnrLog, _vanInspectionLog, _damageClaims, _coachingLog,
+        _appearanceLog, _loadHistory, _deadMilesLog, _tripSheets, _bidTracker,
+        _fuelCardImports, _whiteGloveLog,
       ] = await Promise.all([
         db.get(D.compliance,  {trucks:[],drivers:[]}),
         db.get(D.vehicles,    []),
@@ -937,11 +882,18 @@ function ContractorOS() {
         db.get(D.dispatches,  []),
         db.get(D.contacts,    []),
         db.get(D.hosLog,      []),
-        db.get(D.clientData,  {stopGuarantee:"",revenuePerStop:"",fuelSurchargeRate:"",contractExpiry:"",contactName:"",contactPhone:"",notes:""}),
-        db.get(D.stopProfitLog, []),
-        db.get(D.weeklySettlementLog, []),
-        db.get(D.scheduleData, []),
-        db.get(D.segmentChecklist, []),
+        db.get(D.calloutLog,  []),
+        db.get(D.dnrLog,      []),
+        db.get(D.vanInspectionLog, []),
+        db.get(D.damageClaims, []),
+        db.get(D.coachingLog, []),
+        db.get(D.appearanceLog, []),
+        db.get(D.loadHistory, []),
+        db.get(D.deadMilesLog, []),
+        db.get(D.tripSheets,  []),
+        db.get(D.bidTracker,  []),
+        db.get(D.fuelCardImports, []),
+        db.get(D.whiteGloveLog, []),
       ]);
       if(cancelled) return;
       setCompliance(_compliance);
@@ -974,11 +926,18 @@ function ContractorOS() {
       setDispatches(_dispatches);
       setContacts(_contacts);
       setHosLog(_hosLog);
-      if(_clientData) setClientData(_clientData);
-      setStopProfitLog(_stopProfitLog||[]);
-      setWeeklySettlementLog(_weeklySettlementLog||[]);
-      setScheduleData(_scheduleData||[]);
-      setSegmentChecklist(_segmentChecklist||[]);
+      setCalloutLog(_calloutLog);
+      setDnrLog(_dnrLog);
+      setVanInspectionLog(_vanInspectionLog);
+      setDamageClaims(_damageClaims);
+      setCoachingLog(_coachingLog);
+      setAppearanceLog(_appearanceLog);
+      setLoadHistory(_loadHistory);
+      setDeadMilesLog(_deadMilesLog);
+      setTripSheets(_tripSheets);
+      setBidTracker(_bidTracker);
+      setFuelCardImports(_fuelCardImports);
+      setWhiteGloveLog(_whiteGloveLog);
       setDbLoaded(true);
     })();
     return ()=>{ cancelled=true; };
@@ -1010,11 +969,18 @@ function ContractorOS() {
   useEffect(()=>{if(dbLoaded)db.set(KEYS.dispatches,dispatches);},[dispatches,dbLoaded]);
   useEffect(()=>{if(dbLoaded)db.set(KEYS.contacts,contacts);},[contacts,dbLoaded]);
   useEffect(()=>{if(dbLoaded)db.set(KEYS.hosLog,hosLog);},[hosLog,dbLoaded]);
-  useEffect(()=>{if(dbLoaded)db.set(KEYS.clientData,clientData);},[clientData,dbLoaded]);
-  useEffect(()=>{if(dbLoaded)db.set(KEYS.stopProfitLog,stopProfitLog);},[stopProfitLog,dbLoaded]);
-  useEffect(()=>{if(dbLoaded)db.set(KEYS.weeklySettlementLog,weeklySettlementLog);},[weeklySettlementLog,dbLoaded]);
-  useEffect(()=>{if(dbLoaded)db.set(KEYS.scheduleData,scheduleData);},[scheduleData,dbLoaded]);
-  useEffect(()=>{if(dbLoaded)db.set(KEYS.segmentChecklist,segmentChecklist);},[segmentChecklist,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.calloutLog,calloutLog);},[calloutLog,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.dnrLog,dnrLog);},[dnrLog,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.vanInspectionLog,vanInspectionLog);},[vanInspectionLog,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.damageClaims,damageClaims);},[damageClaims,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.coachingLog,coachingLog);},[coachingLog,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.appearanceLog,appearanceLog);},[appearanceLog,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.loadHistory,loadHistory);},[loadHistory,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.deadMilesLog,deadMilesLog);},[deadMilesLog,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.tripSheets,tripSheets);},[tripSheets,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.bidTracker,bidTracker);},[bidTracker,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.fuelCardImports,fuelCardImports);},[fuelCardImports,dbLoaded]);
+  useEffect(()=>{if(dbLoaded)db.set(KEYS.whiteGloveLog,whiteGloveLog);},[whiteGloveLog,dbLoaded]);
 
   const seg = segment ? SEGMENTS[segment] : null;
   const S = seg ? mkStyles(seg.color) : mkStyles("#f59e0b");
@@ -1438,6 +1404,85 @@ function ContractorOS() {
   };
   const urgentItems = getAllExpiryItems().filter(i=>i.days!==null&&i.days<=30);
 
+  // ── v23: HEALTH SCORE ────────────────────────────────────────────────
+  const calcHealthScore = () => {
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0,10);
+    const monthStr = todayStr.slice(0,7);
+    const lastMonthDate = new Date(today.getFullYear(), today.getMonth()-1, 1);
+    const lastMonthStr = lastMonthDate.toISOString().slice(0,7);
+    let compScore = 25;
+    const allItems = [
+      ...(compliance.trucks||[]).map(t=>({...t,_type:"truck"})),
+      ...(compliance.drivers||[]).map(d=>({...d,_type:"driver"}))
+    ];
+    const overdue = allItems.filter(item=>{
+      const fields = ["dotInspection","ifta","irp","registration","insuranceExpiry","cdlExpiry","medCardExpiry","mvrDue","drugTest","annualReview"];
+      return fields.some(f=>item[f]&&new Date(item[f])<today);
+    });
+    const urgent = allItems.filter(item=>{
+      const fields = ["dotInspection","ifta","irp","registration","insuranceExpiry","cdlExpiry","medCardExpiry","mvrDue","drugTest","annualReview"];
+      const soon = new Date(today); soon.setDate(soon.getDate()+30);
+      return fields.some(f=>item[f]&&new Date(item[f])>=today&&new Date(item[f])<=soon);
+    });
+    if(overdue.length>0) compScore=0;
+    else if(urgent.length===0) compScore=25;
+    else if(urgent.length<=2) compScore=15;
+    else compScore=5;
+    let finScore = 5;
+    const thisMonthRev = revenue.filter(r=>r.date&&r.date.slice(0,7)===monthStr).reduce((s,r)=>s+parseFloat(r.amount||0),0);
+    const lastMonthRev = revenue.filter(r=>r.date&&r.date.slice(0,7)===lastMonthStr).reduce((s,r)=>s+parseFloat(r.amount||0),0);
+    if(thisMonthRev===0) finScore=0;
+    else if(lastMonthRev===0||thisMonthRev>=lastMonthRev) finScore=25;
+    else { const drop=(lastMonthRev-thisMonthRev)/lastMonthRev; finScore=drop<0.1?15:5; }
+    const activeDrivers = drivers.filter(d=>d.status==="active");
+    const incomplete = activeDrivers.filter(d=>!d.hireDate||!d.phone);
+    const driverScore = Math.max(0, 25 - incomplete.length*5);
+    let fleetScore = 25;
+    const now = today.getTime();
+    const overdueMaint = maintenance.filter(m=>{
+      if(!m.nextDueMiles&&!m.date) return false;
+      if(m.date&&new Date(m.date).getTime()<now-90*24*3600*1000) {
+        const newer = maintenance.filter(x=>x.truckName===m.truckName&&new Date(x.date)>new Date(m.date));
+        return newer.length===0;
+      }
+      return false;
+    });
+    if(overdueMaint.length===0) fleetScore=25;
+    else if(overdueMaint.length===1) fleetScore=15;
+    else fleetScore=5;
+    const vehiclesNoMaint = vehicles.filter(v=>{
+      const added = new Date(v.id||0);
+      if(Date.now()-added.getTime()<30*24*3600*1000) return false;
+      return !maintenance.some(m=>m.truckName===v.name||m.truckName===v.nickname);
+    });
+    if(vehiclesNoMaint.length>0) fleetScore=0;
+    const total = compScore+finScore+driverScore+fleetScore;
+    const color = total>=80?"#22c55e":total>=60?"#f59e0b":"#ef4444";
+    let insight = "All systems healthy";
+    if(overdue.length>0) insight=`${overdue.length} compliance item${overdue.length>1?"s":""} overdue`;
+    else if(urgent.length>0) insight=`${urgent.length} compliance item${urgent.length>1?"s":""} expiring soon`;
+    else if(finScore===0) insight="No revenue logged this month";
+    else if(finScore===25&&lastMonthRev>0) insight="Revenue up this month — strong";
+    else if(incomplete.length>0) insight=`${incomplete.length} driver${incomplete.length>1?"s":""} have incomplete onboarding`;
+    else if(fleetScore<25) insight="Fleet maintenance needs attention";
+    return {total, color, insight, compScore, finScore, driverScore, fleetScore};
+  };
+
+  const HealthGauge = ({score, color, insight}) => (
+    <div style={{textAlign:"center",padding:"12px 20px"}}>
+      <svg width="90" height="90" viewBox="0 0 90 90">
+        <circle cx="45" cy="45" r="38" fill="none" stroke="#222" strokeWidth="8"/>
+        <circle cx="45" cy="45" r="38" fill="none" stroke={color} strokeWidth="8"
+          strokeDasharray={`${(score/100)*238.76} 238.76`}
+          strokeLinecap="round" transform="rotate(-90 45 45)"/>
+        <text x="45" y="50" textAnchor="middle" fill={color} fontSize="22" fontWeight="700">{score}</text>
+      </svg>
+      <div style={{fontSize:10,color:"#888",marginTop:2}}>Business Health</div>
+      <div style={{fontSize:9,color:color,marginTop:2,maxWidth:120}}>{insight}</div>
+    </div>
+  );
+
   // ── SEGMENT SELECTOR ───────────────────────────────────────────────
   if(!segment) {
     return (
@@ -1464,7 +1509,7 @@ function ContractorOS() {
   }
 
   // ── SHARED COMPONENTS ──────────────────────────────────────────────
-  const navLabels = {dashboard:"Dashboard",analyze:"Analyze Load",boards:"Load Boards",compliance:"Compliance",brokers:seg?.id==="otr"?"Brokers":"Clients",fleet:"Fleet",finance:"Finance",routes:"Routes",drivers:"Drivers",contracts:"Contracts",reports:"Reports",trends:"P&L Trends",users:"Users",settings:"Settings",payroll:"Payroll",invoices:"Invoices",dispatch:"Dispatch",contacts:"Contacts",documents:"Documents",data:"Data & Backup",fmcsa:"FMCSA Lookup",scorecard:"Scorecard",stopprofit:"Stop Profit",settlement:"Settlement",schedule:"Schedule"};
+  const navLabels = {dashboard:"Dashboard",analyze:"Analyze Load",boards:"Load Boards",compliance:"Compliance",brokers:"Brokers",fleet:"Fleet",finance:"Finance",routes:"Routes",drivers:"Drivers",contracts:"Contracts",reports:"Reports",trends:"P&L Trends",users:"Users",settings:"Settings",payroll:"Payroll",invoices:"Invoices",dispatch:"Dispatch",contacts:"Contacts",documents:"Documents",data:"Data & Backup",fmcsa:"FMCSA Lookup",scorecard:"Scorecard",claims:"Damage Claims"};
   const SubNav = ({tabs,active,onSelect}) => <SubNavComp tabs={tabs} active={active} accent={accent} onSelect={onSelect}/>;
   const Stat = ({label,value,color,sub}) => <StatCard label={label} value={value} color={color||accent} sub={sub} card={S.card}/>;
   const ExpiryBadge = ({label,days}) => <ExpiryBadgeComp label={label} days={days}/>;
@@ -1684,166 +1729,223 @@ function ContractorOS() {
 
       {/* ══ DASHBOARD ══════════════════════════════════════════════════ */}
       {screen==="dashboard"&&(()=>{
-        const thisWeekStart = new Date(); thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay());
-        const thisWeekRevenue = revenue.filter(r=>r.date&&new Date(r.date)>=thisWeekStart).reduce((a,r)=>a+parseFloat(r.amount||0),0);
-        const lastWeekStart = new Date(thisWeekStart); lastWeekStart.setDate(lastWeekStart.getDate()-7);
-        const lastWeekRevenue = revenue.filter(r=>r.date&&new Date(r.date)>=lastWeekStart&&new Date(r.date)<thisWeekStart).reduce((a,r)=>a+parseFloat(r.amount||0),0);
-        const activeDriverCount = drivers.filter(d=>d.status==="active").length;
-        const thisWeekStops = dispatches.filter(d=>d.date&&new Date(d.date)>=thisWeekStart&&d.status==="completed").length;
-        const lastWeekStops = dispatches.filter(d=>d.date&&new Date(d.date)>=lastWeekStart&&new Date(d.date)<thisWeekStart&&d.status==="completed").length;
-        const thisWeekExpenses = expenses.filter(e=>e.date&&new Date(e.date)>=thisWeekStart).reduce((a,e)=>a+parseFloat(e.amount||0),0);
-        const latestScorecardWeek = scorecardData.length>0?scorecardData[scorecardData.length-1]:null;
-        const nearestContract = contracts.filter(c=>c.renewalDate).sort((a,b)=>new Date(a.renewalDate)-new Date(b.renewalDate))[0];
-        const nearestContractDays = nearestContract?daysUntil(nearestContract.renewalDate):null;
-        const avgNetRPM = loads.length>0?(loads.filter(l=>l.result?.netRPM).reduce((a,l)=>a+(l.result.netRPM||0),0)/loads.filter(l=>l.result?.netRPM).length):null;
-        const avgBrokerRating = brokers.filter(b=>b.rating).length>0?(brokers.filter(b=>b.rating).reduce((a,b)=>a+parseFloat(b.rating||0),0)/brokers.filter(b=>b.rating).length):null;
-        return (
-        <div style={{flex:1,padding:24,maxWidth:1000,margin:"0 auto",width:"100%",animation:"fadeUp 0.3s ease"}}>
-          <div style={{marginBottom:24}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:36,fontWeight:900,color:"#e8e4d8",lineHeight:1}}>
-              {settings.companyName||"YOUR FLEET"}<br/>
-              <span style={{color:accent,fontSize:28}}>OPERATIONS DASHBOARD</span>
+        const health = calcHealthScore();
+        const weekStart = new Date(); weekStart.setDate(weekStart.getDate()-weekStart.getDay());
+        const weekStr = weekStart.toISOString().slice(0,10);
+        const inThisWeek = (dateStr) => dateStr && dateStr >= weekStr;
+        const todayStr = new Date().toISOString().slice(0,10);
+
+        if(segment==="otr") return (
+          <div style={{flex:1,padding:24,maxWidth:1000,margin:"0 auto",width:"100%",animation:"fadeUp 0.3s ease"}}>
+            <div style={{marginBottom:20}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:32,fontWeight:900,color:"#e8e4d8",lineHeight:1}}>{settings.companyName||"YOUR FLEET"}<br/><span style={{color:accent,fontSize:24}}>OTR DASHBOARD</span></div></div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12,marginBottom:20}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12,flex:1}}>
+                <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Gross Revenue This Week</div><div style={{fontSize:24,fontWeight:700,color:accent}}>${revenue.filter(r=>inThisWeek(r.date)).reduce((s,r)=>s+parseFloat(r.amount||0),0).toFixed(0)}</div></div>
+                <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Open Loads</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{loads.length}</div></div>
+                <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Broker Avg Rating</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{brokers.length?((brokers.reduce((s,b)=>s+(parseFloat(b.rating)||0),0)/brokers.length).toFixed(1)):"—"}</div></div>
+                <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Active Drivers</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{drivers.filter(d=>d.status==="active").length}</div></div>
+              </div>
+              <HealthGauge score={health.total} color={health.color} insight={health.insight}/>
             </div>
-            <div style={{fontSize:11,color:"#555",marginTop:8}}>{seg.icon} {seg.label} · ContractorOS</div>
+            {urgentItems&&urgentItems.length>0&&<div style={{...S.card,marginBottom:16,border:"1px solid #f59e0b55"}}><div style={{fontSize:12,color:"#f59e0b",fontWeight:700,marginBottom:8}}>⚠ Compliance Alerts</div>{urgentItems.slice(0,3).map((item,i)=><div key={i} style={{fontSize:11,color:"#e8e4d8",marginBottom:4}}>{item.label}: {statusLabel(item.days)}</div>)}</div>}
+            {loads.length>0&&<div style={{...S.card,marginBottom:16}}><div style={{fontSize:13,fontWeight:700,color:"#e8e4d8",marginBottom:8}}>Recent Load Analysis</div>{loads.slice(0,3).map((l,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6,padding:"4px 0",borderBottom:"1px solid #1e1e1e"}}><span style={{fontSize:11,color:"#888"}}>{l.load?.origin||"?"} → {l.load?.destination||"?"}</span><span style={{fontSize:11,color:accent}}>${parseFloat(l.load?.offeredRate||0).toFixed(0)}</span><span style={{fontSize:10,padding:"2px 6px",borderRadius:3,background:l.result?.grade==="A"?"#22c55e33":l.result?.grade==="B"?"#f59e0b33":"#ef444433",color:l.result?.grade==="A"?"#22c55e":l.result?.grade==="B"?"#f59e0b":"#ef4444"}}>{l.result?.grade||"—"}</span></div>))}</div>}
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <button className="hov" onClick={()=>setScreen("finance")} style={S.btn}>Log Revenue</button>
+              <button className="hov" onClick={()=>setScreen("analyze")} style={S.btn}>Analyze Load</button>
+              <button className="hov" onClick={()=>setScreen("brokers")} style={S.btn}>View Brokers</button>
+            </div>
           </div>
+        );
 
-          {/* OTR dashboard */}
-          {seg.id==="otr"&&(
-            <>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16}}>
-                <Stat label="This Week Revenue" value={fmt$(thisWeekRevenue)} color="#22c55e"/>
-                <Stat label="Net RPM (avg)" value={avgNetRPM?`$${avgNetRPM.toFixed(2)}/mi`:"—"} color={accent}/>
-                <Stat label="Broker Avg Rating" value={avgBrokerRating?`${avgBrokerRating.toFixed(1)}/5`:"—"}/>
+        if(segment==="fedex") return (
+          <div style={{flex:1,padding:24,maxWidth:1000,margin:"0 auto",width:"100%",animation:"fadeUp 0.3s ease"}}>
+            <div style={{marginBottom:20}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:32,fontWeight:900,color:"#e8e4d8",lineHeight:1}}>{settings.companyName||"YOUR FLEET"}<br/><span style={{color:accent,fontSize:24}}>FEDEX DASHBOARD</span></div></div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12,marginBottom:20}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12,flex:1}}>
+                <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Stops This Week</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{dispatches.filter(d=>inThisWeek(d.date)).length}</div></div>
+                <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Active Drivers</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{drivers.filter(d=>d.status==="active").length}</div></div>
+                <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Contract Days Left</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{contracts.length?(()=>{const soonest=contracts.filter(c=>c.renewalDate).sort((a,b)=>new Date(a.renewalDate)-new Date(b.renewalDate))[0];return soonest?Math.max(0,Math.floor((new Date(soonest.renewalDate)-new Date())/(1000*60*60*24))):"—";})():"—"}</div></div>
+                <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Open Incidents</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{incidents.length}</div></div>
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
-                <Stat label="Open Loads" value={loads.filter(l=>!l.grade||l.verdict==="PASS").length}/>
-                <Stat label="Compliance Alerts" value={urgentItems.length} color={urgentItems.length>0?"#ef4444":"#22c55e"}/>
-                <Stat label="Active Drivers" value={activeDriverCount}/>
-              </div>
-              <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
-                <button className="hov" onClick={()=>setScreen("finance")} style={S.btn}>Log Revenue →</button>
-                <button className="hov" onClick={()=>setScreen("analyze")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Analyze Load →</button>
-                <button className="hov" onClick={()=>setScreen("brokers")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Add Broker →</button>
-              </div>
-            </>
-          )}
-
-          {/* FedEx dashboard */}
-          {seg.id==="fedex"&&(
-            <>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16}}>
-                <Stat label="This Week Stops" value={thisWeekStops} sub={`vs ${lastWeekStops} last week`}/>
-                <Stat label="Cost Per Stop" value={thisWeekStops>0?`$${(thisWeekExpenses/thisWeekStops).toFixed(2)}`:"—"} color="#ef4444"/>
-                <Stat label="Active Drivers" value={`${activeDriverCount} / ${drivers.length}`}/>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:20}}>
-                <Stat label="Compliance Alerts" value={urgentItems.length} color={urgentItems.length>0?"#ef4444":"#22c55e"}/>
-                <Stat label="Next Contract Renewal" value={nearestContractDays!==null?`${nearestContractDays}d`:"—"} color={nearestContractDays!==null&&nearestContractDays<=30?"#ef4444":nearestContractDays!==null&&nearestContractDays<=60?"#f59e0b":"#22c55e"}/>
-              </div>
-              <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
-                <button className="hov" onClick={()=>setScreen("dispatch")} style={S.btn}>Log Stops →</button>
-                <button className="hov" onClick={()=>setScreen("drivers")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Add Driver →</button>
-                <button className="hov" onClick={()=>setScreen("scorecard")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Scorecard →</button>
-              </div>
-            </>
-          )}
-
-          {/* Amazon dashboard */}
-          {seg.id==="amazon"&&(
-            <>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16}}>
-                <Stat label="DART Score" value={latestScorecardWeek?.dart?`${latestScorecardWeek.dart}%`:"—"} color={latestScorecardWeek?.dart?(parseFloat(latestScorecardWeek.dart)>=98?"#22c55e":"#ef4444"):accent}/>
-                <Stat label="DCR Score" value={latestScorecardWeek?.dcr?`${latestScorecardWeek.dcr}%`:"—"}/>
-                <Stat label="Mentor Score" value={latestScorecardWeek?.mentor||"—"}/>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:20}}>
-                <Stat label="Active Drivers" value={`${activeDriverCount} / ${drivers.length}`}/>
-                <Stat label="Compliance Alerts" value={urgentItems.length} color={urgentItems.length>0?"#ef4444":"#22c55e"}/>
-              </div>
-              <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
-                <button className="hov" onClick={()=>setScreen("scorecard")} style={S.btn}>Scorecard →</button>
-                <button className="hov" onClick={()=>setScreen("dispatch")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Log Route →</button>
-                <button className="hov" onClick={()=>setScreen("drivers")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Add Driver →</button>
-              </div>
-            </>
-          )}
-
-          {/* Last Mile dashboard */}
-          {seg.id==="lastmile"&&(
-            <>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:16}}>
-                <Stat label="This Week Revenue" value={fmt$(thisWeekRevenue)} sub={`vs ${fmt$(lastWeekRevenue)} last week`} color="#22c55e"/>
-                <Stat label="This Week Stops" value={thisWeekStops}/>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:20}}>
-                <Stat label="Active Drivers" value={activeDriverCount}/>
-                <Stat label="Compliance Alerts" value={urgentItems.length} color={urgentItems.length>0?"#ef4444":"#22c55e"}/>
-              </div>
-              <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
-                <button className="hov" onClick={()=>setScreen("dispatch")} style={S.btn}>Log Delivery →</button>
-                <button className="hov" onClick={()=>setScreen("drivers")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Add Driver →</button>
-                <button className="hov" onClick={()=>setScreen("finance")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Log Expense →</button>
-              </div>
-            </>
-          )}
-
-          {/* USPS dashboard */}
-          {seg.id==="usps"&&(
-            <>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:16}}>
-                <Stat label="Routes This Week" value={thisWeekStops}/>
-                <Stat label="Active Drivers" value={activeDriverCount}/>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:20}}>
-                <Stat label="Compliance Alerts" value={urgentItems.length} color={urgentItems.length>0?"#ef4444":"#22c55e"}/>
-                <Stat label="Next Contract Expiry" value={nearestContractDays!==null?`${nearestContractDays}d`:"—"} color={nearestContractDays!==null&&nearestContractDays<=30?"#ef4444":nearestContractDays!==null&&nearestContractDays<=60?"#f59e0b":"#22c55e"}/>
-              </div>
-              <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
-                <button className="hov" onClick={()=>setScreen("dispatch")} style={S.btn}>Log Route →</button>
-                <button className="hov" onClick={()=>setScreen("compliance")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Vehicle Inspection →</button>
-                <button className="hov" onClick={()=>setScreen("drivers")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Add Driver →</button>
-              </div>
-            </>
-          )}
-
-          {/* Urgent items — all segments */}
-          {urgentItems.length>0&&(
-            <div style={S.card}>
-              <div style={{fontSize:9,color:"#ef4444",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:10}}>⚠ Urgent Items</div>
-              <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                {urgentItems.slice(0,5).map((item,i)=><ExpiryBadge key={i} {...item}/>)}
-                {urgentItems.length>5&&<div style={{fontSize:10,color:"#555",textAlign:"center",paddingTop:4}}>+{urgentItems.length-5} more — check Compliance</div>}
-              </div>
+              <HealthGauge score={health.total} color={health.color} insight={health.insight}/>
             </div>
-          )}
+            {urgentItems&&urgentItems.length>0&&<div style={{...S.card,marginBottom:16,border:"1px solid #f59e0b55"}}><div style={{fontSize:12,color:"#f59e0b",fontWeight:700,marginBottom:8}}>⚠ Compliance Alerts</div>{urgentItems.slice(0,3).map((item,i)=><div key={i} style={{fontSize:11,color:"#e8e4d8",marginBottom:4}}>{item.label}: {statusLabel(item.days)}</div>)}</div>}
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <button className="hov" onClick={()=>setScreen("dispatch")} style={S.btn}>Log Stops</button>
+              <button className="hov" onClick={()=>setScreen("drivers")} style={S.btn}>Driver Coaching</button>
+              <button className="hov" onClick={()=>setScreen("scorecard")} style={S.btn}>Scorecard</button>
+            </div>
+          </div>
+        );
 
-          {/* Quick setup onboarding prompt */}
-          {drivers.length===0&&compliance.trucks.length===0&&(
-            <div style={{...S.card,marginTop:16,border:`1px solid ${accent}33`,background:"#0a0a0f"}}>
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:8}}>Quick Setup</div>
-              <div style={{fontSize:11,color:"#555",lineHeight:1.8,marginBottom:12}}>Get started by adding your trucks and drivers. This unlocks compliance tracking, payroll, and all reporting.</div>
+        if(segment==="amazon") {
+          const recentScore = scorecardData&&scorecardData.length?[...scorecardData].sort((a,b)=>new Date(b.week)-new Date(a.week))[0]:null;
+          return (
+            <div style={{flex:1,padding:24,maxWidth:1000,margin:"0 auto",width:"100%",animation:"fadeUp 0.3s ease"}}>
+              <div style={{marginBottom:20}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:32,fontWeight:900,color:"#e8e4d8",lineHeight:1}}>{settings.companyName||"YOUR FLEET"}<br/><span style={{color:accent,fontSize:24}}>AMAZON DSP DASHBOARD</span></div></div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12,marginBottom:20}}>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12,flex:1}}>
+                  <div style={S.card}><div style={{fontSize:11,color:"#888"}}>DART Score</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{recentScore?.dart||"—"}</div></div>
+                  <div style={S.card}><div style={{fontSize:11,color:"#888"}}>DCR Score</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{recentScore?.dcr||"—"}</div></div>
+                  <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Active Drivers</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{drivers.filter(d=>d.status==="active").length}</div></div>
+                  <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Callouts This Week</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{calloutLog.filter(c=>inThisWeek(c.date)).length}</div></div>
+                </div>
+                <HealthGauge score={health.total} color={health.color} insight={health.insight}/>
+              </div>
+              {urgentItems&&urgentItems.length>0&&<div style={{...S.card,marginBottom:16,border:"1px solid #f59e0b55"}}><div style={{fontSize:12,color:"#f59e0b",fontWeight:700,marginBottom:8}}>⚠ Compliance Alerts</div>{urgentItems.slice(0,3).map((item,i)=><div key={i} style={{fontSize:11,color:"#e8e4d8",marginBottom:4}}>{item.label}: {statusLabel(item.days)}</div>)}</div>}
+              {showCalloutAdd&&<div style={{...S.card,marginBottom:16,border:`1px solid ${accent}55`}}>
+                <div style={{fontSize:14,fontWeight:700,color:"#e8e4d8",marginBottom:10}}>Log Callout</div>
+                <select value={calloutFormMain.driverId} onChange={e=>setCalloutFormMain(p=>({...p,driverId:e.target.value}))} style={{...S.input,marginBottom:8}}><option value="">Select Driver</option>{drivers.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select>
+                <input type="date" value={calloutFormMain.date} onChange={e=>setCalloutFormMain(p=>({...p,date:e.target.value}))} style={{...S.input,marginBottom:8}}/>
+                <input placeholder="Route Affected" value={calloutFormMain.routeAffected} onChange={e=>setCalloutFormMain(p=>({...p,routeAffected:e.target.value}))} style={{...S.input,marginBottom:8}}/>
+                <select value={calloutFormMain.reason} onChange={e=>setCalloutFormMain(p=>({...p,reason:e.target.value}))} style={{...S.input,marginBottom:8}}>{["Sick","No Show","Emergency","Injury","Other"].map(r=><option key={r}>{r}</option>)}</select>
+                <label style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"#888",marginBottom:8}}><input type="checkbox" checked={calloutFormMain.wasRescued} onChange={e=>setCalloutFormMain(p=>({...p,wasRescued:e.target.checked}))}/>Rescued?</label>
+                {calloutFormMain.wasRescued&&<input placeholder="Rescued By" value={calloutFormMain.rescuedBy} onChange={e=>setCalloutFormMain(p=>({...p,rescuedBy:e.target.value}))} style={{...S.input,marginBottom:8}}/>}
+                <input placeholder="Notes" value={calloutFormMain.notes} onChange={e=>setCalloutFormMain(p=>({...p,notes:e.target.value}))} style={{...S.input,marginBottom:8}}/>
+                <div style={{display:"flex",gap:8}}>
+                  <button className="hov" onClick={()=>{const driver=drivers.find(d=>d.id===calloutFormMain.driverId);setCalloutLog(p=>[{id:Date.now(),driverName:driver?.name||"",...calloutFormMain},...p]);setCalloutFormMain({date:"",driverId:"",calloutTime:"",reason:"Sick",routeAffected:"",wasRescued:false,rescuedBy:"",overtimeCost:"",notes:""});setShowCalloutAdd(false);}} style={S.btn}>Save</button>
+                  <button className="hov" onClick={()=>setShowCalloutAdd(false)} style={{...S.btn,background:"#333"}}>Cancel</button>
+                </div>
+              </div>}
               <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                <button className="hov" onClick={()=>setScreen("fleet")} style={S.btn}>Add Truck →</button>
-                <button className="hov" onClick={()=>setScreen("drivers")} style={{...S.btn,background:"#0f0f0f",border:`1px solid ${accent}44`,color:accent}}>Add Driver →</button>
+                <button className="hov" onClick={()=>setShowCalloutAdd(true)} style={S.btn}>Log Callout</button>
+                <button className="hov" onClick={()=>setScreen("scorecard")} style={S.btn}>Upload Scorecard</button>
+                <button className="hov" onClick={()=>setScreen("fleet")} style={S.btn}>Van Inspection</button>
               </div>
             </div>
-          )}
+          );
+        }
 
-          {seg.features.loadAnalysis&&loads.length>0&&(
-            <div style={{...S.card,marginTop:16}}>
-              <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Recent Load Analysis</div>
-              <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                {loads.slice(0,4).map(l=>(
-                  <div key={l.id} style={{display:"flex",alignItems:"center",gap:12,padding:"7px 0",borderBottom:"1px solid #1a1a1a"}}>
-                    <div style={{width:24,height:24,background:gradeColor(l.result?.grade)+"22",border:`1px solid ${gradeColor(l.result?.grade)}44`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:gradeColor(l.result?.grade),borderRadius:3,flexShrink:0}}>{l.result?.grade}</div>
-                    <div style={{flex:1,minWidth:0}}><div style={{fontSize:11,color:"#c8c4bc",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.load.origin} → {l.load.destination}</div><div style={{fontSize:9,color:"#555"}}>{l.date} · {l.load.brokerName}</div></div>
-                    <div style={{fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:l.result?.verdictColor==="green"?"#22c55e":l.result?.verdictColor==="yellow"?"#f59e0b":"#ef4444",flexShrink:0}}>{l.result?.verdict}</div>
-                  </div>
-                ))}
+        if(segment==="lastmile") {
+          const todayDispatches = dispatches.filter(d=>d.date===todayStr);
+          const todayFuel = fuelLog.filter(f=>f.date===todayStr).reduce((s,f)=>s+parseFloat(f.totalCost||0),0);
+          const totalDailyWage = todayDispatches.reduce((s,d)=>{const drv=drivers.find(x=>x.id===d.driverId);return s+(drv&&drv.payType==="per_day"?parseFloat(drv.payRate||0):0);},0);
+          const todayRev = revenue.filter(r=>r.date===todayStr).reduce((s,r)=>s+parseFloat(r.amount||0),0);
+          return (
+            <div style={{flex:1,padding:24,maxWidth:1000,margin:"0 auto",width:"100%",animation:"fadeUp 0.3s ease"}}>
+              <div style={{marginBottom:20}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:32,fontWeight:900,color:"#e8e4d8",lineHeight:1}}>{settings.companyName||"YOUR FLEET"}<br/><span style={{color:accent,fontSize:24}}>LAST MILE DASHBOARD</span></div></div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12,marginBottom:20}}>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12,flex:1}}>
+                  <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Stops This Week</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{dispatches.filter(d=>inThisWeek(d.date)).length}</div></div>
+                  <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Revenue This Week</div><div style={{fontSize:24,fontWeight:700,color:accent}}>${revenue.filter(r=>inThisWeek(r.date)).reduce((s,r)=>s+parseFloat(r.amount||0),0).toFixed(0)}</div></div>
+                  <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Active Drivers</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{drivers.filter(d=>d.status==="active").length}</div></div>
+                  <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Open Claims</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{damageClaims.filter(c=>c.claimStatus==="Open").length}</div></div>
+                </div>
+                <HealthGauge score={health.total} color={health.color} insight={health.insight}/>
+              </div>
+              <div style={{...S.card,marginBottom:16}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#e8e4d8",marginBottom:8}}>Today's Summary</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8}}>
+                  <div><div style={{fontSize:10,color:"#888"}}>Drivers Today</div><div style={{fontSize:18,fontWeight:700,color:accent}}>{todayDispatches.length}</div></div>
+                  <div><div style={{fontSize:10,color:"#888"}}>Wage Cost</div><div style={{fontSize:18,fontWeight:700,color:accent}}>${totalDailyWage.toFixed(0)}</div></div>
+                  <div><div style={{fontSize:10,color:"#888"}}>Gas Cost</div><div style={{fontSize:18,fontWeight:700,color:accent}}>${todayFuel.toFixed(0)}</div></div>
+                  <div><div style={{fontSize:10,color:"#888"}}>Est. Net</div><div style={{fontSize:18,fontWeight:700,color:(todayRev-totalDailyWage-todayFuel)>0?"#22c55e":"#ef4444"}}>${(todayRev-totalDailyWage-todayFuel).toFixed(0)}</div></div>
+                </div>
+              </div>
+              {urgentItems&&urgentItems.length>0&&<div style={{...S.card,marginBottom:16,border:"1px solid #f59e0b55"}}><div style={{fontSize:12,color:"#f59e0b",fontWeight:700,marginBottom:8}}>⚠ Compliance Alerts</div>{urgentItems.slice(0,3).map((item,i)=><div key={i} style={{fontSize:11,color:"#e8e4d8",marginBottom:4}}>{item.label}: {statusLabel(item.days)}</div>)}</div>}
+              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                <button className="hov" onClick={()=>setScreen("dispatch")} style={S.btn}>Log Delivery</button>
+                <button className="hov" onClick={()=>setScreen("claims")} style={S.btn}>Log Damage Claim</button>
+                <button className="hov" onClick={()=>setScreen("fleet")} style={S.btn}>Log Gas</button>
               </div>
             </div>
-          )}
-        </div>
+          );
+        }
+
+        if(segment==="usps") {
+          const recentScore2 = scorecardData&&scorecardData.length?[...scorecardData].sort((a,b)=>new Date(b.week)-new Date(a.week))[0]:null;
+          const soonestContract = contracts.filter(c=>c.renewalDate).sort((a,b)=>new Date(a.renewalDate)-new Date(b.renewalDate))[0];
+          const daysLeft = soonestContract?Math.max(0,Math.floor((new Date(soonestContract.renewalDate)-new Date())/(1000*60*60*24))):null;
+          return (
+            <div style={{flex:1,padding:24,maxWidth:1000,margin:"0 auto",width:"100%",animation:"fadeUp 0.3s ease"}}>
+              <div style={{marginBottom:20}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:32,fontWeight:900,color:"#e8e4d8",lineHeight:1}}>{settings.companyName||"YOUR FLEET"}<br/><span style={{color:accent,fontSize:24}}>USPS HCR DASHBOARD</span></div></div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12,marginBottom:20}}>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12,flex:1}}>
+                  <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Routes This Week</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{dispatches.filter(d=>inThisWeek(d.date)).length}</div></div>
+                  <div style={S.card}><div style={{fontSize:11,color:"#888"}}>On-Time Rate</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{recentScore2?.onTime||"—"}{recentScore2?.onTime?"%":""}</div></div>
+                  <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Contract Days Left</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{daysLeft!==null?daysLeft:"—"}</div></div>
+                  <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Active Drivers</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{drivers.filter(d=>d.status==="active").length}</div></div>
+                </div>
+                <HealthGauge score={health.total} color={health.color} insight={health.insight}/>
+              </div>
+              {urgentItems&&urgentItems.length>0&&<div style={{...S.card,marginBottom:16,border:"1px solid #f59e0b55"}}><div style={{fontSize:12,color:"#f59e0b",fontWeight:700,marginBottom:8}}>⚠ Compliance Alerts</div>{urgentItems.slice(0,3).map((item,i)=><div key={i} style={{fontSize:11,color:"#e8e4d8",marginBottom:4}}>{item.label}: {statusLabel(item.days)}</div>)}</div>}
+              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                <button className="hov" onClick={()=>setScreen("dispatch")} style={S.btn}>Log Trip</button>
+                <button className="hov" onClick={()=>setScreen("fleet")} style={S.btn}>Vehicle Inspection</button>
+                <button className="hov" onClick={()=>setScreen("scorecard")} style={S.btn}>Scorecard</button>
+              </div>
+            </div>
+          );
+        }
+
+        // Generic fallback dashboard
+        return (
+          <div style={{flex:1,padding:24,maxWidth:1000,margin:"0 auto",width:"100%",animation:"fadeUp 0.3s ease"}}>
+            <div style={{marginBottom:28}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:36,fontWeight:900,color:"#e8e4d8",lineHeight:1}}>
+                {settings.companyName||"YOUR FLEET"}<br/>
+                <span style={{color:accent,fontSize:28}}>OPERATIONS DASHBOARD</span>
+              </div>
+              <div style={{fontSize:11,color:"#555",marginTop:8}}>{seg.icon} {seg.label} · ContractorOS</div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
+              <Stat label="Total Revenue" value={fmt$(totalRevenue)} color="#22c55e"/>
+              <Stat label="Total Expenses" value={fmt$(totalExpenses)} color="#ef4444"/>
+              <Stat label="Net Profit" value={fmt$(netProfit)} color={netProfit>=0?"#22c55e":"#ef4444"}/>
+              <Stat label="Compliance Alerts" value={urgentItems.length} color={urgentItems.length>0?"#ef4444":"#22c55e"} sub={urgentItems.length>0?"Needs attention":"All clear"}/>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
+              <div style={S.card}>
+                <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Quick Actions</div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {seg.features.loadAnalysis&&<button className="cardhov" onClick={()=>setScreen("analyze")} style={{...S.card,padding:"10px 14px",fontSize:11,color:accent,cursor:"pointer",textAlign:"left",border:`1px solid ${accent}22`}}>→ Analyze a Load</button>}
+                  {seg.features.routeProfit&&<button className="cardhov" onClick={()=>setScreen("routes")} style={{...S.card,padding:"10px 14px",fontSize:11,color:accent,cursor:"pointer",textAlign:"left",border:`1px solid ${accent}22`}}>→ View Route Profitability</button>}
+                  <button className="cardhov" onClick={()=>setScreen("compliance")} style={{...S.card,padding:"10px 14px",fontSize:11,color:"#ef4444",cursor:"pointer",textAlign:"left",border:"1px solid #ef444422"}}>→ Check Compliance</button>
+                  <button className="cardhov" onClick={()=>{setScreen("fleet");setSubScreen("schedule");}} style={{...S.card,padding:"10px 14px",fontSize:11,color:"#f59e0b",cursor:"pointer",textAlign:"left",border:"1px solid #f59e0b22"}}>→ Fleet Upcoming Service</button>
+                  <button className="cardhov" onClick={()=>{setScreen("finance");setSubScreen("expenses");}} style={{...S.card,padding:"10px 14px",fontSize:11,color:"#22c55e",cursor:"pointer",textAlign:"left",border:"1px solid #22c55e22"}}>→ Log an Expense</button>
+                  {seg.features.contractTracker&&<button className="cardhov" onClick={()=>setScreen("contracts")} style={{...S.card,padding:"10px 14px",fontSize:11,color:"#8888cc",cursor:"pointer",textAlign:"left",border:"1px solid #8888cc22"}}>→ View Contracts</button>}
+                </div>
+              </div>
+              <div style={S.card}>
+                <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>
+                  {urgentItems.length>0?"⚠ Urgent Items":"Compliance Status"}
+                </div>
+                {urgentItems.length===0&&<div style={{fontSize:12,color:"#22c55e"}}>✓ No urgent compliance items</div>}
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {urgentItems.slice(0,4).map((item,i)=><ExpiryBadge key={i} {...item}/>)}
+                  {urgentItems.length>4&&<div style={{fontSize:10,color:"#555",textAlign:"center",paddingTop:4}}>+{urgentItems.length-4} more — check Compliance tab</div>}
+                </div>
+              </div>
+            </div>
+            {seg.features.loadAnalysis&&loads.length>0&&(
+              <div style={S.card}>
+                <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Recent Load Analysis</div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {loads.slice(0,4).map(l=>(
+                    <div key={l.id} style={{display:"flex",alignItems:"center",gap:12,padding:"7px 0",borderBottom:"1px solid #1a1a1a"}}>
+                      <div style={{width:24,height:24,background:gradeColor(l.result?.grade)+"22",border:`1px solid ${gradeColor(l.result?.grade)}44`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:gradeColor(l.result?.grade),borderRadius:3,flexShrink:0}}>{l.result?.grade}</div>
+                      <div style={{flex:1,minWidth:0}}><div style={{fontSize:11,color:"#c8c4bc",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.load.origin} → {l.load.destination}</div><div style={{fontSize:9,color:"#555"}}>{l.date} · {l.load.brokerName}</div></div>
+                      <div style={{fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:l.result?.verdictColor==="green"?"#22c55e":l.result?.verdictColor==="yellow"?"#f59e0b":"#ef4444",flexShrink:0}}>{l.result?.verdict}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {seg.features.routeProfit&&routes.length>0&&(
+              <div style={{...S.card,marginTop:16}}>
+                <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Route Summary</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
+                  {routes.slice(0,4).map(r=>(
+                    <div key={r.id} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:6,padding:"12px 14px"}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8",marginBottom:4}}>{r.name}</div>
+                      <div style={{fontSize:10,color:"#555"}}>{r.stops} stops · {r.miles} mi</div>
+                      {r.analysis&&<div style={{fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:gradeColor(r.analysis.profitabilityScore),marginTop:6}}>{r.analysis.verdict}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         );
       })()}
 
@@ -2342,43 +2444,6 @@ function ContractorOS() {
                 {dotAnswer&&!aiLoading&&<div style={{background:"#110f00",border:"1px solid #2a2000",borderRadius:8,padding:"18px 22px",animation:"fadeUp 0.3s ease"}}><div style={{fontSize:9,color:"#5a4a00",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:10}}>DOT AI Answer</div><div style={{fontSize:12,color:"#c8c4a0",lineHeight:1.9,whiteSpace:"pre-wrap"}}>{dotAnswer}</div><div style={{marginTop:14,fontSize:10,color:"#3a3000",borderTop:"1px solid #2a1800",paddingTop:10}}>⚠ Informational only. Verify with your state DOT and a compliance professional.</div></div>}
               </div>
             )}
-            {/* Segment Compliance Checklist */}
-            {SEGMENT_CHECKLISTS[seg.id]&&(
-              <div style={{maxWidth:860,margin:"0 auto",marginTop:0}}>
-                <div style={{...S.card,marginTop:20}}>
-                  <div style={{...S.section,fontSize:16,marginBottom:16}}>SEGMENT COMPLIANCE CHECKLIST</div>
-                  {SEGMENT_CHECKLISTS[seg.id].map(item=>{
-                    const entry = segmentChecklist.find(e=>e.id===item.id)||{};
-                    const isComplete = !!entry.completedAt;
-                    const dueDate = entry.dueDate||"";
-                    const isOverdue = dueDate && new Date(dueDate) < new Date() && !isComplete;
-                    const isDueSoon = dueDate && !isOverdue && !isComplete && Math.ceil((new Date(dueDate)-Date.now())/(864e5)) <= 7;
-                    return (
-                      <div key={item.id} style={{display:"flex",alignItems:"flex-start",gap:12,padding:"10px 0",borderBottom:"1px solid #1a1a1a"}}>
-                        <input type="checkbox" checked={isComplete} onChange={e=>{
-                          setSegmentChecklist(p=>{
-                            const existing = p.find(x=>x.id===item.id);
-                            if(existing) return p.map(x=>x.id===item.id?{...x,completedAt:e.target.checked?new Date().toISOString():null}:x);
-                            return [...p,{id:item.id,completedAt:e.target.checked?new Date().toISOString():null,dueDate:"",notes:""}];
-                          });
-                        }} style={{marginTop:2,flexShrink:0}}/>
-                        <div style={{flex:1}}>
-                          <div style={{fontSize:12,color:isComplete?"#555":isOverdue?"#ef4444":isDueSoon?"#f59e0b":"#c8c4bc"}}>{item.label}</div>
-                          <div style={{fontSize:9,color:"#555",marginTop:2}}>{item.freq}{entry.completedAt?` · Completed ${new Date(entry.completedAt).toLocaleDateString()}`:""}</div>
-                        </div>
-                        <input type="date" value={dueDate} onChange={e=>setSegmentChecklist(p=>{
-                          const existing=p.find(x=>x.id===item.id);
-                          if(existing) return p.map(x=>x.id===item.id?{...x,dueDate:e.target.value}:x);
-                          return [...p,{id:item.id,completedAt:null,dueDate:e.target.value,notes:""}];
-                        })} style={{...S.input,width:130,fontSize:10}}/>
-                        {isOverdue&&<span style={{fontSize:9,color:"#ef4444",flexShrink:0}}>OVERDUE</span>}
-                        {isDueSoon&&!isOverdue&&<span style={{fontSize:9,color:"#f59e0b",flexShrink:0}}>DUE SOON</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -2653,11 +2718,6 @@ function ContractorOS() {
                 )}
                 {subScreen==="hos"&&(
                   <>
-                    {(seg.id==="fedex"||seg.id==="amazon")&&(
-                      <div style={{background:"#1a1500",border:"1px solid #f59e0b44",borderRadius:6,padding:"10px 16px",marginBottom:16,fontSize:11,color:"#f59e0b",lineHeight:1.7}}>
-                        ⚠ Note: FedEx and Amazon require an approved ELD for official HOS compliance. This log is for internal reference only — it does not replace your ELD records.
-                      </div>
-                    )}
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
                       <div><div style={S.section}>HOURS OF SERVICE</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Federal limit: 11 hrs driving, 14 hrs on-duty per day. Keep 6 months minimum.</div></div>
                       <button className="hov" onClick={()=>setHosShowAdd(!hosShowAdd)} style={S.btn}>{hosShowAdd?"Cancel":"+ Log Hours"}</button>
@@ -3247,51 +3307,15 @@ function ContractorOS() {
           </div>
         </div>
       )}
-      {screen==="brokers"&&seg.id!=="otr"&&(
-        <div style={{flex:1,overflowY:"auto",padding:24,animation:"fadeUp 0.3s ease"}}>
-          <div style={{maxWidth:700,margin:"0 auto"}}>
-            <div style={{...S.section,marginBottom:4}}>CLIENTS</div>
-            <div style={{fontSize:11,color:"#555",marginBottom:20}}>Track your primary client contract details and contact info.</div>
-            {clientDataEditing?(
-              <div style={{...S.card,border:`1px solid ${accent}44`}}>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-                  <div><label style={S.label}>Weekly Stop Guarantee</label><input type="number" value={clientDataForm.stopGuarantee||""} onChange={e=>setClientDataForm(p=>({...p,stopGuarantee:e.target.value}))} style={S.input}/></div>
-                  <div><label style={S.label}>Revenue Per Stop ($)</label><input type="number" value={clientDataForm.revenuePerStop||""} onChange={e=>setClientDataForm(p=>({...p,revenuePerStop:e.target.value}))} style={S.input}/></div>
-                  <div><label style={S.label}>Fuel Surcharge Rate (%)</label><input type="number" value={clientDataForm.fuelSurchargeRate||""} onChange={e=>setClientDataForm(p=>({...p,fuelSurchargeRate:e.target.value}))} style={S.input}/></div>
-                  <div><label style={S.label}>Contract Expiry Date</label><input type="date" value={clientDataForm.contractExpiry||""} onChange={e=>setClientDataForm(p=>({...p,contractExpiry:e.target.value}))} style={S.input}/></div>
-                  <div><label style={S.label}>Primary Contact Name</label><input value={clientDataForm.contactName||""} onChange={e=>setClientDataForm(p=>({...p,contactName:e.target.value}))} style={S.input}/></div>
-                  <div><label style={S.label}>Primary Contact Phone</label><input value={clientDataForm.contactPhone||""} onChange={e=>setClientDataForm(p=>({...p,contactPhone:e.target.value}))} style={S.input}/></div>
-                  <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><textarea value={clientDataForm.notes||""} onChange={e=>setClientDataForm(p=>({...p,notes:e.target.value}))} style={{...S.input,height:80,resize:"vertical"}}/></div>
-                </div>
-                <div style={{display:"flex",gap:10}}>
-                  <button className="hov" onClick={()=>{setClientData({...clientDataForm});setClientDataEditing(false);}} style={S.btn}>Save</button>
-                  <button onClick={()=>setClientDataEditing(false)} style={S.ghost}>Cancel</button>
-                </div>
-              </div>
-            ):(
-              <div style={{...S.card,border:`1px solid ${accent}33`}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:accent}}>
-                    {seg.id==="fedex"?"FedEx Ground":seg.id==="amazon"?"Amazon DSP":seg.id==="lastmile"?"Lowe's / Home Depot":"USPS"}
-                  </div>
-                  <button className="hov" onClick={()=>{setClientDataForm({...clientData});setClientDataEditing(true);}} style={S.btn}>Edit</button>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:12}}>
-                  {[["Weekly Stop Guarantee",clientData.stopGuarantee?`${clientData.stopGuarantee} stops`:"Not set"],["Revenue Per Stop",clientData.revenuePerStop?`$${clientData.revenuePerStop}`:"Not set"],["Fuel Surcharge Rate",clientData.fuelSurchargeRate?`${clientData.fuelSurchargeRate}%`:"Not set"],["Contract Expiry",clientData.contractExpiry?new Date(clientData.contractExpiry).toLocaleDateString():"Not set"],["Primary Contact",clientData.contactName||"Not set"],["Contact Phone",clientData.contactPhone||"Not set"]].map(([lbl,val])=>(
-                    <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}>
-                      <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>{lbl}</div>
-                      <div style={{fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:val==="Not set"?"#444":"#c8c4bc"}}>{val}</div>
-                    </div>
-                  ))}
-                </div>
-                {clientData.notes&&<div style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"10px 14px",fontSize:11,color:"#888",lineHeight:1.7}}>{clientData.notes}</div>}
-                {!clientData.stopGuarantee&&!clientData.revenuePerStop&&<div style={{fontSize:11,color:"#555",marginTop:8}}>Click Edit to fill in your client contract details.</div>}
-              </div>
-            )}
-          </div>
+      {screen==="brokers"&&!seg.features.brokerScorecard&&(
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16,padding:32}}>
+          <div style={{fontSize:32}}>🚫</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,color:"#555"}}>Broker tools are for OTR operators</div>
+          <div style={{fontSize:12,color:"#444",textAlign:"center",maxWidth:400,lineHeight:1.7}}>Switch to OTR / Owner Operator mode in Settings to access broker scorecards and lane intelligence.</div>
+          <button onClick={()=>setScreen("settings")} style={S.btn}>Go to Settings →</button>
         </div>
       )}
-      {screen==="brokers"&&seg.id==="otr"&&(()=>{
+      {screen==="brokers"&&seg.features.brokerScorecard&&(()=>{
         const laneStats=()=>{
           const lanes={};
           loads.forEach(l=>{ if(!l.load?.origin||!l.load?.destination)return; const k=`${l.load.origin} → ${l.load.destination}`; if(!lanes[k])lanes[k]={count:0,total:0}; lanes[k].count++; lanes[k].total+=l.result?.netRPM||0; });
@@ -4328,6 +4352,60 @@ function ContractorOS() {
         </div>
       )})()}
 
+      {/* ══ CLAIMS (lastmile) ══════════════════════════════════════════ */}
+      {screen==="claims"&&segment==="lastmile"&&(()=>{
+        const openClaims = damageClaims.filter(c=>c.claimStatus==="Open");
+        const closedClaims = damageClaims.filter(c=>c.claimStatus!=="Open");
+        return (
+          <div style={{flex:1,overflowY:"auto",padding:24}}>
+            <div style={{maxWidth:800,margin:"0 auto"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:700,color:"#e8e4d8",marginBottom:16}}>Damage Claims</div>
+              <div style={{display:"flex",gap:8,marginBottom:16}}>
+                {["open","history"].map(t=><button key={t} className="hov" onClick={()=>setClaimsTab(t)} style={{...S.btn,background:claimsTab===t?accent:"#1e1e1e",color:claimsTab===t?"#000":"#888"}}>{t==="open"?"Open Claims":"History"}</button>)}
+                <button className="hov" onClick={()=>setShowAddClaim(p=>!p)} style={S.btn}>+ Add Claim</button>
+              </div>
+              {showAddClaim&&<div style={{...S.card,marginBottom:16}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8",marginBottom:10}}>New Damage Claim</div>
+                <input type="date" value={claimForm.date} onChange={e=>setClaimForm(p=>({...p,date:e.target.value}))} style={{...S.input,marginBottom:8}}/>
+                <select value={claimForm.driverId} onChange={e=>setClaimForm(p=>({...p,driverId:e.target.value}))} style={{...S.input,marginBottom:8}}><option value="">Select Driver</option>{drivers.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select>
+                <input placeholder="Customer Address" value={claimForm.customerAddress} onChange={e=>setClaimForm(p=>({...p,customerAddress:e.target.value}))} style={{...S.input,marginBottom:8}}/>
+                <select value={claimForm.deliveryType} onChange={e=>setClaimForm(p=>({...p,deliveryType:e.target.value}))} style={{...S.input,marginBottom:8}}>{["Appliance","Furniture","Building Materials","Other"].map(t=><option key={t}>{t}</option>)}</select>
+                <input placeholder="Item Description" value={claimForm.itemDescription} onChange={e=>setClaimForm(p=>({...p,itemDescription:e.target.value}))} style={{...S.input,marginBottom:8}}/>
+                <input placeholder="Damage Description" value={claimForm.damageDescription} onChange={e=>setClaimForm(p=>({...p,damageDescription:e.target.value}))} style={{...S.input,marginBottom:8}}/>
+                <input placeholder="Estimated Value ($)" type="number" value={claimForm.estimatedValue} onChange={e=>setClaimForm(p=>({...p,estimatedValue:e.target.value}))} style={{...S.input,marginBottom:8}}/>
+                <input placeholder="Notes" value={claimForm.notes} onChange={e=>setClaimForm(p=>({...p,notes:e.target.value}))} style={{...S.input,marginBottom:8}}/>
+                <button className="hov" onClick={()=>{const drv=drivers.find(d=>d.id===claimForm.driverId);setDamageClaims(p=>[{id:Date.now(),driverName:drv?.name||"",claimStatus:"Open",...claimForm},...p]);setClaimForm({date:"",driverId:"",customerAddress:"",deliveryType:"Appliance",itemDescription:"",damageDescription:"",estimatedValue:"",claimStatus:"Open",claimAmount:"",resolution:"",notes:""});setShowAddClaim(false);}} style={S.btn}>Save Claim</button>
+              </div>}
+              {claimsTab==="open"&&<>
+                <div style={{...S.card,marginBottom:12}}><div style={{fontSize:11,color:"#888"}}>Total Open Claim Value</div><div style={{fontSize:28,fontWeight:700,color:"#ef4444"}}>${openClaims.reduce((s,c)=>s+parseFloat(c.estimatedValue||0),0).toFixed(0)}</div></div>
+                {openClaims.length===0&&<div style={{color:"#555",fontSize:12}}>No open claims.</div>}
+                {openClaims.map(c=>{const daysOpen=Math.floor((Date.now()-new Date(c.date).getTime())/(1000*60*60*24));return <div key={c.id} style={{...S.card,marginBottom:8,border:daysOpen>=14?"1px solid #f59e0b55":""}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                    <div><div style={{fontSize:13,fontWeight:700,color:"#e8e4d8"}}>{c.itemDescription||"Unnamed Item"}</div><div style={{fontSize:11,color:"#888"}}>{c.driverName} · {c.deliveryType} · {c.customerAddress}</div><div style={{fontSize:11,color:"#888"}}>{c.damageDescription}</div></div>
+                    <div style={{textAlign:"right"}}><div style={{fontSize:18,fontWeight:700,color:"#ef4444"}}>${parseFloat(c.estimatedValue||0).toFixed(0)}</div><div style={{fontSize:10,color:daysOpen>=14?"#f59e0b":"#555"}}>{daysOpen}d open{daysOpen>=14?" ⚠":""}</div></div>
+                  </div>
+                  <div style={{display:"flex",gap:8,marginTop:8}}>{["Submitted","Resolved","Denied"].map(s=><button key={s} className="hov" onClick={()=>setDamageClaims(p=>p.map(x=>x.id===c.id?{...x,claimStatus:s}:x))} style={{fontSize:10,padding:"3px 8px",borderRadius:3,border:`1px solid ${accent}44`,background:"transparent",color:accent,cursor:"pointer"}}>{s}</button>)}</div>
+                </div>;})}
+              </>}
+              {claimsTab==="history"&&<>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12,marginBottom:16}}>
+                  <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Total Claims YTD</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{damageClaims.length}</div></div>
+                  <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Resolved</div><div style={{fontSize:24,fontWeight:700,color:"#22c55e"}}>{damageClaims.filter(c=>c.claimStatus==="Resolved").length}</div></div>
+                  <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Denied</div><div style={{fontSize:24,fontWeight:700,color:"#ef4444"}}>{damageClaims.filter(c=>c.claimStatus==="Denied").length}</div></div>
+                </div>
+                {closedClaims.length===0&&<div style={{color:"#555",fontSize:12}}>No closed claims yet.</div>}
+                {closedClaims.map(c=>(<div key={c.id} style={{...S.card,marginBottom:8}}>
+                  <div style={{display:"flex",justifyContent:"space-between"}}>
+                    <div><div style={{fontSize:13,color:"#e8e4d8"}}>{c.itemDescription}</div><div style={{fontSize:11,color:"#888"}}>{c.driverName} · {c.date}</div></div>
+                    <span style={{fontSize:11,padding:"2px 8px",borderRadius:3,background:c.claimStatus==="Resolved"?"#22c55e33":"#ef444433",color:c.claimStatus==="Resolved"?"#22c55e":"#ef4444"}}>{c.claimStatus}</span>
+                  </div>
+                </div>))}
+              </>}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ══ DATA & BACKUP ══════════════════════════════════════════════ */}
       {screen==="data"&&(()=>{
         const currentYear=new Date().getFullYear();const lastYear=currentYear-1;
@@ -4414,401 +4492,6 @@ function ContractorOS() {
           </div>
         </div>
       )})()}
-
-      {/* ══ SCORECARD (all non-OTR) ════════════════════════════════════ */}
-      {screen==="scorecard"&&seg.id!=="otr"&&(()=>{
-        const isFedex = seg.id==="fedex";
-        const isAmazon = seg.id==="amazon";
-        const isLastMile = seg.id==="lastmile";
-        const fedexMetrics = [{key:"pickupCompliance",label:"Pickup Compliance",target:99,unit:"%",color:"#f59e0b"},{key:"deliveryCompliance",label:"Delivery Compliance",target:98,unit:"%",color:"#22c55e"},{key:"packageHandling",label:"Package Handling",target:99,unit:"%",color:"#60a5fa"},{key:"uniformCompliance",label:"Uniform / Vehicle Compliance",target:100,unit:"%",color:"#8888cc"},{key:"onTimePickup",label:"On-Time Pickup",target:97,unit:"%",color:"#f59e0b"},{key:"routeCompletion",label:"Route Completion Rate",target:99,unit:"%",color:"#22c55e"}];
-        const amazonMetrics = [{key:"dart",label:"DART Score",target:98,unit:"%",color:"#f59e0b",desc:"Delivery Associate Reliability Today"},{key:"dcr",label:"DCR — Delivery Completion Rate",target:99,unit:"%",color:"#22c55e"},{key:"pod",label:"POD — Photo On Delivery",target:99,unit:"%",color:"#60a5fa"},{key:"mentor",label:"Mentor Safety Score (avg)",target:800,unit:"pts",color:"#8888cc"},{key:"contactCompliance",label:"Delivery Contact Compliance",target:97,unit:"%",color:"#f59e0b"},{key:"attendanceRate",label:"Driver Attendance Rate",target:98,unit:"%",color:"#22c55e"}];
-        const lastmileMetrics = [{key:"stopCompletion",label:"Stop Completion Rate",target:99,unit:"%",color:"#22c55e"},{key:"onTimeDelivery",label:"On-Time Delivery",target:97,unit:"%",color:"#f59e0b"},{key:"customerSatisfaction",label:"Customer Satisfaction (CSAT)",target:95,unit:"%",color:"#60a5fa"},{key:"damageRate",label:"Damage-Free Rate",target:99,unit:"%",color:"#8888cc"},{key:"signatureCapture",label:"Signature Capture Rate",target:98,unit:"%",color:"#f59e0b"},{key:"callAhead",label:"Call-Ahead Compliance",target:95,unit:"%",color:"#22c55e"}];
-        const uspsMetrics = [{key:"routeCompletion",label:"Route Completion Rate",target:100,unit:"%",color:"#22c55e"},{key:"onTime",label:"On-Time Performance",target:97,unit:"%",color:"#f59e0b"},{key:"vehicleInspection",label:"Vehicle Inspection Compliance",target:100,unit:"%",color:"#60a5fa"},{key:"substituteAvail",label:"Substitute Driver Availability",target:90,unit:"%",color:"#8888cc"},{key:"mailSecurity",label:"Mail Security Compliance",target:100,unit:"%",color:"#ef4444"}];
-        const metrics = isFedex?fedexMetrics:isAmazon?amazonMetrics:isLastMile?lastmileMetrics:uspsMetrics;
-        const segLabel = isFedex?"FedEx Ground":isAmazon?"Amazon DSP":isLastMile?"Last Mile / Lowe's":"USPS Contract";
-        const thisWeek = scorecardData.find(s=>s.week===scorecardWeek)||{week:scorecardWeek};
-        const updateMetric = (key,val) => { const existing = scorecardData.find(s=>s.week===scorecardWeek); if(existing){setScorecardData(p=>p.map(s=>s.week===scorecardWeek?{...s,[key]:val}:s));}else{setScorecardData(p=>[{week:scorecardWeek,[key]:val},...p]);} };
-        const overallScore = metrics.reduce((sum,m)=>{ const val=parseFloat(thisWeek[m.key]||0); const pct=m.unit==="%"?val:Math.min((val/m.target)*100,100); return sum+pct; },0)/metrics.length;
-        return (
-          <div style={{flex:1,overflowY:"auto",padding:24}}>
-            <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
-                <div><div style={{...S.section}}>{segLabel.toUpperCase()} SCORECARD</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Track your weekly performance metrics.</div></div>
-                <div style={{textAlign:"center",background:"#141414",border:`1px solid ${accent}44`,borderRadius:8,padding:"12px 18px"}}>
-                  <div style={{fontSize:32,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:overallScore>=95?"#22c55e":overallScore>=85?"#f59e0b":"#ef4444"}}>{isNaN(overallScore)?"-":overallScore.toFixed(0)}%</div>
-                  <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Overall Score</div>
-                </div>
-              </div>
-              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
-                <label style={{...S.label,marginBottom:0,whiteSpace:"nowrap"}}>Week of:</label>
-                <input type="date" value={scorecardWeek} onChange={e=>setScorecardWeek(e.target.value)} style={{...S.input,maxWidth:180}}/>
-              </div>
-              {/* Amazon AI Import */}
-              {isAmazon&&(
-                <div style={{...S.card,marginBottom:20,border:`1px solid ${accent}44`}}>
-                  <div style={{fontSize:10,color:accent,letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:8}}>Import Weekly Scorecard</div>
-                  <div style={{fontSize:11,color:"#555",marginBottom:12,lineHeight:1.7}}>Upload your Amazon DSP scorecard PDF or screenshot. AI will extract all metrics automatically.</div>
-                  <input type="file" accept=".pdf,image/*" onChange={async(e)=>{
-                    const file = e.target.files?.[0]; if(!file) return;
-                    setScorecardImporting(true); setScorecardImportResult(null);
-                    try {
-                      const reader = new FileReader();
-                      reader.onload = async(ev)=>{
-                        const base64=ev.target.result.split(",")[1]; const mediaType=file.type||"image/jpeg"; const isPdf=file.type==="application/pdf";
-                        const ANTHROPIC_KEY=import.meta.env.VITE_ANTHROPIC_API_KEY;
-                        const response=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1024,messages:[{role:"user",content:[isPdf?{type:"document",source:{type:"base64",media_type:"application/pdf",data:base64}}:{type:"image",source:{type:"base64",media_type:mediaType,data:base64}},{type:"text",text:"This is an Amazon DSP weekly scorecard. Extract ALL performance metrics. Return ONLY a JSON object. No markdown, no explanation."}]}]})});
-                        const data=await response.json(); const text=data?.content?.[0]?.text||"";
-                        try {
-                          const parsed=JSON.parse(text);
-                          const keyMap={"dart":"dart","dcr":"dcr","delivery completion rate":"dcr","pod":"pod","mentor":"mentor","mentor score":"mentor","contact compliance":"contactCompliance","attendance rate":"attendanceRate"};
-                          const newEntry={...(scorecardData.find(w=>w.week===scorecardWeek)||{week:scorecardWeek})};
-                          const imported=[];
-                          Object.entries(parsed).forEach(([k,v])=>{const nk=k.toLowerCase().replace(/[^a-z ]/g,"").trim();const mk=keyMap[nk]||nk.replace(/ /g,"");if(mk){newEntry[mk]=parseFloat(v)||v;imported.push(k);}});
-                          setScorecardData([...scorecardData.filter(w=>w.week!==scorecardWeek),newEntry]);
-                          setScorecardImportResult({success:true,fields:imported});
-                        } catch { setScorecardImportResult({success:false,error:"Could not parse AI response. Fill in manually."}); }
-                        setScorecardImporting(false);
-                      };
-                      reader.readAsDataURL(file);
-                    } catch(err) { setScorecardImportResult({success:false,error:err.message}); setScorecardImporting(false); }
-                  }} style={{fontSize:11,color:"#888",marginBottom:8}}/>
-                  {scorecardImporting&&<div style={{fontSize:11,color:accent,marginTop:8}}>Parsing scorecard with AI...</div>}
-                  {scorecardImportResult?.success&&<div style={{fontSize:11,color:"#22c55e",marginTop:8}}>✓ Imported: {scorecardImportResult.fields.join(", ")}</div>}
-                  {scorecardImportResult?.error&&<div style={{fontSize:11,color:"#ef4444",marginTop:8}}>⚠ {scorecardImportResult.error}</div>}
-                </div>
-              )}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12,marginBottom:24}}>
-                {metrics.map(m=>{
-                  const val=thisWeek[m.key]||""; const numVal=parseFloat(val||0); const pct=m.unit==="%"?numVal:Math.min((numVal/m.target)*100,100); const status=pct>=m.target?"#22c55e":pct>=(m.target-5)?"#f59e0b":"#ef4444";
-                  return(
-                    <div key={m.key} style={{...S.card,borderTop:`3px solid ${m.color}`}}>
-                      <div style={{fontSize:11,color:"#888",marginBottom:8,lineHeight:1.4}}>{m.label}</div>
-                      {m.desc&&<div style={{fontSize:9,color:"#444",marginBottom:6}}>{m.desc}</div>}
-                      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
-                        <input type="number" value={val} onChange={e=>updateMetric(m.key,e.target.value)} placeholder={m.target.toString()} style={{...S.input,maxWidth:90}} min={0} max={m.unit==="%"?100:undefined}/>
-                        <div style={{fontSize:9,color:"#555"}}>{m.unit}</div>
-                        <div style={{marginLeft:"auto",fontSize:10,color:val?status:"#444",fontWeight:700}}>Target: {m.target}{m.unit}</div>
-                      </div>
-                      <div style={{height:4,background:"#1e1e1e",borderRadius:2}}><div style={{height:"100%",width:`${Math.min(pct,100)}%`,background:val?status:m.color,borderRadius:2,transition:"width 0.3s"}}/></div>
-                    </div>
-                  );
-                })}
-              </div>
-              {scorecardData.length>0&&(
-                <div style={S.card}>
-                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>Score History</div>
-                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                    {[...scorecardData].sort((a,b)=>new Date(b.week)-new Date(a.week)).slice(0,8).map(week=>{
-                      const weekAvg=metrics.reduce((sum,m)=>{const v=parseFloat(week[m.key]||0);return sum+(m.unit==="%"?v:Math.min((v/m.target)*100,100));},0)/metrics.length;
-                      return(
-                        <div key={week.week} style={{display:"flex",alignItems:"center",gap:12,padding:"6px 0",borderBottom:"1px solid #1a1a1a"}}>
-                          <div style={{fontSize:11,color:"#888",width:90,flexShrink:0}}>{fmtDate(week.week)}</div>
-                          <div style={{flex:1,height:6,background:"#1e1e1e",borderRadius:3}}><div style={{height:"100%",width:`${Math.min(weekAvg,100)}%`,background:weekAvg>=95?"#22c55e":weekAvg>=85?"#f59e0b":"#ef4444",borderRadius:3}}/></div>
-                          <div style={{fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:weekAvg>=95?"#22c55e":weekAvg>=85?"#f59e0b":"#ef4444",width:40,textAlign:"right"}}>{isNaN(weekAvg)?"-":weekAvg.toFixed(0)}%</div>
-                          <button onClick={()=>setScorecardData(p=>p.filter(s=>s.week!==week.week))} style={{background:"transparent",border:"none",color:"#333",cursor:"pointer",fontSize:11}}>✕</button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* ══ STOP PROFIT (FedEx + Last Mile) ═══════════════════════════ */}
-      {screen==="stopprofit"&&(
-        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["entry","Daily Entry"],["trend","Weekly Trend"]]} active={stopProfitSub} onSelect={setStopProfitSub}/>
-          <div style={{flex:1,overflowY:"auto",padding:24}}>
-            <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-              <div style={{...S.section,marginBottom:4}}>STOP PROFIT TRACKER</div>
-              <div style={{fontSize:11,color:"#555",marginBottom:20}}>Track your daily stop profitability and margin trends.</div>
-              {stopProfitSub==="entry"&&(()=>{
-                const stops = parseFloat(stopProfitForm.stops||0);
-                const rps = parseFloat(stopProfitForm.revenuePerStop||0);
-                const driverPay = parseFloat(stopProfitForm.driverPay||0);
-                const fuelCost = parseFloat(stopProfitForm.fuelCost||0);
-                const vehicleCost = parseFloat(stopProfitForm.vehicleCost||0);
-                const otherCost = parseFloat(stopProfitForm.otherCost||0);
-                const totalRev = stops * rps;
-                const totalCost = driverPay + fuelCost + vehicleCost + otherCost;
-                const grossProfit = totalRev - totalCost;
-                const netPerStop = stops>0?grossProfit/stops:0;
-                const margin = totalRev>0?(grossProfit/totalRev)*100:0;
-                const marginColor = margin>20?"#22c55e":margin>10?"#f59e0b":"#ef4444";
-                return (
-                  <>
-                    <div style={{...S.card,marginBottom:20}}>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                        <div><label style={S.label}>Date</label><input type="date" value={stopProfitForm.date||new Date().toISOString().slice(0,10)} onChange={e=>setStopProfitForm(p=>({...p,date:e.target.value}))} style={S.input}/></div>
-                        <div><label style={S.label}>Stops Completed</label><input type="number" value={stopProfitForm.stops} onChange={e=>setStopProfitForm(p=>({...p,stops:e.target.value}))} placeholder="0" style={S.input}/></div>
-                        <div><label style={S.label}>Revenue Per Stop ($)</label><input type="number" value={stopProfitForm.revenuePerStop} onChange={e=>setStopProfitForm(p=>({...p,revenuePerStop:e.target.value}))} placeholder="0.00" style={S.input}/></div>
-                        <div><label style={S.label}>Driver Pay ($)</label><input type="number" value={stopProfitForm.driverPay} onChange={e=>setStopProfitForm(p=>({...p,driverPay:e.target.value}))} placeholder="0.00" style={S.input}/></div>
-                        <div><label style={S.label}>Fuel Cost ($)</label><input type="number" value={stopProfitForm.fuelCost} onChange={e=>setStopProfitForm(p=>({...p,fuelCost:e.target.value}))} placeholder="check fuel log" style={S.input}/></div>
-                        <div><label style={S.label}>Vehicle Cost ($)</label><input type="number" value={stopProfitForm.vehicleCost} onChange={e=>setStopProfitForm(p=>({...p,vehicleCost:e.target.value}))} placeholder="0.00" style={S.input}/></div>
-                        <div><label style={S.label}>Other Cost ($)</label><input type="number" value={stopProfitForm.otherCost} onChange={e=>setStopProfitForm(p=>({...p,otherCost:e.target.value}))} placeholder="0.00" style={S.input}/></div>
-                      </div>
-                    </div>
-                    {stops>0&&rps>0&&(
-                      <div style={{...S.card,marginBottom:20,border:`2px solid ${marginColor}44`}}>
-                        <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>Live Calculation</div>
-                        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:12}}>
-                          {[["Total Revenue",fmt$(totalRev),"#22c55e"],["Total Cost",fmt$(totalCost),"#ef4444"],["Gross Profit",fmt$(grossProfit),grossProfit>=0?"#22c55e":"#ef4444"]].map(([lbl,val,col])=>(
-                            <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>{lbl}</div><div style={{fontSize:18,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div></div>
-                          ))}
-                        </div>
-                        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>
-                          <div style={{background:"#0f0f0f",border:`1px solid ${marginColor}33`,borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>Net Per Stop</div><div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:marginColor}}>{fmt$(netPerStop)}</div></div>
-                          <div style={{background:"#0f0f0f",border:`1px solid ${marginColor}33`,borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>Margin</div><div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:marginColor}}>{margin.toFixed(1)}%</div><div style={{fontSize:9,color:"#555",marginTop:2}}>{margin>20?"Good":"Below target"}</div></div>
-                        </div>
-                      </div>
-                    )}
-                    <button className="hov" onClick={()=>{
-                      if(!stopProfitForm.stops||!stopProfitForm.revenuePerStop){showValidation("Stops and revenue per stop required");return;}
-                      setStopProfitLog(p=>[{id:Date.now(),...stopProfitForm,stops,rps,totalRev,totalCost,grossProfit,netPerStop,margin},...p]);
-                      setStopProfitForm({date:"",stops:"",revenuePerStop:"",driverPay:"",fuelCost:"",vehicleCost:"",otherCost:""});
-                    }} style={S.btn}>Save Day →</button>
-                  </>
-                );
-              })()}
-              {stopProfitSub==="trend"&&(()=>{
-                const sorted = [...stopProfitLog].sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(-14);
-                if(sorted.length===0) return <div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No data yet. Log some days in the Daily Entry tab.</div>;
-                const avgMargin = sorted.reduce((a,e)=>a+(e.margin||0),0)/sorted.length;
-                const avgNetPerStop = sorted.reduce((a,e)=>a+(e.netPerStop||0),0)/sorted.length;
-                const totalProfit = sorted.reduce((a,e)=>a+(e.grossProfit||0),0);
-                const best = [...sorted].sort((a,b)=>(b.margin||0)-(a.margin||0))[0];
-                const worst = [...sorted].sort((a,b)=>(a.margin||0)-(b.margin||0))[0];
-                const maxNPS = Math.max(...sorted.map(e=>Math.abs(e.netPerStop||0)),0.01);
-                return (
-                  <>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
-                      <div style={S.card}><div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:avgNetPerStop>=0?"#22c55e":"#ef4444"}}>{fmt$(avgNetPerStop)}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginTop:4}}>Avg Net/Stop</div></div>
-                      <div style={S.card}><div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:avgMargin>20?"#22c55e":avgMargin>10?"#f59e0b":"#ef4444"}}>{avgMargin.toFixed(1)}%</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginTop:4}}>Avg Margin</div></div>
-                      <div style={S.card}><div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:totalProfit>=0?"#22c55e":"#ef4444"}}>{fmt$(totalProfit)}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginTop:4}}>Total Profit</div></div>
-                    </div>
-                    {best&&<div style={{...S.card,marginBottom:12,borderLeft:"3px solid #22c55e"}}><div style={{fontSize:10,color:"#22c55e",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Best Day</div><div style={{fontSize:12,color:"#c8c4bc"}}>{best.date} — {best.margin?.toFixed(1)}% margin · {fmt$(best.netPerStop||0)}/stop</div></div>}
-                    {worst&&<div style={{...S.card,marginBottom:20,borderLeft:"3px solid #ef4444"}}><div style={{fontSize:10,color:"#ef4444",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Worst Day</div><div style={{fontSize:12,color:"#c8c4bc"}}>{worst.date} — {worst.margin?.toFixed(1)}% margin · {fmt$(worst.netPerStop||0)}/stop</div></div>}
-                    <div style={S.card}>
-                      <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:12}}>Net Per Stop — Last 14 Days</div>
-                      <svg width="100%" height="120" style={{overflow:"visible"}}>
-                        {sorted.map((e,i)=>{
-                          const barH = Math.max(4,(Math.abs(e.netPerStop||0)/maxNPS)*90);
-                          const barColor = (e.margin||0)>20?"#22c55e":(e.margin||0)>10?"#f59e0b":"#ef4444";
-                          const x = (i/sorted.length)*100+"%";
-                          const w = (0.7/sorted.length)*100+"%";
-                          return (
-                            <g key={e.id}>
-                              <rect x={x} y={110-barH} width={w} height={barH} fill={barColor} rx="2"/>
-                              {(e.margin||0)<10&&<circle cx={`calc(${x} + ${w}/2)`} cy={105-barH} r="3" fill="#ef4444"/>}
-                            </g>
-                          );
-                        })}
-                        <line x1="0" y1="110" x2="100%" y2="110" stroke="#1e1e1e" strokeWidth="1"/>
-                      </svg>
-                    </div>
-                    <div style={{...S.card,marginTop:16,overflowX:"auto"}}>
-                      <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10}}>Daily Log</div>
-                      {sorted.reverse().map(e=>{
-                        const mc = (e.margin||0)>20?"#22c55e":(e.margin||0)>10?"#f59e0b":"#ef4444";
-                        return <div key={e.id} style={{display:"flex",gap:16,padding:"7px 0",borderBottom:"1px solid #1a1a1a",alignItems:"center"}}>
-                          <div style={{fontSize:11,color:"#888",width:90,flexShrink:0}}>{e.date}</div>
-                          <div style={{flex:1,fontSize:11,color:"#555"}}>{e.stops} stops</div>
-                          <div style={{fontSize:11,color:"#22c55e"}}>{fmt$(e.grossProfit||0)}</div>
-                          <div style={{fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:mc,width:50,textAlign:"right"}}>{(e.margin||0).toFixed(0)}%</div>
-                          <button onClick={()=>setStopProfitLog(p=>p.filter(x=>x.id!==e.id))} style={{background:"transparent",border:"none",color:"#333",cursor:"pointer",fontSize:11}}>✕</button>
-                        </div>;
-                      })}
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══ SETTLEMENT (FedEx + Amazon) ════════════════════════════════ */}
-      {screen==="settlement"&&(
-        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["entry","Weekly Entry"],["history","History"]]} active={weeklySettlementSub} onSelect={setWeeklySettlementSub}/>
-          <div style={{flex:1,overflowY:"auto",padding:24}}>
-            <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-              <div style={{...S.section,marginBottom:4}}>WEEKLY SETTLEMENT</div>
-              <div style={{fontSize:11,color:"#555",marginBottom:20}}>Track expected vs actual weekly payments from your contractor.</div>
-              {weeklySettlementSub==="entry"&&(()=>{
-                const stops = parseFloat(weeklySettlementForm.stopsCompleted||0);
-                const rps = parseFloat(weeklySettlementForm.ratePerStop||0);
-                const bonuses = parseFloat(weeklySettlementForm.stopBonuses||0);
-                const fuel = parseFloat(weeklySettlementForm.fuelSurcharge||0);
-                const expectedTotal = stops*rps + bonuses + fuel;
-                const actual = parseFloat(weeklySettlementForm.actualDeposit||0);
-                const variance = expectedTotal - actual;
-                const isUnderpaid = actual>0&&variance>0.01;
-                return (
-                  <>
-                    <div style={{...S.card,marginBottom:20}}>
-                      <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:12}}>Expected Pay</div>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                        <div><label style={S.label}>Week Ending Date</label><input type="date" value={weeklySettlementForm.weekEnding} onChange={e=>setWeeklySettlementForm(p=>({...p,weekEnding:e.target.value}))} style={S.input}/></div>
-                        <div><label style={S.label}>Stops Completed</label><input type="number" value={weeklySettlementForm.stopsCompleted} onChange={e=>setWeeklySettlementForm(p=>({...p,stopsCompleted:e.target.value}))} placeholder="0" style={S.input}/></div>
-                        <div><label style={S.label}>Rate Per Stop ($)</label><input type="number" value={weeklySettlementForm.ratePerStop} onChange={e=>setWeeklySettlementForm(p=>({...p,ratePerStop:e.target.value}))} placeholder="0.00" style={S.input}/></div>
-                        <div><label style={S.label}>Stop Bonuses ($)</label><input type="number" value={weeklySettlementForm.stopBonuses} onChange={e=>setWeeklySettlementForm(p=>({...p,stopBonuses:e.target.value}))} placeholder="0.00" style={S.input}/></div>
-                        <div><label style={S.label}>Fuel Surcharge Received ($)</label><input type="number" value={weeklySettlementForm.fuelSurcharge} onChange={e=>setWeeklySettlementForm(p=>({...p,fuelSurcharge:e.target.value}))} placeholder="0.00" style={S.input}/></div>
-                      </div>
-                      {expectedTotal>0&&<div style={{marginTop:12,padding:"10px 14px",background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>Expected Total</div><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#22c55e"}}>{fmt$(expectedTotal)}</div></div>}
-                    </div>
-                    <div style={{...S.card,marginBottom:20}}>
-                      <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:12}}>Actual Payment</div>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                        <div><label style={S.label}>Amount Deposited ($)</label><input type="number" value={weeklySettlementForm.actualDeposit} onChange={e=>setWeeklySettlementForm(p=>({...p,actualDeposit:e.target.value}))} placeholder="0.00" style={S.input}/></div>
-                        <div><label style={S.label}>Deposit Date</label><input type="date" value={weeklySettlementForm.depositDate} onChange={e=>setWeeklySettlementForm(p=>({...p,depositDate:e.target.value}))} style={S.input}/></div>
-                        <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={weeklySettlementForm.notes} onChange={e=>setWeeklySettlementForm(p=>({...p,notes:e.target.value}))} placeholder="Deductions, dispute notes..." style={S.input}/></div>
-                      </div>
-                      {actual>0&&expectedTotal>0&&(
-                        <div style={{marginTop:14,padding:"12px 16px",background:isUnderpaid?"#1a0808":"#051a05",border:`1px solid ${isUnderpaid?"#ef4444":"#22c55e"}33`,borderRadius:6}}>
-                          <div style={{fontSize:12,color:isUnderpaid?"#ef4444":"#22c55e",fontWeight:700,marginBottom:4}}>{isUnderpaid?`⚠ You may have been underpaid by ${fmt$(variance)}`:"✓ Payment matches or exceeds expected"}</div>
-                          <div style={{fontSize:10,color:"#555"}}>Expected: {fmt$(expectedTotal)} · Actual: {fmt$(actual)} · Variance: {fmt$(Math.abs(variance))}</div>
-                        </div>
-                      )}
-                    </div>
-                    <button className="hov" onClick={()=>{
-                      if(!weeklySettlementForm.weekEnding){showValidation("Week ending date required");return;}
-                      const status = actual>=expectedTotal-0.01?"Matched":actual<expectedTotal?"Underpaid":"Overpaid";
-                      setWeeklySettlementLog(p=>[{id:Date.now(),...weeklySettlementForm,expectedTotal,actual,variance,status},...p]);
-                      setWeeklySettlementForm({weekEnding:"",stopsCompleted:"",ratePerStop:"",stopBonuses:"",fuelSurcharge:"",actualDeposit:"",depositDate:"",notes:""});
-                    }} style={S.btn}>Save Settlement →</button>
-                  </>
-                );
-              })()}
-              {weeklySettlementSub==="history"&&(()=>{
-                if(weeklySettlementLog.length===0) return <div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No settlement history yet.</div>;
-                const cumVariance = weeklySettlementLog.reduce((a,e)=>a+(e.variance||0),0);
-                const sorted = [...weeklySettlementLog].sort((a,b)=>new Date(b.weekEnding)-new Date(a.weekEnding));
-                return (
-                  <>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
-                      <div style={S.card}><div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#22c55e"}}>{fmt$(sorted.reduce((a,e)=>a+(e.actual||0),0))}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginTop:4}}>Total Paid</div></div>
-                      <div style={S.card}><div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#e8e4d8"}}>{fmt$(sorted.reduce((a,e)=>a+(e.expectedTotal||0),0))}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginTop:4}}>Total Expected</div></div>
-                      <div style={S.card}><div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:cumVariance>0.01?"#ef4444":"#22c55e"}}>{fmt$(Math.abs(cumVariance))}</div><div style={{fontSize:9,color:cumVariance>0.01?"#ef4444":"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginTop:4}}>{cumVariance>0.01?"Cumulative Underpaid":"Cumulative Variance"}</div></div>
-                    </div>
-                    <div style={S.card}>
-                      <div style={{overflowX:"auto"}}>
-                        <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
-                          <thead><tr style={{borderBottom:"1px solid #1e1e1e"}}>{["Week","Expected","Actual","Variance","Status"].map(h=><th key={h} style={{padding:"8px 12px",textAlign:"left",fontSize:9,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
-                          <tbody>{sorted.map(e=>{const sc=e.status==="Matched"?"#22c55e":e.status==="Underpaid"?"#ef4444":"#f59e0b";return<tr key={e.id} style={{borderBottom:"1px solid #141414"}}><td style={{padding:"8px 12px",color:"#888"}}>{e.weekEnding}</td><td style={{padding:"8px 12px",color:"#c8c4bc"}}>{fmt$(e.expectedTotal||0)}</td><td style={{padding:"8px 12px",color:"#c8c4bc"}}>{fmt$(e.actual||0)}</td><td style={{padding:"8px 12px",color:sc}}>{fmt$(Math.abs(e.variance||0))}</td><td style={{padding:"8px 12px"}}><span style={{fontSize:9,color:sc,border:`1px solid ${sc}33`,padding:"2px 7px",borderRadius:3}}>{e.status}</span></td></tr>;})}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                    <button className="hov" onClick={()=>{const csv=["Week,Expected,Actual,Variance,Status",...sorted.map(e=>`${e.weekEnding},${e.expectedTotal||0},${e.actual||0},${e.variance||0},${e.status}`)].join("\n");window.open("data:text/csv;charset=utf-8,"+encodeURIComponent(csv),"_blank");}} style={{...S.ghost,marginTop:14,fontSize:11}}>Export CSV →</button>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══ SCHEDULE (FedEx + Amazon) ══════════════════════════════════ */}
-      {screen==="schedule"&&(
-        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["weekly","Weekly Schedule"],["availability","Availability"]]} active={scheduleSub} onSelect={setScheduleSub}/>
-          <div style={{flex:1,overflowY:"auto",padding:24}}>
-            <div style={{maxWidth:1000,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-              <div style={{...S.section,marginBottom:4}}>DRIVER SCHEDULE</div>
-              {scheduleSub==="weekly"&&(()=>{
-                const weekStart = new Date();
-                weekStart.setDate(weekStart.getDate() - weekStart.getDay() + scheduleWeekOffset*7);
-                const days = Array.from({length:7},(_, i)=>{const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);return d;});
-                const dayNames=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-                return (
-                  <>
-                    <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:20}}>
-                      <button onClick={()=>setScheduleWeekOffset(p=>p-1)} style={{...S.ghost,fontSize:12,padding:"6px 14px"}}>← Prev</button>
-                      <div style={{flex:1,textAlign:"center",fontSize:12,color:"#888"}}>{days[0].toLocaleDateString()} — {days[6].toLocaleDateString()}</div>
-                      <button onClick={()=>setScheduleWeekOffset(p=>p+1)} style={{...S.ghost,fontSize:12,padding:"6px 14px"}}>Next →</button>
-                    </div>
-                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
-                      <label style={{...S.label,marginBottom:0,whiteSpace:"nowrap"}}>Min Drivers/Day:</label>
-                      <input type="number" value={minDrivers} onChange={e=>setMinDrivers(parseInt(e.target.value)||1)} style={{...S.input,maxWidth:80}} min={1}/>
-                    </div>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:8}}>
-                      {days.map((day,i)=>{
-                        const dateStr = day.toISOString().slice(0,10);
-                        const dayAssignments = scheduleData.filter(e=>e.type==="assignment"&&e.date===dateStr);
-                        const isLow = dayAssignments.length<minDrivers;
-                        return (
-                          <div key={dateStr} style={{...S.card,borderTop:`2px solid ${isLow?"#ef4444":accent}`,minHeight:120}}>
-                            <div style={{fontSize:9,color:isLow?"#ef4444":"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>{dayNames[i]}</div>
-                            <div style={{fontSize:12,color:"#e8e4d8",marginBottom:8}}>{day.getDate()}</div>
-                            {dayAssignments.map(a=>{
-                              const driver = drivers.find(d=>String(d.id)===String(a.driverId));
-                              return <div key={a.id} style={{fontSize:10,color:accent,marginBottom:3,wordBreak:"break-word"}}>{driver?.name||"Driver"}{a.route?` · ${a.route}`:""}</div>;
-                            })}
-                            {scheduleAssignDay===dateStr?(
-                              <div style={{marginTop:6}}>
-                                <select onChange={e=>setScheduleAssignForm(p=>({...p,driverId:e.target.value}))} style={{...S.input,fontSize:10,marginBottom:4}}>
-                                  <option value="">Select driver...</option>
-                                  {drivers.filter(d=>d.status==="active").map(d=><option key={d.id} value={d.id}>{d.name}</option>)}
-                                </select>
-                                <input placeholder="Route" onChange={e=>setScheduleAssignForm(p=>({...p,route:e.target.value}))} style={{...S.input,fontSize:10,marginBottom:4}}/>
-                                <input placeholder="Shift time" onChange={e=>setScheduleAssignForm(p=>({...p,shiftTime:e.target.value}))} style={{...S.input,fontSize:10,marginBottom:6}}/>
-                                <div style={{display:"flex",gap:4}}>
-                                  <button onClick={()=>{if(!scheduleAssignForm.driverId)return;setScheduleData(p=>[...p,{id:Date.now(),type:"assignment",date:dateStr,...scheduleAssignForm}]);setScheduleAssignDay(null);setScheduleAssignForm({});}} style={{...S.btn,fontSize:9,padding:"4px 8px"}}>Add</button>
-                                  <button onClick={()=>setScheduleAssignDay(null)} style={{...S.ghost,fontSize:9,padding:"4px 8px"}}>✕</button>
-                                </div>
-                              </div>
-                            ):(
-                              <button onClick={()=>{setScheduleAssignDay(dateStr);setScheduleAssignForm({});}} style={{...S.ghost,fontSize:9,padding:"3px 8px",marginTop:4,width:"100%",textAlign:"center"}}>+ Assign</button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                );
-              })()}
-              {scheduleSub==="availability"&&(()=>{
-                const weekStart = new Date();
-                weekStart.setDate(weekStart.getDate() - weekStart.getDay() + scheduleWeekOffset*7);
-                const weekOf = weekStart.toISOString().slice(0,10);
-                const activeDrivers = drivers.filter(d=>d.status==="active");
-                if(activeDrivers.length===0) return <div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No active drivers. Add drivers first.</div>;
-                return (
-                  <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                    {activeDrivers.map(driver=>{
-                      const avail = scheduleData.find(e=>e.type==="availability"&&e.driverId===String(driver.id)&&e.weekOf===weekOf)||{mon:false,tue:false,wed:false,thu:false,fri:false,sat:false,sun:false,status:"available",notes:""};
-                      const update = (field,val) => setScheduleData(p=>{const exists=p.find(e=>e.type==="availability"&&e.driverId===String(driver.id)&&e.weekOf===weekOf);if(exists)return p.map(e=>e.type==="availability"&&e.driverId===String(driver.id)&&e.weekOf===weekOf?{...e,[field]:val}:e);return [...p,{id:Date.now(),type:"availability",driverId:String(driver.id),weekOf,...avail,[field]:val}];});
-                      return (
-                        <div key={driver.id} style={S.card}>
-                          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
-                            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8",flex:1}}>{driver.name}</div>
-                            <select value={avail.status||"available"} onChange={e=>update("status",e.target.value)} style={{...S.input,maxWidth:160,fontSize:10}}>
-                              {["available","unavailable","on_leave","injury"].map(s=><option key={s} value={s}>{s.replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase())}</option>)}
-                            </select>
-                          </div>
-                          <div style={{display:"flex",gap:8,marginBottom:8}}>
-                            {["mon","tue","wed","thu","fri","sat","sun"].map(day=>(
-                              <label key={day} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,cursor:"pointer"}}>
-                                <input type="checkbox" checked={!!avail[day]} onChange={e=>update(day,e.target.checked)} style={{accentColor:accent}}/>
-                                <span style={{fontSize:9,color:"#555",textTransform:"uppercase"}}>{day}</span>
-                              </label>
-                            ))}
-                          </div>
-                          <input placeholder="Notes..." value={avail.notes||""} onChange={e=>update("notes",e.target.value)} style={{...S.input,fontSize:10}}/>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );
