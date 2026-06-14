@@ -15,6 +15,7 @@ export default function StopProfit(p) {
   const [truckOvr, setTruckOvr] = useState({on:false,v:""});
   const [hourlyMap, setHourlyMap] = useState({});
   const [gasExpanded, setGasExpanded] = useState(false);
+  const [manualDays, setManualDays] = useState("");
 
   const today = new Date().toISOString().slice(0,10);
   const entryDate = stopProfitForm.date || today;
@@ -69,7 +70,9 @@ export default function StopProfit(p) {
     return {dailyFuelCost:parseFloat(dailyFuelCost.toFixed(2)),daysOfRange:parseFloat(daysOfRange.toFixed(1)),lastFillAmount:amount,lastFillDate:lastFill.date,gallons,mpg,avgDailyMiles:Math.round(avgDailyMiles),odomSource};
   };
   const fuelCalc = getDailyFuelCost(entryDate);
-  const fuelAuto = fuelCalc ? fuelCalc.dailyFuelCost : 0;
+  const manualDaysNum = parseFloat(manualDays||0);
+  const effectiveDays = manualDaysNum>0 ? manualDaysNum : (fuelCalc?.daysOfRange||1);
+  const fuelAuto = fuelCalc ? parseFloat((fuelCalc.lastFillAmount/Math.max(effectiveDays,1)).toFixed(2)) : 0;
   const hasFuelLog = fuelCalc !== null;
   const mpgSet = parseFloat(settings?.mpg||0)>0;
   const gasCost = gasOvr.on ? parseFloat(gasOvr.v||0) : fuelAuto;
@@ -144,7 +147,7 @@ export default function StopProfit(p) {
       wasAnyOverridden:gasOvr.on||dpOvr.on||insOvr.on||truckOvr.on,
     },...prev]);
     setStopProfitForm({date:"",stops:"",stopRate:"",dailyGuarantee:"",revenuePerStop:"",driverPay:"",fuelCost:"",vehicleCost:"",otherCosts:""});
-    setGasOvr({on:false,v:""});setDpOvr({on:false,v:""});setInsOvr({on:false,v:""});setTruckOvr({on:false,v:""});setHourlyMap({});
+    setGasOvr({on:false,v:""});setDpOvr({on:false,v:""});setInsOvr({on:false,v:""});setTruckOvr({on:false,v:""});setHourlyMap({});setManualDays("");
   };
 
   const linkBtn = (label, screen) => (
@@ -268,11 +271,17 @@ export default function StopProfit(p) {
                       {gasExpanded&&fuelCalc&&(
                         <div style={{marginTop:6,fontSize:10,color:"#666",lineHeight:1.9}}>
                           Last fill: {fmt$(fuelCalc.lastFillAmount)} on {fmtDate(fuelCalc.lastFillDate)}<br/>
-                          Tank range: ~{fuelCalc.daysOfRange} days<br/>
+                          Auto range: ~{fuelCalc.daysOfRange} days · {fmt$(fuelCalc.lastFillAmount/Math.max(fuelCalc.daysOfRange,1))}/day<br/>
                           Based on: {fuelCalc.gallons} gal ÷ ({fuelCalc.avgDailyMiles} mi/day ÷ {fuelCalc.mpg} MPG)<br/>
                           {fuelCalc.odomSource==="odometer"
                             ? <span style={{color:"#22c55e"}}>Daily avg miles from odometer: {fuelCalc.avgDailyMiles} mi</span>
                             : <span style={{color:"#f59e0b"}}>Using estimated {fuelCalc.avgDailyMiles} mi/day — add odometer readings for accuracy</span>}
+                          <div style={{marginTop:8,display:"flex",alignItems:"center",gap:8}}>
+                            <span style={{color:"#888"}}>Override days this tank lasts:</span>
+                            <input type="number" placeholder={`auto: ${fuelCalc.daysOfRange}`} value={manualDays} onChange={e=>setManualDays(e.target.value)} min={1} step={0.5} style={{...S.input,width:80,padding:"2px 8px",fontSize:10}}/>
+                            {manualDays&&<button onClick={()=>setManualDays("")} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:9,fontFamily:"'DM Mono',monospace",padding:0}}>reset</button>}
+                          </div>
+                          {manualDaysNum>0&&<div style={{color:accent,marginTop:2}}>Using {manualDaysNum} days → {fmt$(fuelAuto)}/day</div>}
                         </div>
                       )}
                       {!mpgSet&&<div style={{fontSize:10,color:"#f59e0b",marginTop:4}}>Set your MPG in Settings for accurate fuel spreading — {linkBtn("→ Settings","settings")}</div>}
