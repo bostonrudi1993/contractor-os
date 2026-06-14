@@ -21,6 +21,23 @@ export default function Settings({seg, accent, S, settings, setSettings, segment
             ))}
           </div>
         </div>
+        {(segment==="lastmile"||segment==="fedex")&&(
+          <div style={{...S.card,marginBottom:16}}>
+            <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Daily Cost Settings</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div>
+                <label style={S.label}>Monthly Insurance Premium ($)</label>
+                <input type="number" value={settings.monthlyInsurance||""} onChange={e=>setSettings(p=>({...p,monthlyInsurance:e.target.value}))} placeholder="e.g. 850.00" style={S.input} min={0} step={0.01}/>
+                {parseFloat(settings.monthlyInsurance||0)>0&&<div style={{fontSize:9,color:"#555",marginTop:4}}>= ${(parseFloat(settings.monthlyInsurance)/30).toFixed(2)}/day</div>}
+              </div>
+              <div>
+                <label style={S.label}>Weekly Truck Payment ($)</label>
+                <input type="number" value={settings.weeklyTruckPayment||""} onChange={e=>setSettings(p=>({...p,weeklyTruckPayment:e.target.value}))} placeholder="e.g. 1200.00" style={S.input} min={0} step={0.01}/>
+                {parseFloat(settings.weeklyTruckPayment||0)>0&&<div style={{fontSize:9,color:"#555",marginTop:4}}>= ${(parseFloat(settings.weeklyTruckPayment)/7).toFixed(2)}/day</div>}
+              </div>
+            </div>
+          </div>
+        )}
         <div style={{...S.card,marginBottom:16}}>
           <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Contractor Type</div>
           <div style={{fontSize:11,color:"#888",marginBottom:12}}>Currently: {seg.icon} {seg.label}</div>
