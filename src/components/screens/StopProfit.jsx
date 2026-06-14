@@ -3,7 +3,7 @@ import { useState } from "react";
 export default function StopProfit(p) {
   const {
     seg, accent, S, segment,
-    drivers, fuelLog, dispatches, settings,
+    drivers, fuelLog, dispatches, settings, odometer,
     stopProfitLog, setStopProfitLog,
     stopProfitTab, setStopProfitTab, stopProfitForm, setStopProfitForm,
     showValidation, fmt$, fmtDate,
@@ -14,6 +14,7 @@ export default function StopProfit(p) {
   const [insOvr, setInsOvr] = useState({on:false,v:""});
   const [truckOvr, setTruckOvr] = useState({on:false,v:""});
   const [hourlyMap, setHourlyMap] = useState({});
+  const [gasExpanded, setGasExpanded] = useState(false);
 
   const today = new Date().toISOString().slice(0,10);
   const entryDate = stopProfitForm.date || today;
@@ -47,10 +48,30 @@ export default function StopProfit(p) {
   const dpAuto = driverBreakdowns.reduce((s,d)=>s+d.pay,0);
   const driverPay = dpOvr.on ? parseFloat(dpOvr.v||0) : dpAuto;
 
-  // Gas
-  const fuelEntries = fuelLog.filter(f=>f.date===entryDate);
-  const fuelAuto = fuelEntries.reduce((s,f)=>s+parseFloat(f.totalCost||0),0);
-  const hasFuelLog = fuelEntries.length>0;
+  // Gas — spread fill cost across estimated days of range
+  const getDailyFuelCost = (selectedDate) => {
+    const recentFills = fuelLog.filter(f=>f.date<=selectedDate).sort((a,b)=>new Date(b.date)-new Date(a.date));
+    if(!recentFills.length) return null;
+    const lastFill = recentFills[0];
+    const gallons = parseFloat(lastFill.gallons||0);
+    const amount = parseFloat(lastFill.totalCost||0);
+    const mpg = parseFloat(settings?.mpg||8);
+    const recentOdom = (odometer||[]).filter(o=>o.truckName===lastFill.truckName).sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,7);
+    let avgDailyMiles=200, odomSource="estimated";
+    if(recentOdom.length>=2){
+      const totalMiles=parseFloat(recentOdom[0].reading)-parseFloat(recentOdom[recentOdom.length-1].reading);
+      const days=recentOdom.length-1;
+      avgDailyMiles=totalMiles>0?totalMiles/days:200;
+      odomSource="odometer";
+    }
+    const daysOfRange=gallons>0&&mpg>0?gallons/(avgDailyMiles/mpg):1;
+    const dailyFuelCost=amount/Math.max(daysOfRange,1);
+    return {dailyFuelCost:parseFloat(dailyFuelCost.toFixed(2)),daysOfRange:parseFloat(daysOfRange.toFixed(1)),lastFillAmount:amount,lastFillDate:lastFill.date,gallons,mpg,avgDailyMiles:Math.round(avgDailyMiles),odomSource};
+  };
+  const fuelCalc = getDailyFuelCost(entryDate);
+  const fuelAuto = fuelCalc ? fuelCalc.dailyFuelCost : 0;
+  const hasFuelLog = fuelCalc !== null;
+  const mpgSet = parseFloat(settings?.mpg||0)>0;
   const gasCost = gasOvr.on ? parseFloat(gasOvr.v||0) : fuelAuto;
 
   // Insurance
@@ -235,9 +256,28 @@ export default function StopProfit(p) {
               )}
 
               {autoRow(
-                "Gas Cost Today",
-                <div style={{fontSize:12,color:hasFuelLog?"#e8e4d8":"#f59e0b"}}>
-                  {hasFuelLog?`From fuel log: ${fmt$(fuelAuto)}`:<>No fuel logged today — {linkBtn("→ Log Fuel","fleet")}</>}
+                "Gas Cost Today (daily portion)",
+                <div>
+                  {!hasFuelLog&&<div style={{fontSize:12,color:"#f59e0b"}}>No fuel log entries — {linkBtn("→ Log Fuel","fleet")}</div>}
+                  {hasFuelLog&&(
+                    <div>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <div style={{fontSize:13,color:"#e8e4d8"}}>{fmt$(fuelAuto)}/day</div>
+                        <button onClick={()=>setGasExpanded(x=>!x)} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:9,fontFamily:"'DM Mono',monospace",padding:0}}>{gasExpanded?"▲ less":"▼ detail"}</button>
+                      </div>
+                      {gasExpanded&&fuelCalc&&(
+                        <div style={{marginTop:6,fontSize:10,color:"#666",lineHeight:1.9}}>
+                          Last fill: {fmt$(fuelCalc.lastFillAmount)} on {fmtDate(fuelCalc.lastFillDate)}<br/>
+                          Tank range: ~{fuelCalc.daysOfRange} days<br/>
+                          Based on: {fuelCalc.gallons} gal ÷ ({fuelCalc.avgDailyMiles} mi/day ÷ {fuelCalc.mpg} MPG)<br/>
+                          {fuelCalc.odomSource==="odometer"
+                            ? <span style={{color:"#22c55e"}}>Daily avg miles from odometer: {fuelCalc.avgDailyMiles} mi</span>
+                            : <span style={{color:"#f59e0b"}}>Using estimated {fuelCalc.avgDailyMiles} mi/day — add odometer readings for accuracy</span>}
+                        </div>
+                      )}
+                      {!mpgSet&&<div style={{fontSize:10,color:"#f59e0b",marginTop:4}}>Set your MPG in Settings for accurate fuel spreading — {linkBtn("→ Settings","settings")}</div>}
+                    </div>
+                  )}
                 </div>,
                 gasOvr.on,
                 ()=>setGasOvr(x=>({on:!x.on,v:x.on?"":fuelAuto.toFixed(2)})),
@@ -321,8 +361,36 @@ export default function StopProfit(p) {
               <button className="hov" onClick={saveEntry} style={S.btn}>Save Entry</button>
             </div>
 
+            {/* Fuel fills with range indicators */}
+            {fuelLog.length>0&&(
+              <div style={{...S.card,marginTop:16}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"#e8e4d8",marginBottom:10}}>Recent Fuel Fills</div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {[...fuelLog].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,5).map((f,i)=>{
+                    const gallons=parseFloat(f.gallons||0);
+                    const amount=parseFloat(f.totalCost||0);
+                    const mpg=parseFloat(settings?.mpg||8);
+                    const recentOdom=(odometer||[]).filter(o=>o.truckName===f.truckName).sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,7);
+                    let avgMi=200;
+                    if(recentOdom.length>=2){const tm=parseFloat(recentOdom[0].reading)-parseFloat(recentOdom[recentOdom.length-1].reading);if(tm>0)avgMi=tm/(recentOdom.length-1);}
+                    const daysRange=gallons>0&&mpg>0?gallons/(avgMi/mpg):0;
+                    const dayRate=daysRange>0?amount/daysRange:0;
+                    return(
+                      <div key={f.id||i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:"1px solid #1a1a2a"}}>
+                        <div>
+                          <div style={{fontSize:11,color:"#e8e4d8"}}>{fmtDate(f.date)}{f.truckName?` · ${f.truckName}`:""}</div>
+                          <div style={{fontSize:10,color:"#555"}}>{gallons>0?`${gallons} gal`:""}{daysRange>0?` · ~${daysRange.toFixed(1)} days range`:""}{dayRate>0?` · ${fmt$(dayRate)}/day`:""}</div>
+                        </div>
+                        <div style={{fontSize:13,fontWeight:700,color:accent}}>{fmt$(amount)}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Recent log */}
-            {stopProfitLog.length===0&&<div style={{color:"#555",fontSize:12,marginTop:12}}>No entries yet.</div>}
+            {stopProfitLog.length===0&&<div style={{color:"#555",fontSize:12,marginTop:16}}>No entries yet.</div>}
             <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:12}}>
               {stopProfitLog.slice(0,10).map(e=>{
                 const mc=parseFloat(e.marginPct||e.margin||0)>20?"#22c55e":parseFloat(e.marginPct||e.margin||0)>=10?"#f59e0b":"#ef4444";
