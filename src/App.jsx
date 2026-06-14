@@ -231,7 +231,7 @@ function ContractorOS() {
 
   const [screen, setScreen] = useState("dashboard");
   const [navOpen, setNavOpen] = useState(false);
-  const [settings, setSettings] = useState({mpg:8,dieselPrice:3.85,cpm:0.18,homeBase:"",companyName:"",monthlyInsurance:"",weeklyTruckPayment:""});
+  const [settings, setSettings] = useState({mpg:8,dieselPrice:3.85,cpm:0.18,homeBase:"",companyName:"",monthlyInsurance:"",weeklyTruckPayment:"",clientDailyRate:""});
   const [vehicles, setVehicles] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
   const [expenses, setExpenses] = useState([]);
