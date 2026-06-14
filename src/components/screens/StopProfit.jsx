@@ -22,8 +22,18 @@ export default function StopProfit(p) {
   const stops = parseFloat(stopProfitForm.stops||0);
   const stopRate = parseFloat(stopProfitForm.stopRate||0);
   const dailyGuarantee = parseFloat(stopProfitForm.dailyGuarantee!=null ? stopProfitForm.dailyGuarantee : (settings?.clientDailyRate||0));
+  const mileStipendRate = parseFloat(stopProfitForm.mileStipendRate!=null ? stopProfitForm.mileStipendRate : (settings?.mileStipendRate||0));
+
+  // Auto-fill miles from odometer: diff of two entries on entryDate
+  const todayOdom = (odometer||[]).filter(o=>o.date===entryDate).sort((a,b)=>parseFloat(b.reading)-parseFloat(a.reading));
+  const odomMiles = todayOdom.length>=2 ? parseFloat(todayOdom[0].reading)-parseFloat(todayOdom[todayOdom.length-1].reading) : null;
+  const milesDriven = parseFloat(stopProfitForm.milesDriven!=null&&stopProfitForm.milesDriven!==""
+    ? stopProfitForm.milesDriven
+    : (odomMiles!=null ? odomMiles : 0));
+  const mileStipend = milesDriven * mileStipendRate;
+
   const stopBonus = stops * stopRate;
-  const totalRevenue = dailyGuarantee + stopBonus;
+  const totalRevenue = dailyGuarantee + stopBonus + mileStipend;
 
   // Driver pay — full payType model
   const todayDisp = dispatches.filter(d=>d.date===entryDate);
@@ -142,11 +152,12 @@ export default function StopProfit(p) {
     setStopProfitLog(prev=>[{
       id:Date.now(), date:entryDate,
       stops, stopRate, dailyGuarantee, stopBonus,
+      milesDriven, mileStipendRate, mileStipend,
       driverPay, gasCost, insuranceCostDay:insuranceCost, truckCostDay:truckCost, otherCosts,
       totalRevenue, totalCost, grossProfit, netPerStop, marginPct,
       wasAnyOverridden:gasOvr.on||dpOvr.on||insOvr.on||truckOvr.on,
     },...prev]);
-    setStopProfitForm({date:"",stops:"",stopRate:"",dailyGuarantee:"",revenuePerStop:"",driverPay:"",fuelCost:"",vehicleCost:"",otherCosts:""});
+    setStopProfitForm({date:"",stops:"",stopRate:"",dailyGuarantee:"",milesDriven:"",mileStipendRate:"",revenuePerStop:"",driverPay:"",fuelCost:"",vehicleCost:"",otherCosts:""});
     setGasOvr({on:false,v:""});setDpOvr({on:false,v:""});setInsOvr({on:false,v:""});setTruckOvr({on:false,v:""});setHourlyMap({});setManualDays("");
   };
 
@@ -215,14 +226,25 @@ export default function StopProfit(p) {
                   <label style={S.label}>Stops Completed</label>
                   <input type="number" placeholder="e.g. 20" value={stopProfitForm.stops||""} onChange={e=>setStopProfitForm(pr=>({...pr,stops:e.target.value}))} style={S.input} min={0}/>
                 </div>
+                <div>
+                  <label style={S.label}>Miles Driven Today</label>
+                  <input type="number" placeholder={odomMiles!=null?`Auto: ${odomMiles} mi`:"e.g. 180"} value={stopProfitForm.milesDriven!=null?stopProfitForm.milesDriven:""} onChange={e=>setStopProfitForm(pr=>({...pr,milesDriven:e.target.value}))} style={S.input} min={0}/>
+                  <div style={{fontSize:9,color:"#555",marginTop:3}}>{odomMiles!=null?"Auto-filled from odometer":"Enter or log odometer readings"}</div>
+                </div>
+                <div>
+                  <label style={S.label}>Mile Stipend Rate ($/mile)</label>
+                  <input type="number" placeholder={settings?.mileStipendRate?"Pre-filled from settings":"e.g. 0.45"} value={stopProfitForm.mileStipendRate!=null?stopProfitForm.mileStipendRate:""} onChange={e=>setStopProfitForm(pr=>({...pr,mileStipendRate:e.target.value}))} style={S.input} min={0} step={0.01}/>
+                  <div style={{fontSize:9,color:"#555",marginTop:3}}>Per-mile rate your client pays</div>
+                </div>
               </div>
 
               {/* Revenue breakdown */}
-              {(dailyGuarantee>0||stopBonus>0)&&(
+              {(dailyGuarantee>0||stopBonus>0||mileStipend>0)&&(
                 <div style={{background:"#081a08",border:"1px solid #22c55e22",borderRadius:6,padding:"10px 14px",marginBottom:14}}>
                   <div style={{fontSize:9,color:"#22c55e",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6}}>Revenue Breakdown</div>
                   {row$("Daily guarantee",dailyGuarantee,"#22c55e")}
                   {stopBonus>0&&row$(`Stop bonus (${stops} × $${stopRate.toFixed(2)})`,stopBonus,"#22c55e")}
+                  {mileStipend>0&&row$(`Mile stipend (${milesDriven} mi × $${mileStipendRate.toFixed(2)})`,mileStipend,"#22c55e")}
                   <div style={{display:"flex",justifyContent:"space-between",paddingTop:6,marginTop:2}}>
                     <div style={{fontSize:12,fontWeight:700,color:"#22c55e"}}>Total Revenue</div>
                     <div style={{fontSize:14,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"#22c55e"}}>{fmt$(totalRevenue)}</div>
@@ -325,6 +347,7 @@ export default function StopProfit(p) {
                   <div style={{fontSize:9,color:"#22c55e",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:6}}>Revenue</div>
                   {row$("Daily guarantee",dailyGuarantee)}
                   {row$(`Stop bonus (${stops} × $${stopRate.toFixed(2)})`,stopBonus)}
+                  {mileStipend>0&&row$(`Mile stipend (${milesDriven} mi × $${mileStipendRate.toFixed(2)})`,mileStipend)}
                   <div style={{display:"flex",justifyContent:"space-between",paddingTop:6}}>
                     <div style={{fontSize:11,fontWeight:700,color:"#e8e4d8"}}>Total Revenue</div>
                     <div style={{fontSize:13,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:accent}}>{fmt$(totalRevenue)}</div>

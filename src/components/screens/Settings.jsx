@@ -35,10 +35,15 @@ export default function Settings({seg, accent, S, settings, setSettings, segment
                 <input type="number" value={settings.weeklyTruckPayment||""} onChange={e=>setSettings(p=>({...p,weeklyTruckPayment:e.target.value}))} placeholder="e.g. 1200.00" style={S.input} min={0} step={0.01}/>
                 {parseFloat(settings.weeklyTruckPayment||0)>0&&<div style={{fontSize:9,color:"#555",marginTop:4}}>= ${(parseFloat(settings.weeklyTruckPayment)/7).toFixed(2)}/day</div>}
               </div>
-              <div style={{gridColumn:"1/-1"}}>
+              <div>
                 <label style={S.label}>Client Daily Rate ($) — pre-fills Stop Profit</label>
                 <input type="number" value={settings.clientDailyRate||""} onChange={e=>setSettings(p=>({...p,clientDailyRate:e.target.value}))} placeholder="e.g. 500.00" style={S.input} min={0} step={0.01}/>
-                <div style={{fontSize:9,color:"#555",marginTop:3}}>Fixed daily guarantee Lowe's/FedEx pays you — auto-fills the Stop Profit daily entry</div>
+                <div style={{fontSize:9,color:"#555",marginTop:3}}>Fixed daily guarantee Lowe's/FedEx pays you</div>
+              </div>
+              <div>
+                <label style={S.label}>Mile Stipend Rate ($/mile)</label>
+                <input type="number" value={settings.mileStipendRate||""} onChange={e=>setSettings(p=>({...p,mileStipendRate:e.target.value}))} placeholder="e.g. 0.45" style={S.input} min={0} step={0.01}/>
+                <div style={{fontSize:9,color:"#555",marginTop:3}}>Per-mile rate client pays — auto-fills Stop Profit</div>
               </div>
             </div>
           </div>
