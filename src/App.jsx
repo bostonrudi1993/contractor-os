@@ -53,6 +53,40 @@ import Scorecard from "./components/screens/Scorecard.jsx";
 import FmcsaLookup from "./components/screens/FmcsaLookup.jsx";
 import Claims from "./components/screens/Claims.jsx";
 import LenderReport from "./components/screens/LenderReport.jsx";
+import { NAV_LABELS as navLabels } from "./components/shared/Nav.jsx";
+
+// ─── TIER CONFIG ──────────────────────────────────────────────────────────────
+const TIERS = {
+  solo: {
+    label:"Solo", price:"$49/mo", color:"#888",
+    screens:["dashboard","compliance","fleet","finance","documents","settings","fmcsa","data"],
+  },
+  fleet: {
+    label:"Fleet", price:"$99/mo", color:"#f59e0b",
+    screens:["dashboard","compliance","fleet","finance","documents","settings","fmcsa","data","drivers","payroll","dispatch","invoices","contacts","scorecard","stopprofit","settlement","reports","trends","brokers","routes","contracts","claims","driverschedule"],
+  },
+  enterprise: {
+    label:"Enterprise", price:"$199/mo", color:"#8888cc",
+    screens:["dashboard","compliance","fleet","finance","documents","settings","fmcsa","data","drivers","payroll","dispatch","invoices","contacts","scorecard","stopprofit","settlement","reports","trends","brokers","routes","contracts","claims","driverschedule","lender","deadmiles","analyze","boards","users"],
+  },
+};
+
+// ─── SUB-PAGES CONFIG ─────────────────────────────────────────────────────────
+const SUB_PAGES = {
+  fleet:[{id:"log",label:"Maintenance Log"},{id:"fuel",label:"Fuel Log"},{id:"odometer",label:"Odometer"},{id:"tires",label:"Tires"},{id:"fuelcard",label:"Fuel Card",segment:["otr"]},{id:"appearance",label:"Appearance Check",segment:["fedex"]},{id:"vaninspect",label:"Van Inspection",segment:["amazon"]}],
+  drivers:[{id:"list",label:"All Drivers"},{id:"onboarding",label:"DOT Onboarding"},{id:"hos",label:"HOS Log"},{id:"incidents",label:"Incidents"},{id:"scorecards",label:"Scorecards"},{id:"coaching",label:"Coaching Log",segment:["fedex"]},{id:"callouts",label:"Callout Tracker",segment:["amazon"]},{id:"substitutes",label:"Substitutes",segment:["usps"]}],
+  finance:[{id:"pl",label:"P&L Dashboard"},{id:"expenses",label:"Expenses"},{id:"revenue",label:"Revenue"},{id:"deadmiles",label:"Dead Miles",segment:["otr"]}],
+  compliance:[{id:"overview",label:"Overview"},{id:"trucks",label:"Trucks"},{id:"drivers",label:"Driver Docs"},{id:"filings",label:"Filings"},{id:"dotai",label:"Ask DOT AI"}],
+  routes:[{id:"list",label:"Route List"},{id:"analyze",label:"Analyze Route"},{id:"dnr",label:"DNR Cases",segment:["amazon"]},{id:"tripsheets",label:"Trip Sheets",segment:["usps"]}],
+  contracts:[{id:"list",label:"Contracts"},{id:"bidtracker",label:"Bid Tracker",segment:["usps"]}],
+  stopprofit:[{id:"entry",label:"Daily Entry"},{id:"trend",label:"Weekly Trend"}],
+  settlement:[{id:"entry",label:"Weekly Entry"},{id:"history",label:"History"}],
+  lender:[{id:"report",label:"Business Report"},{id:"balance",label:"Balance Sheet"},{id:"debt",label:"Debt Schedule"},{id:"aging",label:"AR/AP Aging"},{id:"assets",label:"Assets"},{id:"docs",label:"Document Checklist"}],
+  reports:[{id:"overview",label:"Overview"},{id:"notifications",label:"Alerts"}],
+  data:[{id:"backup",label:"Backup & Restore"},{id:"cleanup",label:"Data Cleanup"},{id:"storage",label:"Storage Usage"}],
+  dispatch:[{id:"active",label:"Active"},{id:"history",label:"History"}],
+  driverschedule:[{id:"weekly",label:"Weekly Schedule"},{id:"availability",label:"Availability"}],
+};
 
 // ─── AI PROMPTS ───────────────────────────────────────────────────────────────
 const ANALYZE_PROMPT = `You are a freight rate analyst for OTR owner-operators. Respond ONLY with this JSON (no markdown):
@@ -232,7 +266,8 @@ function ContractorOS() {
 
   const [screen, setScreen] = useState("dashboard");
   const [navOpen, setNavOpen] = useState(false);
-  const [settings, setSettings] = useState({mpg:8,dieselPrice:3.85,cpm:0.18,homeBase:"",companyName:"",monthlyInsurance:"",weeklyTruckPayment:"",clientDailyRate:"",mileStipendRate:"",businessStartDate:"",businessLegalName:"",ownerName:"",ein:"",bankName:"",existingLoanBalance:"",existingLoanMonthlyPayment:"",monthlyDepreciation:"",monthlyLoanInterest:"",monthlyTaxEstimate:"",cashReserve:""});
+  const [settings, setSettings] = useState({mpg:8,dieselPrice:3.85,cpm:0.18,homeBase:"",companyName:"",monthlyInsurance:"",weeklyTruckPayment:"",clientDailyRate:"",mileStipendRate:"",businessStartDate:"",businessLegalName:"",ownerName:"",ein:"",bankName:"",existingLoanBalance:"",existingLoanMonthlyPayment:"",monthlyDepreciation:"",monthlyLoanInterest:"",monthlyTaxEstimate:"",cashReserve:"",subscriptionTier:"fleet",devMode:false});
+  const [navExpanded, setNavExpanded] = useState({});
   const [vehicles, setVehicles] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -743,6 +778,22 @@ function ContractorOS() {
 
   const handleNav = (id) => { setScreen(id); setSubScreen(null); setAiResult(null); setAnalyzeStep("paste"); setNavOpen(false); };
 
+  // ── Tier & Nav helpers ──
+  const currentTier = settings.subscriptionTier || "fleet";
+  const tierScreens = TIERS[currentTier]?.screens || TIERS.fleet.screens;
+  const canAccessScreen = (screenId) => tierScreens.includes(screenId);
+  const getScreenTier = (screenId) => {
+    if(TIERS.solo.screens.includes(screenId)) return "solo";
+    if(TIERS.fleet.screens.includes(screenId)) return "fleet";
+    return "enterprise";
+  };
+  const toggleNavExpand = (id, e) => { e.stopPropagation(); setNavExpanded(prev=>({...prev,[id]:!prev[id]})); };
+
+  // Auto-expand active screen in nav
+  useEffect(()=>{
+    if(SUB_PAGES[screen]) setNavExpanded(prev=>({...prev,[screen]:true}));
+  },[screen]);
+
   // ── Computed ──
   const totalRevenue = revenue.reduce((s,r)=>s+parseFloat(r.amount||0),0);
   const totalExpenses = expenses.reduce((s,e)=>s+parseFloat(e.amount||0),0);
@@ -855,6 +906,35 @@ function ContractorOS() {
   const Stat = ({label,value,color,sub}) => <StatCard label={label} value={value} color={color||accent} sub={sub} card={S.card}/>;
   const ExpiryBadgeW = ({label,days}) => <ExpiryBadge label={label} days={days}/>;
   const Loader = ({msg}) => <LoaderComp msg={msg} accent={accent}/>;
+  const UpgradePrompt = ({screenId}) => {
+    const requiredTier = getScreenTier(screenId);
+    const tierData = TIERS[requiredTier];
+    const label = navLabels[screenId] || screenId;
+    return (
+      <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:40,animation:"fadeUp 0.3s ease"}}>
+        <div style={{...S.card,maxWidth:480,width:"100%",textAlign:"center",padding:"48px 32px"}}>
+          <div style={{fontSize:36,marginBottom:16}}>🔒</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:900,color:"#e8e4d8",marginBottom:10}}>{label}</div>
+          <div style={{fontSize:11,color:tierData?.color||accent,border:`1px solid ${tierData?.color||accent}33`,display:"inline-block",padding:"3px 14px",borderRadius:3,letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:20}}>{tierData?.label} Plan</div>
+          <div style={{fontSize:11,color:"#555",marginBottom:28,lineHeight:1.9}}>
+            This feature is included in the <span style={{color:tierData?.color||accent}}>{tierData?.label}</span> plan at {tierData?.price}.<br/>
+            Upgrade to unlock {tierData?.screens?.length} screens and advanced fleet tools.
+          </div>
+          <a href={`mailto:bostonrudi1993@gmail.com?subject=${encodeURIComponent("Upgrade ContractorOS to "+tierData?.label+" Plan")}`}
+            style={{...S.btn,display:"inline-block",textDecoration:"none",background:tierData?.color||accent,color:"#0a0a0a",padding:"12px 28px",borderRadius:5,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,letterSpacing:"0.08em"}}>
+            Request Upgrade →
+          </a>
+          {settings.devMode&&(
+            <div style={{marginTop:24,paddingTop:16,borderTop:"1px solid #1e1e1e"}}>
+              <div style={{fontSize:9,color:"#333",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:8}}>Dev Mode — Tier Switch</div>
+              <button onClick={()=>setSettings(p=>({...p,subscriptionTier:requiredTier}))}
+                style={{...S.ghost,fontSize:10}}>Unlock {tierData?.label} Tier</button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const screenProps = {
     seg, accent, S, segment, screen, setScreen, organization, signOut,
@@ -1008,10 +1088,9 @@ function ContractorOS() {
         </div>
       )}
 
-      {/* Drawer Overlay */}
-      {navOpen&&<div onClick={()=>setNavOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:200,backdropFilter:"blur(2px)"}}/>}
-
-      <Nav navOpen={navOpen} setNavOpen={setNavOpen} seg={seg} screen={screen} accent={accent} urgentItems={urgentItems} onNav={handleNav}/>
+      <Nav navOpen={navOpen} setNavOpen={setNavOpen} seg={seg} screen={screen} accent={accent} urgentItems={urgentItems} onNav={handleNav}
+        navExpanded={navExpanded} toggleNavExpand={toggleNavExpand} canAccessScreen={canAccessScreen}
+        SUB_PAGES={SUB_PAGES} currentTier={currentTier} TIERS={TIERS} subScreen={subScreen} setSubScreen={setSubScreen}/>
 
       <TopBar
         setNavOpen={setNavOpen} seg={seg} accent={accent} screen={screen}
@@ -1020,35 +1099,37 @@ function ContractorOS() {
         onSwitchType={()=>{setSegment(null);setScreen("dashboard");localStorage.removeItem("cos_segment_locked");}}
       />
 
-      {/* Screen routing */}
-      {screen==="dashboard" && <Dashboard {...screenProps}/>}
-      {screen==="analyze" && seg.features.loadAnalysis && <Analyze {...screenProps}/>}
-      {screen==="boards" && <Boards {...screenProps}/>}
-      {screen==="routes" && <Routes {...screenProps}/>}
-      {screen==="compliance" && <Compliance {...screenProps}/>}
-      {screen==="drivers" && <Drivers {...screenProps}/>}
-      {screen==="fleet" && <Fleet {...screenProps}/>}
-      {screen==="contracts" && <Contracts {...screenProps}/>}
-      {screen==="finance" && <Finance {...screenProps}/>}
-      {screen==="brokers" && <Brokers {...screenProps}/>}
-      {screen==="reports" && <Reports {...screenProps}/>}
-      {screen==="trends" && <Trends {...screenProps}/>}
-      {screen==="users" && <Users {...screenProps}/>}
-      {screen==="settings" && <Settings seg={seg} accent={accent} S={S} settings={settings} setSettings={setSettings} segment={segment}/>}
-      {screen==="payroll" && <Payroll {...screenProps}/>}
-      {screen==="dispatch" && <Dispatch {...screenProps}/>}
-      {screen==="invoices" && <Invoices {...screenProps}/>}
-      {screen==="contacts" && <Contacts {...screenProps}/>}
-      {screen==="documents" && <Documents {...screenProps}/>}
-      {screen==="data" && <DataBackup {...screenProps}/>}
-      {screen==="deadmiles" && segment==="otr" && <DeadMiles {...screenProps}/>}
-      {screen==="stopprofit" && (segment==="fedex"||segment==="lastmile"||segment==="amazon") && <StopProfit {...screenProps}/>}
-      {screen==="settlement" && (segment==="fedex"||segment==="amazon") && <Settlement {...screenProps}/>}
-      {screen==="driverschedule" && (segment==="fedex"||segment==="amazon") && <DriverSchedule {...screenProps}/>}
-      {screen==="scorecard" && (segment==="fedex"||segment==="amazon"||segment==="lastmile"||segment==="usps") && <Scorecard {...screenProps}/>}
-      {screen==="fmcsa" && <FmcsaLookup {...screenProps}/>}
-      {screen==="claims" && segment==="lastmile" && <Claims {...screenProps}/>}
-      {screen==="lender" && <LenderReport {...screenProps}/>}
+      {/* Screen routing with tier gating */}
+      {canAccessScreen(screen) ? <>
+        {screen==="dashboard" && <Dashboard {...screenProps}/>}
+        {screen==="analyze" && seg.features.loadAnalysis && <Analyze {...screenProps}/>}
+        {screen==="boards" && <Boards {...screenProps}/>}
+        {screen==="routes" && <Routes {...screenProps}/>}
+        {screen==="compliance" && <Compliance {...screenProps}/>}
+        {screen==="drivers" && <Drivers {...screenProps}/>}
+        {screen==="fleet" && <Fleet {...screenProps}/>}
+        {screen==="contracts" && <Contracts {...screenProps}/>}
+        {screen==="finance" && <Finance {...screenProps}/>}
+        {screen==="brokers" && <Brokers {...screenProps}/>}
+        {screen==="reports" && <Reports {...screenProps}/>}
+        {screen==="trends" && <Trends {...screenProps}/>}
+        {screen==="users" && <Users {...screenProps}/>}
+        {screen==="settings" && <Settings seg={seg} accent={accent} S={S} settings={settings} setSettings={setSettings} segment={segment} organization={organization} currentTier={currentTier} TIERS={TIERS}/>}
+        {screen==="payroll" && <Payroll {...screenProps}/>}
+        {screen==="dispatch" && <Dispatch {...screenProps}/>}
+        {screen==="invoices" && <Invoices {...screenProps}/>}
+        {screen==="contacts" && <Contacts {...screenProps}/>}
+        {screen==="documents" && <Documents {...screenProps}/>}
+        {screen==="data" && <DataBackup {...screenProps}/>}
+        {screen==="deadmiles" && segment==="otr" && <DeadMiles {...screenProps}/>}
+        {screen==="stopprofit" && (segment==="fedex"||segment==="lastmile"||segment==="amazon") && <StopProfit {...screenProps}/>}
+        {screen==="settlement" && (segment==="fedex"||segment==="amazon") && <Settlement {...screenProps}/>}
+        {screen==="driverschedule" && (segment==="fedex"||segment==="amazon") && <DriverSchedule {...screenProps}/>}
+        {screen==="scorecard" && (segment==="fedex"||segment==="amazon"||segment==="lastmile"||segment==="usps") && <Scorecard {...screenProps}/>}
+        {screen==="fmcsa" && <FmcsaLookup {...screenProps}/>}
+        {screen==="claims" && segment==="lastmile" && <Claims {...screenProps}/>}
+        {screen==="lender" && <LenderReport {...screenProps}/>}
+      </> : <UpgradePrompt screenId={screen}/>}
 
       {/* Bug Report Modal */}
       {showBugReport&&(
