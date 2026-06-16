@@ -8,7 +8,9 @@ import { createClient } from "@supabase/supabase-js";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+export const supabase = (SUPABASE_URL && SUPABASE_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_KEY)
+  : null;
 
 // ── Org/User ID resolution ────────────────────────────────────────────────────
 // Called with the Clerk org ID when available, falls back to anonymous device ID.
@@ -38,6 +40,9 @@ export function makeDb(clerkOrgId) {
     scopeId,
 
     get: async (key, fallback) => {
+      if (!supabase) {
+        try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
+      }
       try {
         const { data, error } = await supabase
           .from("cos_data")
@@ -53,7 +58,6 @@ export function makeDb(clerkOrgId) {
         const local = localStorage.getItem(key);
         if (local) {
           const parsed = JSON.parse(local);
-          // Fire-and-forget migration
           supabase.from("cos_data").upsert(
             { user_id: scopeId, data_key: key, data_value: parsed },
             { onConflict: "user_id,data_key" }
@@ -68,6 +72,10 @@ export function makeDb(clerkOrgId) {
     },
 
     set: async (key, value) => {
+      if (!supabase) {
+        try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+        return;
+      }
       try {
         const { error } = await supabase
           .from("cos_data")
@@ -83,12 +91,14 @@ export function makeDb(clerkOrgId) {
     },
 
     clearAll: async () => {
-      try {
-        await supabase.from("cos_data").delete().eq("user_id", scopeId);
-        Object.keys(localStorage).filter(k => k.startsWith("cos_")).forEach(k => localStorage.removeItem(k));
-      } catch (err) {
-        console.warn("db.clearAll:", err.message);
+      if (supabase) {
+        try {
+          await supabase.from("cos_data").delete().eq("user_id", scopeId);
+        } catch (err) {
+          console.warn("db.clearAll:", err.message);
+        }
       }
+      Object.keys(localStorage).filter(k => k.startsWith("cos_")).forEach(k => localStorage.removeItem(k));
     },
   };
 }
