@@ -13,6 +13,9 @@ export const KEYS = {
   coachingLog: "cos_coaching_log", appearanceLog: "cos_appearance_log", dnrLog: "cos_dnr_log",
   tripSheets: "cos_trip_sheets", vanInspectionLog: "cos_van_inspection_log", bidTracker: "cos_bid_tracker",
   deadMilesLog: "cos_dead_miles_log", loadHistory: "cos_load_history", whiteGloveLog: "cos_white_glove_log",
+  calloutLog: "cos_callout_log", damageClaims: "cos_damage_claims", fuelCardImports: "cos_fuel_card_imports",
+  assetsList: "cos_assets_list", debtList: "cos_debt_list", payablesList: "cos_payables_list",
+  healthScoreHistory: "cos_health_history",
 };
 
 export const stor = {

@@ -1,6 +1,6 @@
 import { SEGMENTS } from "../../config/segments.js";
 
-export default function Settings({seg, accent, S, settings, setSettings, segment, organization}) {
+export default function Settings({seg, accent, S, settings, setSettings, segment, organization, currentTier, TIERS}) {
   return (
     <div style={{flex:1,overflowY:"auto",padding:24,animation:"fadeUp 0.3s ease"}}>
       <div style={{maxWidth:600,margin:"0 auto"}}>
@@ -77,6 +77,67 @@ export default function Settings({seg, accent, S, settings, setSettings, segment
             {!organization&&<div style={{padding:"10px 12px",background:"#1a1000",border:"1px solid #3a2800",borderRadius:6,fontSize:10,color:"#a06020",lineHeight:1.8}}>
               ⚠ You're using a personal device account. Data is tied to this browser. Create an organization in your account settings to enable multi-device sync and team access.
             </div>}
+          </div>
+        </div>
+        {TIERS&&currentTier&&(
+          <div style={{...S.card,marginBottom:16}}>
+            <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Subscription Plan</div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,padding:"12px 14px",background:"#0f0f0f",border:`1px solid ${TIERS[currentTier]?.color||accent}33`,borderRadius:6}}>
+              <div>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:TIERS[currentTier]?.color||accent}}>{TIERS[currentTier]?.label||"Fleet"} Plan</div>
+                <div style={{fontSize:10,color:"#555"}}>{TIERS[currentTier]?.price||"$99/mo"} · {TIERS[currentTier]?.screens?.length||0} screens unlocked</div>
+              </div>
+              <div style={{fontSize:9,color:TIERS[currentTier]?.color||accent,border:`1px solid ${TIERS[currentTier]?.color||accent}44`,padding:"4px 12px",borderRadius:3,letterSpacing:"0.12em",textTransform:"uppercase"}}>Active</div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:14}}>
+              {Object.entries(TIERS).map(([key,tier])=>(
+                <div key={key} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:currentTier===key?"#111":"#080808",border:`1px solid ${currentTier===key?tier.color+"44":"#1a1a1a"}`,borderRadius:5}}>
+                  <div>
+                    <span style={{fontSize:11,color:currentTier===key?tier.color:"#555",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{tier.label}</span>
+                    <span style={{fontSize:9,color:"#333",marginLeft:10}}>{tier.screens.length} screens · {tier.price}</span>
+                  </div>
+                  {currentTier===key
+                    ? <span style={{fontSize:9,color:tier.color,letterSpacing:"0.1em"}}>CURRENT</span>
+                    : <a href={`mailto:bostonrudi1993@gmail.com?subject=${encodeURIComponent("Upgrade to "+tier.label+" Plan")}`} style={{fontSize:9,color:"#555",textDecoration:"none",border:"1px solid #2a2a2a",padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Upgrade →</a>
+                  }
+                </div>
+              ))}
+            </div>
+            <div style={{borderTop:"1px solid #1a1a1a",paddingTop:12}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:settings.devMode?10:0}}>
+                <div>
+                  <div style={{fontSize:10,color:"#333",letterSpacing:"0.1em",textTransform:"uppercase"}}>Dev Mode</div>
+                  <div style={{fontSize:9,color:"#2a2a2a"}}>Unlock tier switcher for testing</div>
+                </div>
+                <button onClick={()=>setSettings(p=>({...p,devMode:!p.devMode}))}
+                  style={{background:settings.devMode?"#1a1a2a":"transparent",border:`1px solid ${settings.devMode?"#3a3a6a":"#2a2a2a"}`,color:settings.devMode?"#8888cc":"#333",padding:"4px 14px",borderRadius:3,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.05em"}}>
+                  {settings.devMode?"ON":"OFF"}
+                </button>
+              </div>
+              {settings.devMode&&(
+                <div style={{display:"flex",gap:6}}>
+                  {Object.keys(TIERS).map(key=>(
+                    <button key={key} onClick={()=>setSettings(p=>({...p,subscriptionTier:key}))}
+                      style={{flex:1,padding:"7px 0",background:currentTier===key?TIERS[key].color+"22":"#0f0f0f",border:`1px solid ${currentTier===key?TIERS[key].color+"55":"#1e1e1e"}`,color:currentTier===key?TIERS[key].color:"#555",borderRadius:3,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.05em"}}>
+                      {TIERS[key].label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        <div style={{...S.card,marginBottom:16}}>
+          <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Business Profile — Lender Report</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            {[["businessLegalName","Legal Business Name","My Fleet LLC"],["ownerName","Owner / Operator Name",""],["ein","EIN (Tax ID)","12-3456789"],["bankName","Bank Name",""],["businessStartDate","Business Start Date","date"]].map(([f,lbl,ph])=>(
+              <div key={f}><label style={S.label}>{lbl}</label><input type={ph==="date"?"date":"text"} value={settings[f]||""} onChange={e=>setSettings(p=>({...p,[f]:e.target.value}))} placeholder={ph!=="date"?ph:undefined} style={S.input}/></div>
+            ))}
+          </div>
+          <div style={{marginTop:12,display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            {[["existingLoanBalance","Existing Loan Balance ($)","0"],["existingLoanMonthlyPayment","Loan Monthly Payment ($)","0"],["monthlyDepreciation","Monthly Depreciation ($)","0"],["monthlyLoanInterest","Monthly Loan Interest ($)","0"],["monthlyTaxEstimate","Monthly Tax Estimate ($)","0"],["cashReserve","Cash Reserve / Savings ($)","0"]].map(([f,lbl,ph])=>(
+              <div key={f}><label style={S.label}>{lbl}</label><input type="number" value={settings[f]||""} onChange={e=>setSettings(p=>({...p,[f]:e.target.value}))} placeholder={ph} style={S.input} min={0} step={0.01}/></div>
+            ))}
           </div>
         </div>
         <div style={{padding:"12px 16px",background:"#0d0d14",border:"1px solid #1a1a2a",borderRadius:6}}>

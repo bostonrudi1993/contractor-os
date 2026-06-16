@@ -9,7 +9,9 @@ export function useDataLoader(db, {
   setTires, setDocuments, setDispatches, setContacts, setHosLog,
   setStopProfitLog, setSettlementLog, setScheduleData, setCoachingLog, setAppearanceLog,
   setDnrLog, setTripSheets, setVanInspectionLog, setBidTracker, setDeadMilesLog, setLoadHistory,
-  setWhiteGloveLog, setCalloutLog, setDamageClaims, setFuelCardImports, setDbLoaded,
+  setWhiteGloveLog, setCalloutLog, setDamageClaims, setFuelCardImports,
+  setAssetsList, setDebtList, setPayablesList, setHealthScoreHistory,
+  setDbLoaded,
 }) {
   useEffect(() => {
     let cancelled = false;
@@ -23,6 +25,7 @@ export function useDataLoader(db, {
         _stopProfitLog, _settlementLog, _scheduleData, _coachingLog, _appearanceLog,
         _dnrLog, _tripSheets, _vanInspectionLog, _bidTracker, _deadMilesLog, _loadHistory, _whiteGloveLog,
         _calloutLog, _damageClaims, _fuelCardImports,
+        _assetsList, _debtList, _payablesList, _healthScoreHistory,
       ] = await Promise.all([
         db.get(D.compliance,  {trucks:[],drivers:[]}),
         db.get(D.vehicles,    []),
@@ -63,6 +66,10 @@ export function useDataLoader(db, {
         db.get(D.calloutLog, []),
         db.get(D.damageClaims, []),
         db.get(D.fuelCardImports, []),
+        db.get(D.assetsList, []),
+        db.get(D.debtList, []),
+        db.get(D.payablesList, []),
+        db.get(D.healthScoreHistory, []),
       ]);
       if (cancelled) return;
       setCompliance(_compliance);
@@ -109,6 +116,10 @@ export function useDataLoader(db, {
       setCalloutLog(_calloutLog);
       setDamageClaims(_damageClaims);
       setFuelCardImports(_fuelCardImports);
+      setAssetsList(_assetsList);
+      setDebtList(_debtList);
+      setPayablesList(_payablesList);
+      setHealthScoreHistory(_healthScoreHistory);
       setDbLoaded(true);
     })();
     return () => { cancelled = true; };
@@ -167,4 +178,8 @@ export function useDataSaver(db, dbLoaded, state) {
   useDebouncedSave(db, dbLoaded, KEYS.calloutLog, state.calloutLog);
   useDebouncedSave(db, dbLoaded, KEYS.damageClaims, state.damageClaims);
   useDebouncedSave(db, dbLoaded, KEYS.fuelCardImports, state.fuelCardImports);
+  useDebouncedSave(db, dbLoaded, KEYS.assetsList, state.assetsList);
+  useDebouncedSave(db, dbLoaded, KEYS.debtList, state.debtList);
+  useDebouncedSave(db, dbLoaded, KEYS.payablesList, state.payablesList);
+  useDebouncedSave(db, dbLoaded, KEYS.healthScoreHistory, state.healthScoreHistory);
 }

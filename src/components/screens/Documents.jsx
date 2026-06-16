@@ -81,7 +81,7 @@ export default function Documents(p) {
     statusColor, statusLabel, gradeColor, MODAL_CONFIGS,
   } = p;
   return (()=>{
-        const DOC_TYPES=["Rate Confirmation","Bill of Lading (BOL)","Delivery Confirmation","Insurance Certificate","Contract","Invoice","Driver File","Inspection Report","Permit","Other"];
+        const DOC_TYPES=["Rate Confirmation","Bill of Lading (BOL)","Delivery Confirmation","Insurance Certificate","Contract","Invoice","Driver File","Inspection Report","Permit","Business Tax Return","Personal Tax Return","Bank Statement","Operating Authority","Articles of Incorporation","LLC Operating Agreement","Business License","EIN Confirmation","Personal Financial Statement","Down Payment Documentation","Other"];
         const TYPE_COLORS={"Rate Confirmation":"#f59e0b","Bill of Lading (BOL)":"#60a5fa","Delivery Confirmation":"#22c55e","Insurance Certificate":"#ef4444","Contract":"#8888cc","Invoice":"#22c55e","Driver File":"#60a5fa","Inspection Report":"#f59e0b","Permit":"#f87171","Other":"#555"};
         const types=["all",...DOC_TYPES];
         const filtered=docFilter==="all"?documents:documents.filter(d=>d.type===docFilter);
