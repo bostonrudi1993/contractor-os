@@ -487,7 +487,7 @@ function ContractorOS() {
       {date:todayStr,total:totalHealthScore,compliance:compScore,financial:finScore,drivers:drvScore,fleet:fltScore},
       ...prev.slice(0,55)
     ]);
-  },[dbLoaded,totalHealthScore]); // eslint-disable-line react-hooks/exhaustive-deps
+  },[dbLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load & save cloud data via hooks ──
   useDataLoader(db, {
