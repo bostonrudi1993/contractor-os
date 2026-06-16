@@ -1,18 +1,26 @@
 import StatCard from "../shared/StatCard.jsx";
 import ExpiryBadge from "../shared/ExpiryBadge.jsx";
-import HealthGauge, { calcHealthScore } from "../shared/HealthGauge.jsx";
+import HealthScoreCard from "../shared/HealthScoreCard.jsx";
 
 const gradeColor = g => ({A:"#22c55e",B:"#84cc16",C:"#f59e0b",D:"#ef4444"}[g]||"#555");
 const fmt$ = n => `$${(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 
 export default function Dashboard(p) {
-  const {seg, accent, S, settings, revenue, expenses, compliance, drivers, maintenance, vehicles, contracts, loads, routes, urgentItems, setScreen, setSubScreen} = p;
+  const {
+    seg, accent, S, settings, revenue, expenses, compliance, drivers, maintenance, loads, routes, urgentItems,
+    totalHealthScore, healthLabel, healthInsight,
+    compScore, compWhy, compAction, compActionLabel,
+    finScore, finWhy, finAction, finActionLabel,
+    drvScore, drvWhy, drvAction, drvActionLabel,
+    fltScore, fltWhy, fltAction, fltActionLabel,
+    lenderScore, monthsOfData, dscr, hasActiveContract,
+    healthScoreHistory, handleNav, setScreen, setSubScreen,
+  } = p;
   const totalRevenue = revenue.reduce((s,r)=>s+parseFloat(r.amount||0),0);
   const totalExpenses = expenses.reduce((s,e)=>s+parseFloat(e.amount||0),0);
   const netProfit = totalRevenue - totalExpenses;
   const Stat = ({label,value,color,sub}) => <StatCard label={label} value={value} color={color||accent} sub={sub} card={S.card}/>;
   const ExBadge = ({label,days}) => <ExpiryBadge label={label} days={days}/>;
-  const hs = calcHealthScore({compliance, revenue, drivers, maintenance, vehicles});
 
   return (
     <div style={{flex:1,padding:24,maxWidth:1000,margin:"0 auto",width:"100%",animation:"fadeUp 0.3s ease"}}>
@@ -24,14 +32,21 @@ export default function Dashboard(p) {
         <div style={{fontSize:11,color:"#555",marginTop:8}}>{seg.icon} {seg.label} · ContractorOS</div>
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr) auto",gap:12,marginBottom:24,alignItems:"stretch"}}>
+      <HealthScoreCard
+        totalHealthScore={totalHealthScore} healthLabel={healthLabel} healthInsight={healthInsight}
+        compScore={compScore} compWhy={compWhy} compAction={compAction} compActionLabel={compActionLabel}
+        finScore={finScore} finWhy={finWhy} finAction={finAction} finActionLabel={finActionLabel}
+        drvScore={drvScore} drvWhy={drvWhy} drvAction={drvAction} drvActionLabel={drvActionLabel}
+        fltScore={fltScore} fltWhy={fltWhy} fltAction={fltAction} fltActionLabel={fltActionLabel}
+        lenderScore={lenderScore} monthsOfData={monthsOfData} dscr={dscr} hasActiveContract={hasActiveContract}
+        healthScoreHistory={healthScoreHistory} handleNav={handleNav} S={S}
+      />
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
         <Stat label="Total Revenue" value={fmt$(totalRevenue)} color="#22c55e"/>
         <Stat label="Total Expenses" value={fmt$(totalExpenses)} color="#ef4444"/>
         <Stat label="Net Profit" value={fmt$(netProfit)} color={netProfit>=0?"#22c55e":"#ef4444"}/>
         <Stat label="Compliance Alerts" value={urgentItems.length} color={urgentItems.length>0?"#ef4444":"#22c55e"} sub={urgentItems.length>0?"Needs attention":"All clear"}/>
-        <div style={{background:"#111",border:"1px solid #1e1e1e",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <HealthGauge score={hs.total} color={hs.color} insight={hs.insight}/>
-        </div>
       </div>
 
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
@@ -44,6 +59,7 @@ export default function Dashboard(p) {
             <button className="cardhov" onClick={()=>{setScreen("fleet");setSubScreen("schedule");}} style={{...S.card,padding:"10px 14px",fontSize:11,color:"#f59e0b",cursor:"pointer",textAlign:"left",border:"1px solid #f59e0b22"}}>→ Fleet Upcoming Service</button>
             <button className="cardhov" onClick={()=>{setScreen("finance");setSubScreen("expenses");}} style={{...S.card,padding:"10px 14px",fontSize:11,color:"#22c55e",cursor:"pointer",textAlign:"left",border:"1px solid #22c55e22"}}>→ Log an Expense</button>
             {seg.features.contractTracker&&<button className="cardhov" onClick={()=>setScreen("contracts")} style={{...S.card,padding:"10px 14px",fontSize:11,color:"#8888cc",cursor:"pointer",textAlign:"left",border:"1px solid #8888cc22"}}>→ View Contracts</button>}
+            <button className="cardhov" onClick={()=>handleNav("lender")} style={{...S.card,padding:"10px 14px",fontSize:11,color:"#6666aa",cursor:"pointer",textAlign:"left",border:"1px solid #6666aa22"}}>→ View Lender Report</button>
           </div>
         </div>
         <div style={S.card}>

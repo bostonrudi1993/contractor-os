@@ -52,6 +52,7 @@ import DriverSchedule from "./components/screens/DriverSchedule.jsx";
 import Scorecard from "./components/screens/Scorecard.jsx";
 import FmcsaLookup from "./components/screens/FmcsaLookup.jsx";
 import Claims from "./components/screens/Claims.jsx";
+import LenderReport from "./components/screens/LenderReport.jsx";
 
 // ─── AI PROMPTS ───────────────────────────────────────────────────────────────
 const ANALYZE_PROMPT = `You are a freight rate analyst for OTR owner-operators. Respond ONLY with this JSON (no markdown):
@@ -231,7 +232,7 @@ function ContractorOS() {
 
   const [screen, setScreen] = useState("dashboard");
   const [navOpen, setNavOpen] = useState(false);
-  const [settings, setSettings] = useState({mpg:8,dieselPrice:3.85,cpm:0.18,homeBase:"",companyName:"",monthlyInsurance:"",weeklyTruckPayment:"",clientDailyRate:"",mileStipendRate:""});
+  const [settings, setSettings] = useState({mpg:8,dieselPrice:3.85,cpm:0.18,homeBase:"",companyName:"",monthlyInsurance:"",weeklyTruckPayment:"",clientDailyRate:"",mileStipendRate:"",businessStartDate:"",businessLegalName:"",ownerName:"",ein:"",bankName:"",existingLoanBalance:"",existingLoanMonthlyPayment:"",monthlyDepreciation:"",monthlyLoanInterest:"",monthlyTaxEstimate:"",cashReserve:""});
   const [vehicles, setVehicles] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -383,6 +384,14 @@ function ContractorOS() {
   const [calloutLog, setCalloutLog] = useState([]);
   const [damageClaims, setDamageClaims] = useState([]);
   const [fuelCardImports, setFuelCardImports] = useState([]);
+  const [assetsList, setAssetsList] = useState([]);
+  const [debtList, setDebtList] = useState([]);
+  const [payablesList, setPayablesList] = useState([]);
+  const [healthScoreHistory, setHealthScoreHistory] = useState([]);
+  const [lenderTab, setLenderTab] = useState("report");
+  const [lenderAssetForm, setLenderAssetForm] = useState({assetName:"",assetType:"Vehicle",purchaseDate:"",purchasePrice:"",currentValue:"",lienBalance:"",monthlyPayment:"",lenderName:"",notes:""});
+  const [lenderDebtForm, setLenderDebtForm] = useState({creditorName:"",debtType:"Truck Loan",originalAmount:"",currentBalance:"",monthlyPayment:"",interestRate:"",loanStartDate:"",collateral:"",notes:""});
+  const [lenderPayableForm, setLenderPayableForm] = useState({vendorName:"",description:"",amountOwed:"",dueDate:"",status:"Current"});
   const [subTab_drivers, setSubTab_drivers] = useState("list");
   const [routesSubTab, setRoutesSubTab] = useState("list");
   const [fleetSubTab, setFleetSubTab] = useState("log");
@@ -433,6 +442,19 @@ function ContractorOS() {
   useEffect(()=>{stor.set(KEYS.settings,settings);},[settings]);
   useEffect(()=>{try{localStorage.setItem("cos_scorecard",JSON.stringify(scorecardData));}catch{}},[scorecardData]);
 
+  // ── Health Score History (once per day) ──
+  useEffect(()=>{
+    if(!dbLoaded) return;
+    const key="cos_health_last_saved";
+    const todayStr=new Date().toISOString().slice(0,10);
+    if(localStorage.getItem(key)===todayStr) return;
+    localStorage.setItem(key,todayStr);
+    setHealthScoreHistory(prev=>[
+      {date:todayStr,total:totalHealthScore,compliance:compScore,financial:finScore,drivers:drvScore,fleet:fltScore},
+      ...prev.slice(0,55)
+    ]);
+  },[dbLoaded,totalHealthScore]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Load & save cloud data via hooks ──
   useDataLoader(db, {
     setCompliance, setVehicles, setDrivers, setMaintenance, setExpenses, setRevenue,
@@ -441,7 +463,8 @@ function ContractorOS() {
     setTires, setDocuments, setDispatches, setContacts, setHosLog,
     setStopProfitLog, setSettlementLog, setScheduleData, setCoachingLog, setAppearanceLog,
     setDnrLog, setTripSheets, setVanInspectionLog, setBidTracker, setDeadMilesLog, setLoadHistory,
-    setWhiteGloveLog, setCalloutLog, setDamageClaims, setFuelCardImports, setDbLoaded,
+    setWhiteGloveLog, setCalloutLog, setDamageClaims, setFuelCardImports,
+    setAssetsList, setDebtList, setPayablesList, setHealthScoreHistory, setDbLoaded,
   });
 
   useDataSaver(db, dbLoaded, {
@@ -451,6 +474,7 @@ function ContractorOS() {
     stopProfitLog, settlementLog, scheduleData, coachingLog, appearanceLog, dnrLog,
     tripSheets, vanInspectionLog, bidTracker, deadMilesLog, loadHistory, whiteGloveLog,
     calloutLog, damageClaims, fuelCardImports,
+    assetsList, debtList, payablesList, healthScoreHistory,
   });
 
   const seg = segment ? SEGMENTS[segment] : null;
@@ -742,6 +766,69 @@ function ContractorOS() {
   };
   const urgentItems = getAllExpiryItems().filter(i=>i.days!==null&&i.days<=30);
 
+  // ── Business Health Score Calculations ──
+  const _hsToday = new Date();
+  const _hsThisMonth = _hsToday.toISOString().slice(0,7);
+  const _hsLastMonth = new Date(_hsToday.getFullYear(),_hsToday.getMonth()-1,1).toISOString().slice(0,7);
+
+  const overdueItems = urgentItems.filter(i=>i.days<0);
+  const soonItems = urgentItems.filter(i=>i.days>=0&&i.days<=30);
+  const compScore = overdueItems.length>0?0:soonItems.length===0?25:soonItems.length<=2?15:5;
+  const compWhy = overdueItems.length>0?`${overdueItems.length} compliance item(s) are overdue — immediate action required`:soonItems.length===0?"All compliance items current":`${soonItems.length} item(s) expiring within 30 days — ${soonItems[0]?.label}`;
+  const compAction = "compliance";
+  const compActionLabel = "Fix Compliance →";
+
+  const _thisMonthRev = revenue.filter(r=>r.date?.startsWith(_hsThisMonth)).reduce((s,r)=>s+parseFloat(r.amount||0),0);
+  const _lastMonthRev = revenue.filter(r=>r.date?.startsWith(_hsLastMonth)).reduce((s,r)=>s+parseFloat(r.amount||0),0);
+  const _revChange = _lastMonthRev>0?((_thisMonthRev-_lastMonthRev)/_lastMonthRev)*100:0;
+  const finScore = _thisMonthRev===0?0:_revChange>=0?25:_revChange>=-10?15:5;
+  const finWhy = _thisMonthRev===0?"No revenue logged this month":_revChange>0?`Revenue up ${_revChange.toFixed(0)}% vs last month`:_revChange===0?"Revenue flat vs last month":`Revenue down ${Math.abs(_revChange).toFixed(0)}% vs last month`;
+  const finAction = "finance";
+  const finActionLabel = "View Finance →";
+
+  const REQUIRED_ONBOARDING_STEPS = ["application","background","background_clear","pre_drug_test","drug_clear","clearinghouse_query","cdl_copy","medical_card","mvr","driving_history_3yr","orientation","orientation_signed","i9"];
+  const incompleteDrivers = drivers.filter(d=>{const c=d.onboarding||{};return REQUIRED_ONBOARDING_STEPS.some(s=>!c[s]);});
+  const openCoachingCount = segment==="fedex"?(coachingLog||[]).filter(c=>!c.followUpComplete).length:0;
+  const drvScore = Math.max(0,25-(incompleteDrivers.length*5)-(openCoachingCount*3));
+  const drvWhy = incompleteDrivers.length===0&&openCoachingCount===0?"All drivers fully onboarded and compliant":incompleteDrivers.length>0?`${incompleteDrivers.length} driver(s) have incomplete DOT onboarding`:`${openCoachingCount} open coaching item(s) need follow-up`;
+  const drvAction = "drivers";
+  const drvActionLabel = "View Drivers →";
+
+  const _thirtyDaysAgo = new Date(_hsToday-30*24*60*60*1000).toISOString().slice(0,10);
+  const trucksNeedingMaint = (compliance.trucks||[]).filter(truck=>{
+    const lastMaint = maintenance.filter(m=>m.truckName===truck.name).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+    return !lastMaint||lastMaint.date<_thirtyDaysAgo;
+  });
+  const fltScore = Math.max(0,25-(trucksNeedingMaint.length*8));
+  const fltWhy = trucksNeedingMaint.length===0?"All vehicles have recent maintenance logged":`${trucksNeedingMaint.length} vehicle(s) need maintenance attention`;
+  const fltAction = "fleet";
+  const fltActionLabel = "Log Maintenance →";
+
+  const totalHealthScore = compScore+finScore+drvScore+fltScore;
+  const healthLabel = totalHealthScore>=90?"Excellent":totalHealthScore>=75?"Good":totalHealthScore>=60?"Fair":totalHealthScore>=40?"Needs Attention":"Critical";
+  const healthInsight = totalHealthScore>=90?"Your operation is running well. Focus on growth.":totalHealthScore>=75?"Solid operation with minor gaps to address.":totalHealthScore>=60?"Some vulnerabilities — address red items soon.":totalHealthScore>=40?"Multiple issues need attention to protect your contracts.":"Critical issues require immediate action.";
+
+  const monthsOfData = (()=>{
+    if(!revenue.length) return 0;
+    const dates=revenue.map(r=>new Date(r.date)).filter(d=>!isNaN(d));
+    if(!dates.length) return 0;
+    const oldest=new Date(Math.min(...dates));
+    return Math.floor((_hsToday-oldest)/(30*24*60*60*1000));
+  })();
+  const monthlyNetIncome = (()=>{
+    const last3=[0,1,2].map(i=>{
+      const d=new Date(_hsToday.getFullYear(),_hsToday.getMonth()-i,1).toISOString().slice(0,7);
+      const rev=revenue.filter(r=>r.date?.startsWith(d)).reduce((s,r)=>s+parseFloat(r.amount||0),0);
+      const exp=expenses.filter(e=>e.date?.startsWith(d)).reduce((s,e)=>s+parseFloat(e.amount||0),0);
+      return rev-exp;
+    });
+    return last3.reduce((a,b)=>a+b,0)/3;
+  })();
+  const monthlyFixed=(parseFloat(settings.weeklyTruckPayment||0)*52/12)+parseFloat(settings.monthlyInsurance||0)+parseFloat(settings.existingLoanMonthlyPayment||0);
+  const dscr=monthlyFixed>0?monthlyNetIncome/monthlyFixed:0;
+  const hasActiveContract=contracts.some(c=>c.status==="active"||!c.endDate||new Date(c.endDate)>_hsToday);
+  const lenderScore=(monthsOfData>=12?25:monthsOfData>=6?15:monthsOfData>=3?8:0)+(dscr>=1.25?25:dscr>=1.0?15:0)+(hasActiveContract?25:0)+((compliance.trucks||[]).length>0?25:0);
+
   // ── Loading screen ──
   if(!dbLoaded) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#0a0a0a",flexDirection:"column",gap:16}}>
@@ -852,6 +939,17 @@ function ContractorOS() {
     importExcelPL, confirmExcelImport, showValidation, compressImage, handleNav,
     // computed
     urgentItems, totalRevenue, totalExpenses, netProfit,
+    totalHealthScore, healthLabel, healthInsight,
+    compScore, compWhy, compAction, compActionLabel,
+    finScore, finWhy, finAction, finActionLabel,
+    drvScore, drvWhy, drvAction, drvActionLabel,
+    fltScore, fltWhy, fltAction, fltActionLabel,
+    lenderScore, monthsOfData, monthlyNetIncome, dscr, hasActiveContract,
+    healthScoreHistory, setHealthScoreHistory,
+    assetsList, setAssetsList, debtList, setDebtList, payablesList, setPayablesList,
+    lenderTab, setLenderTab,
+    lenderAssetForm, setLenderAssetForm, lenderDebtForm, setLenderDebtForm,
+    lenderPayableForm, setLenderPayableForm,
     SubNav, Stat, ExpiryBadge: ExpiryBadgeW, Loader,
     fmt$, fmtDate, daysUntil, statusColor, statusLabel, gradeColor, MODAL_CONFIGS,
   };
@@ -950,6 +1048,7 @@ function ContractorOS() {
       {screen==="scorecard" && (segment==="fedex"||segment==="amazon"||segment==="lastmile"||segment==="usps") && <Scorecard {...screenProps}/>}
       {screen==="fmcsa" && <FmcsaLookup {...screenProps}/>}
       {screen==="claims" && segment==="lastmile" && <Claims {...screenProps}/>}
+      {screen==="lender" && <LenderReport {...screenProps}/>}
 
       {/* Bug Report Modal */}
       {showBugReport&&(
