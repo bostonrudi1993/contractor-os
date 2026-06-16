@@ -17,7 +17,7 @@ import { useOnboarding } from "./hooks/useOnboarding.js";
 
 // Shared components
 import EditModal from "./components/shared/EditModal.jsx";
-import Nav from "./components/shared/Nav.jsx";
+import Nav, { NAV_LABELS as navLabels } from "./components/shared/Nav.jsx";
 import TopBar from "./components/shared/TopBar.jsx";
 import SegmentSelector from "./components/shared/SegmentSelector.jsx";
 import OnboardingBanner from "./components/shared/OnboardingBanner.jsx";
@@ -53,7 +53,6 @@ import Scorecard from "./components/screens/Scorecard.jsx";
 import FmcsaLookup from "./components/screens/FmcsaLookup.jsx";
 import Claims from "./components/screens/Claims.jsx";
 import LenderReport from "./components/screens/LenderReport.jsx";
-import { NAV_LABELS as navLabels } from "./components/shared/Nav.jsx";
 
 // ─── TIER CONFIG ──────────────────────────────────────────────────────────────
 const TIERS = {
