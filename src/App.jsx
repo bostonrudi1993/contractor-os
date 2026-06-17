@@ -57,15 +57,15 @@ import LenderReport from "./components/screens/LenderReport.jsx";
 // ─── TIER CONFIG ──────────────────────────────────────────────────────────────
 const TIERS = {
   solo: {
-    label:"Solo", price:"$49/mo", color:"#888",
+    label:"Solo", price:"$39/mo", color:"#888",
     screens:["dashboard","compliance","fleet","finance","documents","settings","fmcsa","data"],
   },
   fleet: {
-    label:"Fleet", price:"$99/mo", color:"#f59e0b",
+    label:"Fleet", price:"$89/mo", color:"#f59e0b",
     screens:["dashboard","compliance","fleet","finance","documents","settings","fmcsa","data","drivers","payroll","dispatch","invoices","contacts","scorecard","stopprofit","settlement","reports","trends","brokers","routes","contracts","claims","driverschedule"],
   },
   enterprise: {
-    label:"Enterprise", price:"$199/mo", color:"#8888cc",
+    label:"Enterprise", price:"$179/mo", color:"#8888cc",
     screens:["dashboard","compliance","fleet","finance","documents","settings","fmcsa","data","drivers","payroll","dispatch","invoices","contacts","scorecard","stopprofit","settlement","reports","trends","brokers","routes","contracts","claims","driverschedule","lender","deadmiles","analyze","boards","users"],
   },
 };
@@ -387,6 +387,7 @@ function ContractorOS() {
   const [upgradeEmail, setUpgradeEmail] = useState(()=>{
     try { return user?.emailAddresses?.[0]?.emailAddress || ""; } catch { return ""; }
   });
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [scorecardWeek, setScorecardWeek] = useState(() => new Date().toISOString().slice(0,10));
   const [scorecardData, setScorecardData] = useState(() => { try { return JSON.parse(localStorage.getItem("cos_scorecard")||"[]"); } catch { return []; } });
   const [bugForm, setBugForm] = useState({subject:"",description:"",email:""});
@@ -495,6 +496,23 @@ function ContractorOS() {
       ...prev.slice(0,55)
     ]);
   },[dbLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Stripe success return ──
+  useEffect(()=>{
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const upgradeSuccess = params.get("upgrade");
+      const newTier = params.get("tier");
+      if(upgradeSuccess==="success"&&newTier){
+        window.history.replaceState({},"","/");
+        showValidation("✓ Upgraded to "+(TIERS[newTier]?.label||newTier)+"! Your new features are unlocked.");
+        setTimeout(()=>window.location.reload(),2500);
+      }
+    } catch(err){
+      console.error("Upgrade redirect error:",err);
+    }
+  // eslint-disable-next-line
+  },[]);
 
   // ── Load & save cloud data via hooks ──
   useDataLoader(db, {
@@ -927,15 +945,31 @@ function ContractorOS() {
     const newFeatures = targetTier.screens.filter(s=>!tierScreens.includes(s)).map(s=>navLabels[s]||s).slice(0,8);
 
     const handleSendRequest = async () => {
-      const subject = encodeURIComponent(`ContractorOS Upgrade Request — ${targetTier.label} Plan`);
-      const body = encodeURIComponent(
-        `Hi,\n\nI would like to upgrade my ContractorOS account to the ${targetTier.label} plan (${targetTier.price}).\n\n` +
-        `Account email: ${upgradeEmail}\nCurrent plan: ${currentTierData.label}\nRequested plan: ${targetTier.label}\n\n` +
-        (upgradeMessage ? `Message: ${upgradeMessage}\n\n` : "") +
-        `Please contact me to complete the upgrade.`
-      );
-      window.open(`mailto:bostonrudi1993@gmail.com?subject=${subject}&body=${body}`, "_blank");
-      setUpgradeSent(true);
+      setUpgradeLoading(true);
+      const PRICE_IDS = {
+        solo: import.meta.env.VITE_STRIPE_PRICE_SOLO,
+        fleet: import.meta.env.VITE_STRIPE_PRICE_FLEET,
+        enterprise: import.meta.env.VITE_STRIPE_PRICE_ENTERPRISE,
+      };
+      const priceId = PRICE_IDS[targetTierKey];
+      const orgId = organization?.id || db.scopeId;
+      try {
+        const response = await fetch("/api/create-checkout-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ priceId, orgId, userEmail: upgradeEmail, tierName: targetTierKey }),
+        });
+        const data = await response.json();
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          throw new Error(data.error || "Failed to create checkout session");
+        }
+      } catch (err) {
+        console.error("Checkout error:", err);
+        window.open("mailto:bostonrudi1993@gmail.com?subject=ContractorOS Upgrade Request", "_blank");
+        setUpgradeLoading(false);
+      }
     };
 
     return (
@@ -988,7 +1022,9 @@ function ContractorOS() {
                 </div>
               </div>
               <div style={{display:"flex",gap:10}}>
-                <button onClick={handleSendRequest} style={{...S.btn,flex:1,background:targetTier.color,color:"#0a0a0a",fontSize:13,padding:"13px 20px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.05em"}}>Request Upgrade →</button>
+                <button onClick={handleSendRequest} disabled={upgradeLoading} style={{...S.btn,flex:1,background:targetTier.color,color:"#0a0a0a",fontSize:13,padding:"13px 20px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.05em",opacity:upgradeLoading?0.7:1,cursor:upgradeLoading?"not-allowed":"pointer"}}>
+                {upgradeLoading?"Redirecting to checkout...":`Upgrade to ${targetTier.label} →`}
+              </button>
                 <button onClick={()=>{setShowUpgradeModal(false);setUpgradeSent(false);}} style={{...S.ghost,fontSize:11,padding:"13px 16px"}}>Cancel</button>
               </div>
               <div style={{fontSize:9,color:"#444",textAlign:"center",marginTop:12,lineHeight:1.7}}>
@@ -1220,7 +1256,7 @@ function ContractorOS() {
         {screen==="reports" && <Reports {...screenProps}/>}
         {screen==="trends" && <Trends {...screenProps}/>}
         {screen==="users" && <Users {...screenProps}/>}
-        {screen==="settings" && <Settings seg={seg} accent={accent} S={S} settings={settings} setSettings={setSettings} segment={segment} organization={organization} currentTier={currentTier} TIERS={TIERS}/>}
+        {screen==="settings" && <Settings seg={seg} accent={accent} S={S} settings={settings} setSettings={setSettings} segment={segment} organization={organization} currentTier={currentTier} TIERS={TIERS} onUpgrade={()=>{setUpgradeTargetScreen("lender");setUpgradeEmail(user?.emailAddresses?.[0]?.emailAddress||"");setUpgradeSent(false);setShowUpgradeModal(true);}}/>}
         {screen==="payroll" && <Payroll {...screenProps}/>}
         {screen==="dispatch" && <Dispatch {...screenProps}/>}
         {screen==="invoices" && <Invoices {...screenProps}/>}

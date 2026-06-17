@@ -1,6 +1,6 @@
 import { SEGMENTS } from "../../config/segments.js";
 
-export default function Settings({seg, accent, S, settings, setSettings, segment, organization, currentTier, TIERS}) {
+export default function Settings({seg, accent, S, settings, setSettings, segment, organization, currentTier, TIERS, onUpgrade}) {
   return (
     <div style={{flex:1,overflowY:"auto",padding:24,animation:"fadeUp 0.3s ease"}}>
       <div style={{maxWidth:600,margin:"0 auto"}}>
@@ -125,6 +125,7 @@ export default function Settings({seg, accent, S, settings, setSettings, segment
                 </div>
               )}
             </div>
+            {onUpgrade&&<button className="hov" onClick={onUpgrade} style={{...S.btn,marginTop:12,width:"100%"}}>Upgrade Plan →</button>}
           </div>
         )}
         <div style={{...S.card,marginBottom:16}}>
