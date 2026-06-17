@@ -57,15 +57,15 @@ import LenderReport from "./components/screens/LenderReport.jsx";
 // ─── TIER CONFIG ──────────────────────────────────────────────────────────────
 const TIERS = {
   solo: {
-    label:"Solo", price:"$49/mo", color:"#888",
+    label:"Solo", price:"$39/mo", color:"#888",
     screens:["dashboard","compliance","fleet","finance","documents","settings","fmcsa","data"],
   },
   fleet: {
-    label:"Fleet", price:"$99/mo", color:"#f59e0b",
+    label:"Fleet", price:"$89/mo", color:"#f59e0b",
     screens:["dashboard","compliance","fleet","finance","documents","settings","fmcsa","data","drivers","payroll","dispatch","invoices","contacts","scorecard","stopprofit","settlement","reports","trends","brokers","routes","contracts","claims","driverschedule"],
   },
   enterprise: {
-    label:"Enterprise", price:"$199/mo", color:"#8888cc",
+    label:"Enterprise", price:"$179/mo", color:"#8888cc",
     screens:["dashboard","compliance","fleet","finance","documents","settings","fmcsa","data","drivers","payroll","dispatch","invoices","contacts","scorecard","stopprofit","settlement","reports","trends","brokers","routes","contracts","claims","driverschedule","lender","deadmiles","analyze","boards","users"],
   },
 };
@@ -380,6 +380,14 @@ function ContractorOS() {
   const [fmcsaLoading, setFmcsaLoading] = useState(false);
   const [fmcsaError, setFmcsaError] = useState("");
   const [showBugReport, setShowBugReport] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeTargetScreen, setUpgradeTargetScreen] = useState("");
+  const [upgradeMessage, setUpgradeMessage] = useState("");
+  const [upgradeSent, setUpgradeSent] = useState(false);
+  const [upgradeEmail, setUpgradeEmail] = useState(()=>{
+    try { return user?.emailAddresses?.[0]?.emailAddress || ""; } catch { return ""; }
+  });
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [scorecardWeek, setScorecardWeek] = useState(() => new Date().toISOString().slice(0,10));
   const [scorecardData, setScorecardData] = useState(() => { try { return JSON.parse(localStorage.getItem("cos_scorecard")||"[]"); } catch { return []; } });
   const [bugForm, setBugForm] = useState({subject:"",description:"",email:""});
@@ -488,6 +496,23 @@ function ContractorOS() {
       ...prev.slice(0,55)
     ]);
   },[dbLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Stripe success return ──
+  useEffect(()=>{
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const upgradeSuccess = params.get("upgrade");
+      const newTier = params.get("tier");
+      if(upgradeSuccess==="success"&&newTier){
+        window.history.replaceState({},"","/");
+        showValidation("✓ Upgraded to "+(TIERS[newTier]?.label||newTier)+"! Your new features are unlocked.");
+        setTimeout(()=>window.location.reload(),2500);
+      }
+    } catch(err){
+      console.error("Upgrade redirect error:",err);
+    }
+  // eslint-disable-next-line
+  },[]);
 
   // ── Load & save cloud data via hooks ──
   useDataLoader(db, {
@@ -643,8 +668,12 @@ function ContractorOS() {
 
   // ── Roles ──
   const canEdit = () => currentUser.role==="owner" || currentUser.role==="manager";
-  const isOwner = () => currentUser.role==="owner";
+  const isRoleOwner = () => currentUser.role==="owner";
   const getDriverForUser = () => drivers.find(d=>d.id===currentUser.driverId);
+
+  // ── Owner bypass (Clerk email) ──
+  const OWNER_EMAILS = ["bostonrudi1993@gmail.com"];
+  const isOwner = OWNER_EMAILS.includes(user?.emailAddresses?.[0]?.emailAddress || "");
 
   const switchUser = (user) => {
     if(!user.pin) { setCurrentUser(user); setSwitchingUser(false); return; }
@@ -780,7 +809,10 @@ function ContractorOS() {
   // ── Tier & Nav helpers ──
   const currentTier = settings.subscriptionTier || "fleet";
   const tierScreens = TIERS[currentTier]?.screens || TIERS.fleet.screens;
-  const canAccessScreen = (screenId) => tierScreens.includes(screenId);
+  const canAccessScreen = (screenId) => {
+    if(isOwner) return true;
+    return tierScreens.includes(screenId);
+  };
   const getScreenTier = (screenId) => {
     if(TIERS.solo.screens.includes(screenId)) return "solo";
     if(TIERS.fleet.screens.includes(screenId)) return "fleet";
@@ -905,35 +937,140 @@ function ContractorOS() {
   const Stat = ({label,value,color,sub}) => <StatCard label={label} value={value} color={color||accent} sub={sub} card={S.card}/>;
   const ExpiryBadgeW = ({label,days}) => <ExpiryBadge label={label} days={days}/>;
   const Loader = ({msg}) => <LoaderComp msg={msg} accent={accent}/>;
-  const UpgradePrompt = ({screenId}) => {
-    const requiredTier = getScreenTier(screenId);
-    const tierData = TIERS[requiredTier];
-    const label = navLabels[screenId] || screenId;
+  function UpgradeModal() {
+    if(!showUpgradeModal) return null;
+    const targetTierKey = getScreenTier(upgradeTargetScreen);
+    const targetTier = TIERS[targetTierKey];
+    const currentTierData = TIERS[currentTier];
+    const newFeatures = targetTier.screens.filter(s=>!tierScreens.includes(s)).map(s=>navLabels[s]||s).slice(0,8);
+
+    const handleSendRequest = async () => {
+      setUpgradeLoading(true);
+      const PRICE_IDS = {
+        solo: import.meta.env.VITE_STRIPE_PRICE_SOLO,
+        fleet: import.meta.env.VITE_STRIPE_PRICE_FLEET,
+        enterprise: import.meta.env.VITE_STRIPE_PRICE_ENTERPRISE,
+      };
+      const priceId = PRICE_IDS[targetTierKey];
+      const orgId = organization?.id || db.scopeId;
+      try {
+        const response = await fetch("/api/create-checkout-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ priceId, orgId, userEmail: upgradeEmail, tierName: targetTierKey }),
+        });
+        const data = await response.json();
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          throw new Error(data.error || "Failed to create checkout session");
+        }
+      } catch (err) {
+        console.error("Checkout error:", err);
+        window.open("mailto:bostonrudi1993@gmail.com?subject=ContractorOS Upgrade Request", "_blank");
+        setUpgradeLoading(false);
+      }
+    };
+
     return (
-      <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:40,animation:"fadeUp 0.3s ease"}}>
-        <div style={{...S.card,maxWidth:480,width:"100%",textAlign:"center",padding:"48px 32px"}}>
-          <div style={{fontSize:36,marginBottom:16}}>🔒</div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:900,color:"#e8e4d8",marginBottom:10}}>{label}</div>
-          <div style={{fontSize:11,color:tierData?.color||accent,border:`1px solid ${tierData?.color||accent}33`,display:"inline-block",padding:"3px 14px",borderRadius:3,letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:20}}>{tierData?.label} Plan</div>
-          <div style={{fontSize:11,color:"#555",marginBottom:28,lineHeight:1.9}}>
-            This feature is included in the <span style={{color:tierData?.color||accent}}>{tierData?.label}</span> plan at {tierData?.price}.<br/>
-            Upgrade to unlock {tierData?.screens?.length} screens and advanced fleet tools.
-          </div>
-          <a href={`mailto:bostonrudi1993@gmail.com?subject=${encodeURIComponent("Upgrade ContractorOS to "+tierData?.label+" Plan")}`}
-            style={{...S.btn,display:"inline-block",textDecoration:"none",background:tierData?.color||accent,color:"#0a0a0a",padding:"12px 28px",borderRadius:5,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,letterSpacing:"0.08em"}}>
-            Request Upgrade →
-          </a>
-          {settings.devMode&&(
-            <div style={{marginTop:24,paddingTop:16,borderTop:"1px solid #1e1e1e"}}>
-              <div style={{fontSize:9,color:"#333",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:8}}>Dev Mode — Tier Switch</div>
-              <button onClick={()=>setSettings(p=>({...p,subscriptionTier:requiredTier}))}
-                style={{...S.ghost,fontSize:10}}>Unlock {tierData?.label} Tier</button>
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:700,padding:20}} onClick={()=>{setShowUpgradeModal(false);setUpgradeSent(false);}}>
+        <div style={{background:"#141414",border:`1px solid ${targetTier.color}44`,borderRadius:12,padding:"32px 28px",maxWidth:480,width:"100%",animation:"fadeUp 0.2s ease"}} onClick={e=>e.stopPropagation()}>
+          {upgradeSent ? (
+            <div style={{textAlign:"center",padding:"16px 0"}}>
+              <div style={{fontSize:40,marginBottom:16}}>✅</div>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#e8e4d8",marginBottom:8}}>Request Sent!</div>
+              <div style={{fontSize:12,color:"#666",lineHeight:1.8,marginBottom:24}}>
+                Your upgrade request has been sent. We'll reach out to{upgradeEmail?` ${upgradeEmail}`:" you"} within 24 hours to complete your upgrade to{" "}
+                <span style={{color:targetTier.color,fontWeight:700}}>{targetTier.label}</span>.
+              </div>
+              <button onClick={()=>{setShowUpgradeModal(false);setUpgradeSent(false);}} style={{...S.btn,width:"100%"}}>Done</button>
             </div>
+          ) : (
+            <>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+                <div>
+                  <div style={{fontSize:10,color:targetTier.color,letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:6}}>Upgrade to {targetTier.label}</div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:800,color:"#e8e4d8",lineHeight:1}}>Unlock {navLabels[upgradeTargetScreen]||upgradeTargetScreen}</div>
+                </div>
+                <button onClick={()=>{setShowUpgradeModal(false);setUpgradeSent(false);}} style={{background:"transparent",border:"none",color:"#555",fontSize:20,cursor:"pointer",padding:"4px 8px",lineHeight:1}}>✕</button>
+              </div>
+              <div style={{background:`${targetTier.color}11`,border:`1px solid ${targetTier.color}33`,borderRadius:8,padding:"14px 18px",marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:32,fontWeight:900,color:targetTier.color,lineHeight:1}}>{targetTier.price}</div>
+                  <div style={{fontSize:10,color:"#555",marginTop:4}}>Upgrade from {currentTierData.label} {currentTierData.price}</div>
+                </div>
+                <div style={{fontSize:10,color:"#555",textAlign:"right"}}>Cancel anytime<br/>No long-term contract</div>
+              </div>
+              <div style={{marginBottom:20}}>
+                <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10}}>What you unlock:</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                  {newFeatures.map(f=>(
+                    <div key={f} style={{fontSize:11,color:"#888",display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{color:targetTier.color,fontWeight:700}}>✓</span>{f}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:20}}>
+                <div>
+                  <label style={S.label}>Your Email</label>
+                  <input value={upgradeEmail} onChange={e=>setUpgradeEmail(e.target.value)} placeholder="your@email.com" type="email" style={S.input}/>
+                </div>
+                <div>
+                  <label style={S.label}>Message (optional)</label>
+                  <textarea value={upgradeMessage} onChange={e=>setUpgradeMessage(e.target.value)} placeholder="Any questions or special requirements..." style={{...S.input,height:70,resize:"vertical"}}/>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:10}}>
+                <button onClick={handleSendRequest} disabled={upgradeLoading} style={{...S.btn,flex:1,background:targetTier.color,color:"#0a0a0a",fontSize:13,padding:"13px 20px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.05em",opacity:upgradeLoading?0.7:1,cursor:upgradeLoading?"not-allowed":"pointer"}}>
+                {upgradeLoading?"Redirecting to checkout...":`Upgrade to ${targetTier.label} →`}
+              </button>
+                <button onClick={()=>{setShowUpgradeModal(false);setUpgradeSent(false);}} style={{...S.ghost,fontSize:11,padding:"13px 16px"}}>Cancel</button>
+              </div>
+              <div style={{fontSize:9,color:"#444",textAlign:"center",marginTop:12,lineHeight:1.7}}>
+                We'll respond within 24 hours. Questions?{" "}
+                <a href="mailto:bostonrudi1993@gmail.com" style={{color:"#666"}} onClick={e=>e.stopPropagation()}>bostonrudi1993@gmail.com</a>
+              </div>
+            </>
           )}
         </div>
       </div>
     );
-  };
+  }
+
+  function UpgradePrompt({screenId}) {
+    const requiredTier = getScreenTier(screenId);
+    const tier = TIERS[requiredTier];
+    return (
+      <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:40}}>
+        <div style={{...S.card,maxWidth:440,textAlign:"center",border:`1px solid ${tier.color}44`,padding:32}}>
+          <div style={{fontSize:36,marginBottom:16}}>🔒</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#e8e4d8",marginBottom:8}}>
+            {navLabels[screenId]} is a <span style={{color:tier.color}}>{tier.label}</span> feature
+          </div>
+          <div style={{fontSize:12,color:"#555",lineHeight:1.8,marginBottom:24}}>
+            Upgrade to {tier.label} ({tier.price}) to unlock {navLabels[screenId]} and {tier.screens.length} other features.
+          </div>
+          <div style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:6,padding:"12px 16px",marginBottom:20,textAlign:"left"}}>
+            <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8}}>{tier.label} includes:</div>
+            {tier.screens.filter(s=>!tierScreens.includes(s)).slice(0,5).map(s=>(
+              <div key={s} style={{fontSize:11,color:"#888",padding:"3px 0"}}>✓ {navLabels[s]||s}</div>
+            ))}
+          </div>
+          <button
+            onClick={()=>{
+              setUpgradeTargetScreen(screenId);
+              setUpgradeEmail(user?.emailAddresses?.[0]?.emailAddress||"");
+              setUpgradeSent(false);
+              setShowUpgradeModal(true);
+            }}
+            style={{...S.btn,width:"100%",background:tier.color,color:"#0a0a0a",fontSize:14,padding:"13px 24px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.05em"}}>
+            Upgrade to {tier.label} →
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const screenProps = {
     seg, accent, S, segment, screen, setScreen, organization, signOut,
@@ -1012,7 +1149,7 @@ function ContractorOS() {
     showAlertSetup, setShowAlertSetup, alertPhone, setAlertPhone, alertEmail, setAlertEmail,
     // handlers
     openEdit, saveEdit, closeModal, generatePDF, generateNotifications,
-    canEdit, isOwner, getDriverForUser, switchUser, confirmPin, requestPushPermission,
+    canEdit, isOwner, isRoleOwner, getDriverForUser, switchUser, confirmPin, requestPushPermission,
     confirmAlertSetup, sendTestNotif, notifPermission,
     analyzeLoad, parseLoad, analyzeRoute, askDot, lookupDOT, applyToSettings,
     importExcelPL, confirmExcelImport, showValidation, compressImage, handleNav,
@@ -1089,7 +1226,13 @@ function ContractorOS() {
 
       <Nav navOpen={navOpen} setNavOpen={setNavOpen} seg={seg} screen={screen} accent={accent} urgentItems={urgentItems} onNav={handleNav}
         navExpanded={navExpanded} toggleNavExpand={toggleNavExpand} canAccessScreen={canAccessScreen}
-        SUB_PAGES={SUB_PAGES} currentTier={currentTier} TIERS={TIERS} subScreen={subScreen} setSubScreen={setSubScreen}/>
+        SUB_PAGES={SUB_PAGES} currentTier={currentTier} TIERS={TIERS} subScreen={subScreen} setSubScreen={setSubScreen}
+        onLockedClick={(id)=>{
+          setUpgradeTargetScreen(id);
+          setUpgradeEmail(user?.emailAddresses?.[0]?.emailAddress||"");
+          setUpgradeSent(false);
+          setShowUpgradeModal(true);
+        }}/>
 
       <TopBar
         setNavOpen={setNavOpen} seg={seg} accent={accent} screen={screen}
@@ -1113,7 +1256,7 @@ function ContractorOS() {
         {screen==="reports" && <Reports {...screenProps}/>}
         {screen==="trends" && <Trends {...screenProps}/>}
         {screen==="users" && <Users {...screenProps}/>}
-        {screen==="settings" && <Settings seg={seg} accent={accent} S={S} settings={settings} setSettings={setSettings} segment={segment} organization={organization} currentTier={currentTier} TIERS={TIERS}/>}
+        {screen==="settings" && <Settings seg={seg} accent={accent} S={S} settings={settings} setSettings={setSettings} segment={segment} organization={organization} currentTier={currentTier} TIERS={TIERS} onUpgrade={()=>{setUpgradeTargetScreen("lender");setUpgradeEmail(user?.emailAddresses?.[0]?.emailAddress||"");setUpgradeSent(false);setShowUpgradeModal(true);}}/>}
         {screen==="payroll" && <Payroll {...screenProps}/>}
         {screen==="dispatch" && <Dispatch {...screenProps}/>}
         {screen==="invoices" && <Invoices {...screenProps}/>}
@@ -1168,6 +1311,8 @@ function ContractorOS() {
           ⚠ {validationMsg}
         </div>
       )}
+
+      <UpgradeModal />
 
       {/* App Footer */}
       <div style={{flexShrink:0,borderTop:"2px solid #333",background:"#0d0d0d",padding:"16px 24px"}}>
