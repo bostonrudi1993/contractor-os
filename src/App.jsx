@@ -162,7 +162,9 @@ function AuthGate() {
   const { isLoaded: userLoaded, isSignedIn, user } = useUser();
   const { organization, isLoaded: orgLoaded } = useOrganization();
   const { userMemberships, isLoaded: listLoaded } = useOrganizationList({ userMemberships: true });
-  const [authView, setAuthView] = useState("signin");
+  const [authView, setAuthView] = useState(()=>{
+    try { return new URLSearchParams(window.location.search).get("view")==="signup"?"signup":"signin"; } catch { return "signin"; }
+  });
 
   if (!userLoaded) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#0a0a0a",flexDirection:"column",gap:16}}>

@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ContractorOS — Fleet Management Built for Independent Contractors</title>
-  <meta name="description" content="ContractorOS is the only fleet management platform built specifically for FedEx Ground ISPs, Amazon DSPs, Last Mile contractors, USPS HCR operators, and OTR owner-operators."/>
-  <meta property="og:title" content="ContractorOS — Built for Contractors, Not Fleets"/>
-  <meta property="og:description" content="The only platform purpose-built for your contractor type. Compliance, stop profit calculator, settlement reconciliation, and a built-in lender report."/>
+  <title>ContractorOS — The Fleet Operating System for Independent Contractors</title>
+  <meta name="description" content="ContractorOS is the all-in-one platform built for owner-operators and fleet contractors. Compliance tracking, dispatch, payroll, FMCSA lookup, and more."/>
+  <meta property="og:title" content="ContractorOS — Fleet Operating System"/>
+  <meta property="og:description" content="The complete operating system for independent contractors. Compliance, dispatch, payroll, and more — in one place."/>
   <meta property="og:url" content="https://contractoroshub.com"/>
   <link rel="icon" href="/favicon.svg"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -16,610 +16,307 @@
     html { scroll-behavior: smooth; }
     body { font-family: 'DM Mono', 'Courier New', monospace; background: #fff; color: #1a1a1a; }
 
-    .hero { background: #0a0a0a; color: #e8e4d8; min-height: 100vh; display: flex; flex-direction: column; }
-    .nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 48px; border-bottom: 1px solid #1e1e1e; position: sticky; top: 0; background: #0a0a0a; z-index: 100; }
+    /* ── HERO (dark) ── */
+    .hero { background: #0a0a0a; color: #e8e4d8; padding: 0; min-height: 100vh; display: flex; flex-direction: column; }
+    .nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 48px; border-bottom: 1px solid #1e1e1e; }
     .nav-logo { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 22px; letter-spacing: 0.03em; color: #e8e4d8; text-decoration: none; }
     .nav-logo span { color: #f59e0b; }
     .nav-links { display: flex; align-items: center; gap: 24px; }
     .nav-links a { color: #555; font-size: 10px; text-decoration: none; letter-spacing: 0.12em; text-transform: uppercase; transition: color 0.15s; }
     .nav-links a:hover { color: #e8e4d8; }
-    .nav-cta { background: #f59e0b !important; color: #0a0a0a !important; padding: 9px 22px; border-radius: 5px; font-weight: 700 !important; font-family: 'Barlow Condensed', sans-serif; font-size: 13px !important; letter-spacing: 0.08em !important; }
+    .nav-cta { background: #f59e0b; color: #0a0a0a !important; padding: 9px 22px; border-radius: 5px; font-weight: 700; font-family: 'Barlow Condensed', sans-serif; font-size: 13px !important; letter-spacing: 0.08em; transition: opacity 0.15s !important; }
+    .nav-cta:hover { opacity: 0.85; }
+    .nav-sign-in { border: 1px solid #333 !important; color: #e8e4d8 !important; padding: 8px 18px; border-radius: 5px; font-family: 'Barlow Condensed', sans-serif; font-size: 13px !important; letter-spacing: 0.08em; transition: border-color 0.15s !important; }
+    .nav-sign-in:hover { border-color: #f59e0b !important; color: #f59e0b !important; }
 
     .hero-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 24px; text-align: center; }
     .hero-badge { font-size: 9px; color: #f59e0b; letter-spacing: 0.25em; text-transform: uppercase; border: 1px solid #f59e0b33; padding: 4px 14px; border-radius: 20px; margin-bottom: 24px; display: inline-block; }
-    .hero-title { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(52px, 9vw, 104px); font-weight: 900; line-height: 0.92; color: #e8e4d8; letter-spacing: -0.01em; margin-bottom: 24px; }
+    .hero-title { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(48px, 8vw, 96px); font-weight: 900; line-height: 0.95; color: #e8e4d8; letter-spacing: -0.01em; margin-bottom: 24px; }
     .hero-title span { color: #f59e0b; }
-    .hero-sub { font-size: clamp(13px, 2vw, 15px); color: #666; line-height: 1.9; max-width: 540px; margin-bottom: 12px; }
-    .hero-built { font-size: 11px; color: #f59e0b; letter-spacing: 0.08em; margin-bottom: 40px; }
+    .hero-sub { font-size: clamp(13px, 2vw, 16px); color: #666; line-height: 1.8; max-width: 560px; margin-bottom: 40px; }
     .hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-bottom: 64px; }
-    .btn-primary { background: #f59e0b; color: #0a0a0a; padding: 14px 34px; border-radius: 6px; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 0.08em; text-decoration: none; transition: opacity 0.15s; display: inline-block; }
+    .btn-primary { background: #f59e0b; color: #0a0a0a; padding: 14px 34px; border-radius: 6px; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 0.08em; text-decoration: none; transition: opacity 0.15s; }
     .btn-primary:hover { opacity: 0.85; }
-    .btn-ghost { background: transparent; border: 1px solid #333; color: #888; padding: 14px 28px; border-radius: 6px; font-size: 11px; font-family: 'DM Mono', monospace; text-decoration: none; transition: all 0.15s; letter-spacing: 0.08em; display: inline-block; }
+    .btn-ghost { background: transparent; border: 1px solid #333; color: #888; padding: 14px 28px; border-radius: 6px; font-size: 11px; font-family: 'DM Mono', monospace; text-decoration: none; transition: all 0.15s; letter-spacing: 0.08em; }
     .btn-ghost:hover { border-color: #666; color: #e8e4d8; }
+
     .hero-stats { display: flex; gap: 48px; flex-wrap: wrap; justify-content: center; border-top: 1px solid #1e1e1e; padding-top: 40px; width: 100%; max-width: 700px; }
     .stat { text-align: center; }
     .stat-num { font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 900; color: #f59e0b; }
     .stat-lbl { font-size: 9px; color: #444; letter-spacing: 0.15em; text-transform: uppercase; margin-top: 4px; }
 
-    .preview { background: #0d0d0d; border-top: 1px solid #1e1e1e; padding: 60px 24px; }
-    .preview-label { text-align: center; font-size: 9px; color: #555; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 24px; }
-    .preview-inner { max-width: 960px; margin: 0 auto; background: #141414; border: 1px solid #2a2a2a; border-radius: 12px; overflow: hidden; }
-    .preview-topbar { display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-bottom: 1px solid #1e1e1e; background: #0d0d0d; }
-    .pdot { width: 10px; height: 10px; border-radius: 50%; }
-    .preview-screen-name { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; color: #e8e4d8; letter-spacing: 0.1em; margin-left: auto; margin-right: auto; }
-    .preview-body { padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .preview-health { grid-column: 1 / -1; background: #0f0f0f; border: 1px solid #2a2a2a; border-radius: 8px; padding: 14px 18px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
-    .preview-score { font-family: 'Barlow Condensed', sans-serif; font-size: 48px; font-weight: 900; color: #22c55e; line-height: 1; }
-    .preview-score-label { font-size: 8px; color: #555; text-transform: uppercase; letter-spacing: 0.12em; margin-top: 3px; }
-    .preview-pillars { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
-    .preview-pillar { flex: 1; min-width: 70px; background: #141414; border-radius: 5px; padding: 8px 10px; }
-    .preview-pillar-label { font-size: 8px; color: #555; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; }
-    .preview-pillar-bar { height: 3px; background: #1e1e1e; border-radius: 2px; overflow: hidden; margin-bottom: 4px; }
-    .preview-pillar-fill { height: 100%; border-radius: 2px; }
-    .preview-pillar-score { font-size: 9px; font-weight: 700; }
-    .preview-lender { font-size: 9px; color: #444; text-align: right; flex-shrink: 0; }
-    .preview-stat { background: #0f0f0f; border: 1px solid #1e1e1e; border-radius: 8px; padding: 13px 15px; }
-    .preview-stat-label { font-size: 8px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; }
-    .preview-stat-value { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 800; color: #e8e4d8; }
-    .preview-stat-sub { font-size: 9px; color: #444; margin-top: 2px; }
-    .preview-alert { grid-column: 1 / -1; background: #1a0808; border: 1px solid #ef444433; border-radius: 8px; padding: 11px 15px; display: flex; align-items: flex-start; gap: 10px; }
-    .preview-alert-dot { width: 7px; height: 7px; border-radius: 50%; background: #ef4444; flex-shrink: 0; margin-top: 3px; }
-    .preview-alert-text { font-size: 10px; color: #ef4444; }
-    .preview-alert-sub { font-size: 9px; color: #555; margin-top: 2px; }
+    /* ── APP PREVIEW ── */
+    .preview { background: #0d0d0d; border-top: 1px solid #1e1e1e; padding: 60px 24px; text-align: center; }
+    .preview-inner { max-width: 900px; margin: 0 auto; background: #141414; border: 1px solid #2a2a2a; border-radius: 12px; overflow: hidden; padding: 24px; }
+    .preview-bar { display: flex; gap: 6px; margin-bottom: 16px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .screen-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+    .screen-card { background: #0f0f0f; border: 1px solid #222; border-radius: 6px; padding: 14px; text-align: left; }
+    .screen-icon { font-size: 20px; margin-bottom: 8px; }
+    .screen-name { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; color: #e8e4d8; margin-bottom: 4px; }
+    .screen-desc { font-size: 9px; color: #444; line-height: 1.5; }
 
+    /* ── WHITE SECTIONS ── */
     .section { padding: 80px 24px; }
     .section-inner { max-width: 1100px; margin: 0 auto; }
     .section-label { font-size: 9px; color: #f59e0b; letter-spacing: 0.25em; text-transform: uppercase; margin-bottom: 12px; }
-    .section-title { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(32px, 5vw, 56px); font-weight: 900; color: #1a1a1a; line-height: 1; margin-bottom: 16px; }
+    .section-title { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(32px, 5vw, 52px); font-weight: 900; color: #1a1a1a; line-height: 1; margin-bottom: 16px; }
     .section-sub { font-size: 13px; color: #666; line-height: 1.8; max-width: 560px; }
 
-    .segments-section { background: #0a0a0a; }
-    .segments-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-top: 48px; }
-    .segment-card { border: 1px solid #1e1e1e; border-radius: 10px; padding: 22px 18px; background: #111; }
-    .segment-emoji { font-size: 26px; margin-bottom: 10px; }
-    .segment-name { font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 800; color: #e8e4d8; margin-bottom: 6px; }
-    .segment-desc { font-size: 10px; color: #555; line-height: 1.7; margin-bottom: 10px; }
-    .segment-features { list-style: none; }
-    .segment-features li { font-size: 9px; color: #444; padding: 2px 0; }
-    .segment-features li::before { content: "→ "; color: #f59e0b; }
-
+    /* Features grid */
     .features { background: #f9f9f7; }
-    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin-top: 48px; }
-    .feature-card { background: #fff; border: 1px solid #e8e8e4; border-radius: 8px; padding: 22px; }
-    .feature-icon { font-size: 24px; margin-bottom: 10px; }
-    .feature-title { font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 800; color: #1a1a1a; margin-bottom: 6px; }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; margin-top: 48px; }
+    .feature-card { background: #fff; border: 1px solid #e8e8e4; border-radius: 8px; padding: 28px 24px; }
+    .feature-icon { font-size: 28px; margin-bottom: 14px; }
+    .feature-title { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; color: #1a1a1a; margin-bottom: 8px; }
     .feature-desc { font-size: 11px; color: #666; line-height: 1.8; }
-    .feature-tag { display: inline-block; font-size: 8px; color: #f59e0b; border: 1px solid #f59e0b44; padding: 2px 7px; border-radius: 3px; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 10px; }
 
-    .callout-dark { background: #0a0a0a; }
-    .profit-calc { background: #141414; border: 1px solid #2a2a2a; border-radius: 10px; padding: 22px; flex: 1; min-width: 280px; max-width: 340px; }
-    .calc-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #1e1e1e; font-size: 10px; }
-    .calc-row:last-child { border-bottom: none; }
-    .calc-label { color: #555; }
-    .calc-value { color: #e8e4d8; font-weight: 700; }
-    .calc-value.green { color: #22c55e; }
-    .calc-value.amber { color: #f59e0b; }
-    .calc-divider { border-top: 1px solid #333; margin: 8px 0; }
-    .calc-total { display: flex; justify-content: space-between; padding: 8px 0 0; font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 800; }
-    .calc-total .calc-label { color: #888; font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 400; align-self: center; }
+    /* Segments */
+    .segments-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 48px; }
+    .segment-card { border: 1px solid #e8e8e4; border-radius: 8px; padding: 22px 20px; text-align: left; }
+    .segment-emoji { font-size: 24px; margin-bottom: 10px; }
+    .segment-name { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 800; color: #1a1a1a; margin-bottom: 6px; }
+    .segment-desc { font-size: 10px; color: #888; line-height: 1.7; }
 
-    .lender-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 32px; }
-    .lender-card { background: #0f0f0f; border: 1px solid #1e1e1e; border-radius: 8px; padding: 14px 16px; }
-    .lender-card-label { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 5px; }
-    .lender-card-value { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 800; color: #e8e4d8; }
-    .lender-card-sub { font-size: 9px; color: #444; margin-top: 2px; }
-    .lender-auto { font-size: 9px; color: #22c55e; border: 1px solid #22c55e33; padding: 2px 7px; border-radius: 3px; margin-top: 6px; display: inline-block; }
-
+    /* Pricing */
     .pricing { background: #f9f9f7; }
-    .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 48px; }
-    .price-card { background: #fff; border: 1px solid #e8e8e4; border-radius: 12px; padding: 30px 26px; position: relative; }
+    .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-top: 48px; }
+    .price-card { background: #fff; border: 1px solid #e8e8e4; border-radius: 10px; padding: 32px 28px; position: relative; }
     .price-card.featured { border-color: #f59e0b; border-width: 2px; }
-    .price-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #f59e0b; color: #0a0a0a; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 11px; padding: 3px 16px; border-radius: 20px; letter-spacing: 0.08em; white-space: nowrap; }
-    .price-tier { font-size: 10px; color: #888; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 6px; }
-    .price-amount { font-family: 'Barlow Condensed', sans-serif; font-size: 52px; font-weight: 900; color: #1a1a1a; line-height: 1; margin-bottom: 4px; }
-    .price-amount span { font-size: 18px; color: #888; }
-    .price-desc { font-size: 11px; color: #888; margin-bottom: 6px; }
-    .price-ideal { font-size: 10px; color: #f59e0b; margin-bottom: 22px; }
-    .price-features { list-style: none; margin-bottom: 24px; }
-    .price-features li { font-size: 11px; color: #444; padding: 6px 0; border-bottom: 1px solid #f0f0ec; display: flex; align-items: flex-start; gap: 8px; line-height: 1.4; }
+    .price-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #f59e0b; color: #0a0a0a; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 11px; padding: 3px 14px; border-radius: 20px; letter-spacing: 0.08em; white-space: nowrap; }
+    .price-tier { font-size: 10px; color: #888; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 8px; }
+    .price-amount { font-family: 'Barlow Condensed', sans-serif; font-size: 48px; font-weight: 900; color: #1a1a1a; line-height: 1; margin-bottom: 4px; }
+    .price-amount span { font-size: 20px; color: #888; }
+    .price-desc { font-size: 11px; color: #888; margin-bottom: 24px; }
+    .price-features { list-style: none; margin-bottom: 28px; }
+    .price-features li { font-size: 11px; color: #444; padding: 6px 0; border-bottom: 1px solid #f0f0ec; display: flex; align-items: center; gap: 8px; }
     .price-features li::before { content: "✓"; color: #f59e0b; font-weight: 700; flex-shrink: 0; }
-    .price-features li.locked { color: #ccc; }
-    .price-features li.locked::before { content: "—"; color: #ddd; }
-    .price-btn { display: block; text-align: center; background: #0a0a0a; color: #e8e4d8; padding: 13px; border-radius: 6px; text-decoration: none; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 13px; letter-spacing: 0.08em; transition: opacity 0.15s; }
+    .price-btn { display: block; text-align: center; background: #0a0a0a; color: #e8e4d8; padding: 12px; border-radius: 6px; text-decoration: none; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 13px; letter-spacing: 0.08em; transition: opacity 0.15s; }
     .price-btn:hover { opacity: 0.8; }
     .price-btn.amber { background: #f59e0b; color: #0a0a0a; }
-    .price-note { font-size: 9px; color: #aaa; text-align: center; margin-top: 8px; }
 
-    .proof { background: #0a0a0a; padding: 60px 24px; }
-    .proof-inner { max-width: 800px; margin: 0 auto; text-align: center; }
-    .proof-quote { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(20px, 4vw, 34px); font-weight: 700; color: #e8e4d8; line-height: 1.3; margin-bottom: 16px; }
-    .proof-author { font-size: 10px; color: #555; letter-spacing: 0.15em; text-transform: uppercase; }
-    .proof-author span { color: #f59e0b; }
+    /* FMCSA callout */
+    .callout { background: #0a0a0a; color: #e8e4d8; }
+    .callout .section-title { color: #e8e4d8; }
+    .callout .section-sub { color: #666; }
 
+    /* CTA bottom */
     .cta-bottom { text-align: center; padding: 100px 24px; background: #fff; }
+    .cta-bottom .section-title { color: #1a1a1a; }
 
-    footer { background: #0a0a0a; padding: 40px 48px; display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 24px; border-top: 1px solid #1e1e1e; }
-    .footer-logo { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 20px; color: #e8e4d8; }
+    /* Footer */
+    footer { background: #0a0a0a; color: #444; padding: 40px 48px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; border-top: 1px solid #1e1e1e; }
+    .footer-logo { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 18px; color: #e8e4d8; }
     .footer-logo span { color: #f59e0b; }
-    .footer-copy { font-size: 9px; color: #333; line-height: 1.9; max-width: 480px; }
-    .footer-links { display: flex; flex-direction: column; gap: 10px; }
+    .footer-copy { font-size: 9px; color: #333; line-height: 1.8; max-width: 600px; }
+    .footer-links { display: flex; gap: 20px; }
     .footer-links a { color: #444; font-size: 10px; text-decoration: none; letter-spacing: 0.1em; }
     .footer-links a:hover { color: #888; }
 
     @media (max-width: 768px) {
       .nav { padding: 16px 20px; }
-      .nav-links { gap: 10px; }
-      .nav-links a[href="#features"], .nav-links a[href="#who"] { display: none; }
+      .nav-links { gap: 12px; }
       .hero-body { padding: 60px 20px; }
-      .hero-stats { gap: 24px; }
-      .preview-body { grid-template-columns: 1fr; }
-      .preview-health { flex-direction: column; }
-      .section { padding: 60px 20px; }
-      footer { padding: 32px 20px; flex-direction: column; }
+      .hero-stats { gap: 28px; }
+      section { padding: 60px 20px; }
+      footer { padding: 28px 20px; flex-direction: column; }
     }
   </style>
 </head>
 <body>
 
-<!-- HERO -->
+<!-- ══ HERO ════════════════════════════════════════════════════════ -->
 <section class="hero">
   <nav class="nav">
     <a href="/" class="nav-logo">CONTRACTOR<span>OS</span></a>
     <div class="nav-links">
-      <a href="#who">Who It's For</a>
       <a href="#features">Features</a>
+      <a href="#segments">Who It's For</a>
       <a href="#pricing">Pricing</a>
-      <a href="/">Sign In</a>
-      <a href="/?signup=1" class="nav-cta">Start Free Trial →</a>
+      <a href="/app?view=signin" class="nav-sign-in">Sign In</a>
+      <a href="/app?view=signup" class="nav-cta">Start Free Trial →</a>
     </div>
   </nav>
+
   <div class="hero-body">
-    <div class="hero-badge">Purpose-Built for Contract Carriers</div>
+    <div class="hero-badge">Now with FMCSA Live Lookup</div>
     <h1 class="hero-title">THE OPERATING<br/>SYSTEM FOR<br/><span>CONTRACTORS</span></h1>
-    <p class="hero-sub">ContractorOS is the only platform that knows the difference between a FedEx ISP, an Amazon DSP, and a Lowe's last-mile contractor — and gives each one exactly what they need.</p>
-    <p class="hero-built">Built by an active box truck contractor · Greer, SC</p>
+    <p class="hero-sub">
+      Compliance tracking, dispatch, payroll, fuel logs, driver onboarding, and FMCSA lookup — all in one place. Built specifically for owner-operators and fleet contractors.
+    </p>
     <div class="hero-ctas">
-      <a href="/?signup=1" class="btn-primary">Start Free 14-Day Trial →</a>
-      <a href="#who" class="btn-ghost">Find Your Contractor Type</a>
+      <a href="/app?view=signup" class="btn-primary">Start Free 14-Day Trial →</a>
+      <a href="#features" class="btn-ghost">See What's Inside</a>
     </div>
     <div class="hero-stats">
-      <div class="stat"><div class="stat-num">25+</div><div class="stat-lbl">Management Tools</div></div>
+      <div class="stat"><div class="stat-num">18+</div><div class="stat-lbl">Management Tools</div></div>
       <div class="stat"><div class="stat-num">5</div><div class="stat-lbl">Contractor Types</div></div>
       <div class="stat"><div class="stat-num">100%</div><div class="stat-lbl">Cloud Synced</div></div>
-      <div class="stat"><div class="stat-num">0</div><div class="stat-lbl">Spreadsheets Needed</div></div>
+      <div class="stat"><div class="stat-num">DOT</div><div class="stat-lbl">Compliance Ready</div></div>
     </div>
   </div>
 </section>
 
-<!-- DASHBOARD PREVIEW -->
+<!-- ══ APP PREVIEW ═══════════════════════════════════════════════ -->
 <div class="preview">
-  <div class="preview-label">ContractorOS — Live Dashboard · FedEx Ground ISP</div>
   <div class="preview-inner">
-    <div class="preview-topbar">
-      <div class="pdot" style="background:#ef4444"></div>
-      <div class="pdot" style="background:#f59e0b"></div>
-      <div class="pdot" style="background:#22c55e"></div>
-      <div class="preview-screen-name">DASHBOARD — FEDEX GROUND ISP</div>
+    <div class="preview-bar">
+      <div class="dot" style="background:#ef4444"></div>
+      <div class="dot" style="background:#f59e0b"></div>
+      <div class="dot" style="background:#22c55e"></div>
+      <div style="font-size:9px;color:#444;margin-left:8px;letter-spacing:0.1em">CONTRACTOROS — DASHBOARD</div>
     </div>
-    <div class="preview-body">
-      <div class="preview-health">
-        <div>
-          <div class="preview-score">82</div>
-          <div class="preview-score-label">Business Health</div>
-        </div>
-        <div class="preview-pillars">
-          <div class="preview-pillar">
-            <div class="preview-pillar-label">🛡 Compliance</div>
-            <div class="preview-pillar-bar"><div class="preview-pillar-fill" style="width:88%;background:#22c55e"></div></div>
-            <div class="preview-pillar-score" style="color:#22c55e">22/25</div>
-          </div>
-          <div class="preview-pillar">
-            <div class="preview-pillar-label">💰 Financial</div>
-            <div class="preview-pillar-bar"><div class="preview-pillar-fill" style="width:100%;background:#22c55e"></div></div>
-            <div class="preview-pillar-score" style="color:#22c55e">25/25</div>
-          </div>
-          <div class="preview-pillar">
-            <div class="preview-pillar-label">👤 Drivers</div>
-            <div class="preview-pillar-bar"><div class="preview-pillar-fill" style="width:60%;background:#f59e0b"></div></div>
-            <div class="preview-pillar-score" style="color:#f59e0b">15/25</div>
-          </div>
-          <div class="preview-pillar">
-            <div class="preview-pillar-label">🚛 Fleet</div>
-            <div class="preview-pillar-bar"><div class="preview-pillar-fill" style="width:80%;background:#22c55e"></div></div>
-            <div class="preview-pillar-score" style="color:#22c55e">20/25</div>
-          </div>
-        </div>
-        <div class="preview-lender">
-          🏦 Lender Ready<br/>
-          <span style="color:#f59e0b;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800">71/100</span>
-        </div>
-      </div>
-      <div class="preview-stat">
-        <div class="preview-stat-label">Stops This Week</div>
-        <div class="preview-stat-value">847</div>
-        <div class="preview-stat-sub" style="color:#22c55e">↑ 12% vs last week</div>
-      </div>
-      <div class="preview-stat">
-        <div class="preview-stat-label">Cost Per Stop</div>
-        <div class="preview-stat-value">$4.82</div>
-        <div class="preview-stat-sub">Revenue: $6.40/stop</div>
-      </div>
-      <div class="preview-stat">
-        <div class="preview-stat-label">Active Drivers</div>
-        <div class="preview-stat-value">6 / 7</div>
-        <div class="preview-stat-sub" style="color:#f59e0b">1 callout today</div>
-      </div>
-      <div class="preview-stat">
-        <div class="preview-stat-label">Contract Renewal</div>
-        <div class="preview-stat-value">47 days</div>
-        <div class="preview-stat-sub">Review due Jun 30</div>
-      </div>
-      <div class="preview-alert">
-        <div class="preview-alert-dot"></div>
-        <div>
-          <div class="preview-alert-text">2 compliance items expiring within 30 days</div>
-          <div class="preview-alert-sub">Unit 2 DOT inspection — 18 days · John Smith CDL — 24 days</div>
-        </div>
-      </div>
+    <div class="screen-grid">
+      <div class="screen-card"><div class="screen-icon">🛡</div><div class="screen-name">Compliance</div><div class="screen-desc">DOT inspection, insurance, registration — all tracked with expiry alerts</div></div>
+      <div class="screen-card"><div class="screen-icon">📡</div><div class="screen-name">Dispatch</div><div class="screen-desc">Assign runs to drivers and trucks. Track status in real time</div></div>
+      <div class="screen-card"><div class="screen-icon">💵</div><div class="screen-name">Payroll</div><div class="screen-desc">Per mile, per stop, hourly, salary — all pay types supported</div></div>
+      <div class="screen-card"><div class="screen-icon">🚛</div><div class="screen-name">Fleet</div><div class="screen-desc">Maintenance logs, tire tracking, odometer, fuel log with IFTA</div></div>
+      <div class="screen-card"><div class="screen-icon">🏛</div><div class="screen-name">FMCSA Lookup</div><div class="screen-desc">Live carrier lookup by DOT number — safety rating, authority status</div></div>
+      <div class="screen-card"><div class="screen-icon">💰</div><div class="screen-name">Finance</div><div class="screen-desc">P&L, expenses, invoices, and per-truck profit all in one view</div></div>
     </div>
   </div>
 </div>
 
-<!-- WHO IT'S FOR -->
-<section class="section segments-section" id="who">
-  <div class="section-inner">
-    <div class="section-label">Built For Your Work</div>
-    <h2 class="section-title" style="color:#e8e4d8">YOUR CONTRACTOR TYPE.<br/>YOUR TOOLS.</h2>
-    <p class="section-sub" style="color:#555">When you log in you choose your contractor type. The app reconfigures itself — different dashboard, different screens, different metrics. You only see what matters to your operation.</p>
-    <div class="segments-grid">
-
-      <div class="segment-card" style="border-top:3px solid #f59e0b">
-        <div class="segment-emoji">📦</div>
-        <div class="segment-name">FedEx Ground ISP</div>
-        <div class="segment-desc">Built around ISP metrics and daily operational pressures.</div>
-        <ul class="segment-features">
-          <li>Cost-per-stop profit calculator</li>
-          <li>Weekly settlement reconciliation</li>
-          <li>Driver coaching log</li>
-          <li>Vehicle appearance tracker</li>
-          <li>ISP performance scorecard</li>
-          <li>Driver scheduling Mon–Sat</li>
-        </ul>
-      </div>
-
-      <div class="segment-card" style="border-top:3px solid #f97316">
-        <div class="segment-emoji">📬</div>
-        <div class="segment-name">Amazon DSP</div>
-        <div class="segment-desc">Track the metrics Amazon watches and protect your contract.</div>
-        <ul class="segment-features">
-          <li>AI scorecard PDF upload and parse</li>
-          <li>DART / DCR / Mentor tracking</li>
-          <li>Callout and rescue tracker</li>
-          <li>DNR case log with evidence</li>
-          <li>Daily van photo inspection</li>
-          <li>Settlement reconciliation</li>
-        </ul>
-      </div>
-
-      <div class="segment-card" style="border-top:3px solid #22c55e">
-        <div class="segment-emoji">🏠</div>
-        <div class="segment-name">Last Mile / Lowe's</div>
-        <div class="segment-desc">Hybrid revenue model built in — daily guarantee, per stop, and mile stipend all calculated automatically.</div>
-        <ul class="segment-features">
-          <li>Daily guarantee + stop bonus + stipend</li>
-          <li>Driver daily rate auto-calculation</li>
-          <li>Gas cost spread over tank range</li>
-          <li>White glove delivery checklists</li>
-          <li>Damage claim manager</li>
-          <li>Break-even insight per day</li>
-        </ul>
-      </div>
-
-      <div class="segment-card" style="border-top:3px solid #3b82f6">
-        <div class="segment-emoji">✉️</div>
-        <div class="segment-name">USPS HCR</div>
-        <div class="segment-desc">Built around the specific documentation requirements of Highway Contract Routes.</div>
-        <ul class="segment-features">
-          <li>Trip sheet builder</li>
-          <li>Substitute driver approval log</li>
-          <li>HCR contract bid tracker</li>
-          <li>Route completion tracking</li>
-          <li>Mail security compliance</li>
-          <li>Contract renewal timeline</li>
-        </ul>
-      </div>
-
-      <div class="segment-card" style="border-top:3px solid #8b5cf6">
-        <div class="segment-emoji">🚛</div>
-        <div class="segment-name">OTR / Owner-Operator</div>
-        <div class="segment-desc">Load profitability, broker management, and IFTA for independent carriers.</div>
-        <ul class="segment-features">
-          <li>Load analyzer with history</li>
-          <li>Broker scorecard and lane history</li>
-          <li>Dead miles cost tracker</li>
-          <li>Fuel card reconciliation</li>
-          <li>IFTA quarterly summary</li>
-          <li>Net RPM tracking</li>
-        </ul>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- FEATURES -->
+<!-- ══ FEATURES ════════════════════════════════════════════════════ -->
 <section class="section features" id="features">
   <div class="section-inner">
-    <div class="section-label">Platform Features</div>
-    <h2 class="section-title">EVERYTHING IN<br/>ONE PLACE</h2>
-    <p class="section-sub">Core tools every contractor needs, plus segment-specific screens that go deeper than any generic fleet app.</p>
+    <div class="section-label">What's Inside</div>
+    <h2 class="section-title">EVERYTHING YOUR<br/>OPERATION NEEDS</h2>
+    <p class="section-sub">Most fleet apps do one thing. ContractorOS does all of it — so you don't need five different subscriptions.</p>
     <div class="features-grid">
-
-      <div class="feature-card">
-        <div class="feature-icon">📊</div>
-        <div class="feature-title">Business Health Score</div>
-        <div class="feature-desc">A live 0–100 score from your compliance, financial, driver, and fleet data. Each pillar shows what's wrong and has a one-tap fix. Score history tracked over 8 weeks.</div>
-        <div class="feature-tag">All Segments</div>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon">📍</div>
-        <div class="feature-title">Stop Profit Calculator</div>
-        <div class="feature-desc">Pulls gas from your fuel log, driver pay from dispatch, and spreads fixed costs automatically. See daily profit, net per stop, and margin — without touching a spreadsheet.</div>
-        <div class="feature-tag">FedEx · Last Mile</div>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon">🏦</div>
-        <div class="feature-title">Lender Report</div>
-        <div class="feature-desc">A complete financing package from your data — P&L, balance sheet, cash flow statement, EBITDA waterfall, DSCR ratio, debt schedule, and AR/AP aging. Print and walk into a bank.</div>
-        <div class="feature-tag">Enterprise</div>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon">🛡</div>
-        <div class="feature-title">Compliance Tracking</div>
-        <div class="feature-desc">DOT inspection, insurance, registration, CDL, IFTA — all tracked per truck and driver with expiry alerts. Segment-specific checklists pre-loaded for your contractor type.</div>
-        <div class="feature-tag">All Segments</div>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon">🏛</div>
-        <div class="feature-title">FMCSA Live Lookup</div>
-        <div class="feature-desc">Enter any USDOT number and pull the live carrier profile from FMCSA SAFER — authority status, safety rating, fleet size, and MC number. Pre-fills your company profile.</div>
-        <div class="feature-tag">All Segments</div>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon">💵</div>
-        <div class="feature-title">Payroll — All Pay Types</div>
-        <div class="feature-desc">Per mile, per stop, per day, hourly, percentage, salary, or hybrid. Handles daily guarantee plus stop bonus plus mile stipend simultaneously. Generates printable pay stubs.</div>
-        <div class="feature-tag">Fleet · Enterprise</div>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon">💳</div>
-        <div class="feature-title">Settlement Reconciliation</div>
-        <div class="feature-desc">Compare what FedEx or Amazon was supposed to pay vs what hit your account. Flags underpayments with the exact variance. Running total of cumulative underpayments over time.</div>
-        <div class="feature-tag">FedEx · Amazon</div>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon">👤</div>
-        <div class="feature-title">Driver Management</div>
-        <div class="feature-desc">17-step DOT onboarding checklist, HOS logging with violation alerts, incident tracking, and scorecards. Coaching log for FedEx ISPs. Callout tracker for Amazon DSPs.</div>
-        <div class="feature-tag">Fleet · Enterprise</div>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon">📡</div>
-        <div class="feature-title">Dispatch Board</div>
-        <div class="feature-desc">Assign runs to drivers and trucks. Last Mile shows driver daily rate, today's gas cost, and route on every card. Amazon shows open callouts and rescue status.</div>
-        <div class="feature-tag">Fleet · Enterprise</div>
-      </div>
-
+      <div class="feature-card"><div class="feature-icon">🛡</div><div class="feature-title">Compliance Tracking</div><div class="feature-desc">Track DOT inspection, insurance, registration, IFTA, IRP, and CDL expiry dates. Get alerts before anything expires.</div></div>
+      <div class="feature-card"><div class="feature-icon">👤</div><div class="feature-title">Driver Management</div><div class="feature-desc">17-step DOT onboarding checklist, HOS logging with violation alerts, scorecards, and pay stub generation.</div></div>
+      <div class="feature-card"><div class="feature-icon">📡</div><div class="feature-title">Dispatch Board</div><div class="feature-desc">Assign loads to drivers and trucks. Progress runs from assigned to in-progress to complete with one tap.</div></div>
+      <div class="feature-card"><div class="feature-icon">⛽</div><div class="feature-title">Fuel Log + IFTA</div><div class="feature-desc">Log every fill-up per truck. State breakdown for IFTA quarterly returns. Syncs automatically to expenses.</div></div>
+      <div class="feature-card"><div class="feature-icon">🏛</div><div class="feature-title">FMCSA Live Lookup</div><div class="feature-desc">Enter any DOT number to pull the carrier profile directly from FMCSA — authority status, safety rating, fleet size.</div></div>
+      <div class="feature-card"><div class="feature-icon">💵</div><div class="feature-title">Payroll & Pay Stubs</div><div class="feature-desc">Per mile, per stop, per day, hourly, percentage, or salary. Generate printable pay stubs with one click.</div></div>
+      <div class="feature-card"><div class="feature-icon">📄</div><div class="feature-title">Document Center</div><div class="feature-desc">Store rate cons, BOLs, insurance certs, and driver files. Upload PDFs and images with OCR auto-fill.</div></div>
+      <div class="feature-card"><div class="feature-icon">📊</div><div class="feature-title">P&L Dashboard</div><div class="feature-desc">Per-truck profit and loss, year-over-year comparison, and expense tracking that syncs from fuel and maintenance logs.</div></div>
+      <div class="feature-card"><div class="feature-icon">👥</div><div class="feature-title">Multi-User Access</div><div class="feature-desc">Owner, manager, and driver roles with separate login. Each person sees only what they need to.</div></div>
     </div>
   </div>
 </section>
 
-<!-- STOP PROFIT CALLOUT -->
-<section class="section callout-dark">
+<!-- ══ WHO IT'S FOR ════════════════════════════════════════════════ -->
+<section class="section" id="segments">
+  <div class="section-inner">
+    <div class="section-label">Built For Your Work</div>
+    <h2 class="section-title">EVERY TYPE OF<br/>CONTRACTOR</h2>
+    <p class="section-sub">ContractorOS adapts to your segment — different tools and screens depending on how you operate.</p>
+    <div class="segments-grid">
+      <div class="segment-card" style="border-top:3px solid #f59e0b"><div class="segment-emoji">🚛</div><div class="segment-name">OTR / Dry Van</div><div class="segment-desc">Load board integration, broker management, route analysis, IFTA tracking</div></div>
+      <div class="segment-card" style="border-top:3px solid #8b5cf6"><div class="segment-emoji">📦</div><div class="segment-name">FedEx Ground</div><div class="segment-desc">Route management, stop tracking, driver scorecards, P&L per route</div></div>
+      <div class="segment-card" style="border-top:3px solid #f97316"><div class="segment-emoji">📬</div><div class="segment-name">Amazon DSP</div><div class="segment-desc">Daily route tracking, delivery compliance, driver HOS, fleet management</div></div>
+      <div class="segment-card" style="border-top:3px solid #22c55e"><div class="segment-emoji">🏪</div><div class="segment-name">Last Mile / Lowe's</div><div class="segment-desc">Dispatch board, per-stop payroll, delivery contracts, service compliance</div></div>
+      <div class="segment-card" style="border-top:3px solid #3b82f6"><div class="segment-emoji">✉️</div><div class="segment-name">USPS Contractor</div><div class="segment-desc">Route contracts, vehicle compliance, driver scheduling, cost tracking</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FMCSA CALLOUT ══════════════════════════════════════════════ -->
+<section class="section callout">
   <div class="section-inner" style="display:flex;gap:60px;align-items:center;flex-wrap:wrap">
     <div style="flex:1;min-width:280px">
-      <div class="section-label">For Last Mile and FedEx Contractors</div>
-      <h2 class="section-title" style="color:#e8e4d8">YOUR EXACT PROFIT.<br/>EVERY SINGLE DAY.</h2>
-      <p class="section-sub" style="color:#555">The Stop Profit calculator knows how you get paid and how you pay your costs. Gas is spread over the days a tank lasts — not dumped as one big expense on fill-up day. Fixed costs are broken to a daily rate automatically.</p>
-      <div style="margin-top:18px;font-size:11px;color:#555;line-height:2">
-        ✓ Daily guarantee + per-stop bonus + mile stipend<br/>
-        ✓ Gas cost spread over estimated days of tank range<br/>
-        ✓ Insurance divided by 30 · Truck payment divided by 7<br/>
-        ✓ Shows exactly how many stops to break even
-      </div>
-      <a href="/?signup=1" class="btn-primary" style="margin-top:28px">Try It Free →</a>
+      <div class="section-label">New Feature</div>
+      <h2 class="section-title">LIVE FMCSA<br/>CARRIER LOOKUP</h2>
+      <p class="section-sub">Enter your USDOT number and instantly pull your carrier profile from the FMCSA SAFER database — legal name, operating authority status, safety rating, fleet size, and MC number. Pre-fills your company profile automatically.</p>
+      <a href="/app?view=signup" class="btn-primary" style="display:inline-block;margin-top:24px">Try It Free →</a>
     </div>
-    <div class="profit-calc">
-      <div style="font-size:9px;color:#f59e0b;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:14px">Stop Profit — Today</div>
-      <div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Revenue</div>
-      <div class="calc-row"><span class="calc-label">Daily guarantee</span><span class="calc-value amber">$500.00</span></div>
-      <div class="calc-row"><span class="calc-label">Stop bonus (23 × $35)</span><span class="calc-value amber">$805.00</span></div>
-      <div class="calc-row"><span class="calc-label">Mile stipend (140 × $0.45)</span><span class="calc-value amber">$63.00</span></div>
-      <div class="calc-divider"></div>
-      <div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;margin-top:10px">Costs</div>
-      <div class="calc-row"><span class="calc-label">Driver pay (auto)</span><span class="calc-value">$185.00</span></div>
-      <div class="calc-row"><span class="calc-label">Gas spread 3.1 days</span><span class="calc-value">$96.25</span></div>
-      <div class="calc-row"><span class="calc-label">Insurance per day</span><span class="calc-value">$28.33</span></div>
-      <div class="calc-row"><span class="calc-label">Truck per day</span><span class="calc-value">$171.43</span></div>
-      <div class="calc-divider"></div>
-      <div class="calc-total"><span class="calc-label">Gross Profit</span><span class="calc-value green">$887.00</span></div>
-      <div class="calc-total" style="padding-top:4px"><span class="calc-label">Net per stop</span><span class="calc-value green" style="font-size:16px">$38.57</span></div>
-      <div style="margin-top:10px;background:#051a05;border:1px solid #22c55e33;border-radius:5px;padding:8px 12px;font-size:9px;color:#22c55e">
-        ✓ Guarantee covers fixed costs — every stop is pure profit
+    <div style="flex:1;min-width:280px;background:#141414;border:1px solid #2a2a2a;border-radius:8px;padding:24px">
+      <div style="font-size:9px;color:#f59e0b;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:16px">FMCSA SAFER — Live Result</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:#e8e4d8;margin-bottom:4px">Smith Trucking LLC</div>
+      <div style="font-size:10px;color:#555;margin-bottom:16px">USDOT# 1234567 · MC-987654</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="background:#051a05;border:1px solid #22c55e44;border-radius:5px;padding:10px"><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px">Status</div><div style="font-size:13px;color:#22c55e;font-weight:700">Authorized ✓</div></div>
+        <div style="background:#0f0f0f;border:1px solid #222;border-radius:5px;padding:10px"><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px">Safety Rating</div><div style="font-size:13px;color:#f59e0b;font-weight:700">Satisfactory</div></div>
+        <div style="background:#0f0f0f;border:1px solid #222;border-radius:5px;padding:10px"><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px">Power Units</div><div style="font-size:13px;color:#e8e4d8;font-weight:700">3</div></div>
+        <div style="background:#0f0f0f;border:1px solid #222;border-radius:5px;padding:10px"><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px">Drivers</div><div style="font-size:13px;color:#e8e4d8;font-weight:700">4</div></div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- LENDER REPORT CALLOUT -->
-<section class="section" style="background:#fff">
-  <div class="section-inner">
-    <div class="section-label">Enterprise Feature</div>
-    <h2 class="section-title">WALK INTO A BANK<br/>READY TO BORROW</h2>
-    <p class="section-sub">ContractorOS generates your entire loan application package from the data you're already entering daily. No accountant needed for the preliminary meeting.</p>
-    <div class="lender-grid">
-      <div class="lender-card">
-        <div class="lender-card-label">P&L Statement</div>
-        <div class="lender-card-value">Auto-Generated</div>
-        <div class="lender-card-sub">12-month revenue and expense summary</div>
-        <div class="lender-auto">✓ Ready</div>
-      </div>
-      <div class="lender-card">
-        <div class="lender-card-label">Balance Sheet</div>
-        <div class="lender-card-value">Auto-Generated</div>
-        <div class="lender-card-sub">Assets, liabilities, owner equity</div>
-        <div class="lender-auto">✓ Ready</div>
-      </div>
-      <div class="lender-card">
-        <div class="lender-card-label">EBITDA Waterfall</div>
-        <div class="lender-card-value">Auto-Generated</div>
-        <div class="lender-card-sub">Operating earnings breakdown</div>
-        <div class="lender-auto">✓ Ready</div>
-      </div>
-      <div class="lender-card">
-        <div class="lender-card-label">DSCR Ratio</div>
-        <div class="lender-card-value">Auto-Calculated</div>
-        <div class="lender-card-sub">Debt service coverage vs 1.25x minimum</div>
-        <div class="lender-auto">✓ Ready</div>
-      </div>
-      <div class="lender-card">
-        <div class="lender-card-label">Debt Schedule</div>
-        <div class="lender-card-value">Auto-Generated</div>
-        <div class="lender-card-sub">All obligations with payoff dates</div>
-        <div class="lender-auto">✓ Ready</div>
-      </div>
-      <div class="lender-card">
-        <div class="lender-card-label">Document Checklist</div>
-        <div class="lender-card-value">Auto-Tracked</div>
-        <div class="lender-card-sub">What is ready, what is needed, direct links</div>
-        <div class="lender-auto">✓ Ready</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- PRICING -->
+<!-- ══ PRICING ═════════════════════════════════════════════════════ -->
 <section class="section pricing" id="pricing">
   <div class="section-inner">
-    <div class="section-label">Straightforward Pricing</div>
-    <h2 class="section-title">START SMALL.<br/>SCALE WHEN READY.</h2>
-    <p class="section-sub">Three tiers based on what your operation actually needs. No contracts, no setup fees, no per-user charges. Upgrade or cancel anytime.</p>
-
+    <div class="section-label">Simple Pricing</div>
+    <h2 class="section-title">ONE PRICE.<br/>EVERYTHING INCLUDED.</h2>
+    <p class="section-sub">No per-user fees, no feature gates, no surprise charges. Cancel anytime.</p>
     <div class="pricing-grid">
-
       <div class="price-card">
         <div class="price-tier">Solo</div>
         <div class="price-amount">$39<span>/mo</span></div>
-        <div class="price-desc">1 truck · owner only</div>
-        <div class="price-ideal">For solo owner-operators getting organized</div>
+        <div class="price-desc">1 truck · 1 user account</div>
         <ul class="price-features">
-          <li>Segment-specific dashboard</li>
-          <li>Compliance tracking + expiry alerts</li>
-          <li>Fleet maintenance and fuel log</li>
-          <li>IFTA quarterly summary</li>
-          <li>Finance and P&L dashboard</li>
-          <li>Document center with OCR</li>
-          <li>FMCSA live carrier lookup</li>
-          <li>Business Health Score</li>
-          <li>Cloud backup and restore</li>
-          <li class="locked">Driver management and payroll</li>
-          <li class="locked">Dispatch board</li>
-          <li class="locked">Stop Profit calculator</li>
+          <li>All compliance tracking tools</li>
+          <li>Fleet & maintenance logs</li>
+          <li>Fuel log + IFTA summary</li>
+          <li>Finance & P&L dashboard</li>
+          <li>FMCSA live lookup</li>
+          <li>Document center</li>
+          <li>Cloud data backup</li>
         </ul>
-        <a href="/?signup=1" class="price-btn">Start Free 14-Day Trial</a>
-        <p class="price-note">No credit card required</p>
+        <a href="/app?view=signup" class="price-btn">Start Free Trial</a>
       </div>
 
       <div class="price-card featured">
         <div class="price-badge">Most Popular</div>
         <div class="price-tier">Fleet</div>
         <div class="price-amount">$89<span>/mo</span></div>
-        <div class="price-desc">Up to 10 trucks · 5 user accounts</div>
-        <div class="price-ideal">For growing operations with drivers and multiple trucks</div>
+        <div class="price-desc">Up to 5 trucks · 3 user accounts</div>
         <ul class="price-features">
           <li>Everything in Solo</li>
-          <li>Driver management + DOT onboarding</li>
-          <li>HOS log with violation detection</li>
-          <li>Payroll — all pay types + pay stubs</li>
+          <li>Driver management + HOS logs</li>
+          <li>Payroll + pay stub generator</li>
           <li>Dispatch board</li>
-          <li>Invoices and accounts receivable</li>
-          <li>Stop Profit calculator</li>
-          <li>Settlement reconciliation</li>
-          <li>Driver scheduling</li>
-          <li>Segment scorecards</li>
+          <li>Invoices & accounts receivable</li>
+          <li>Per-truck P&L</li>
           <li>Email compliance alerts</li>
-          <li>Multi-user login — owner, manager, driver</li>
+          <li>Multi-user login (owner + manager + driver)</li>
         </ul>
-        <a href="/?signup=1" class="price-btn amber">Start Free 14-Day Trial</a>
-        <p class="price-note">No credit card required</p>
+        <a href="/app?view=signup" class="price-btn amber">Start Free Trial</a>
       </div>
 
       <div class="price-card">
         <div class="price-tier">Enterprise</div>
         <div class="price-amount">$179<span>/mo</span></div>
         <div class="price-desc">Unlimited trucks · Unlimited users</div>
-        <div class="price-ideal">For established ISPs and DSPs ready to scale and secure financing</div>
         <ul class="price-features">
           <li>Everything in Fleet</li>
-          <li>Lender Report — P&L, EBITDA, DSCR, balance sheet</li>
-          <li>Business Health Score full detail and history</li>
-          <li>AR/AP aging report</li>
-          <li>Asset and debt schedule</li>
-          <li>Coaching log and appearance tracker — FedEx</li>
-          <li>DNR case log and van inspection — Amazon</li>
-          <li>Claims manager — Last Mile</li>
-          <li>Trip sheets and bid tracker — USPS</li>
-          <li>Load analyzer and dead miles tracker — OTR</li>
+          <li>Unlimited trucks & drivers</li>
           <li>Unlimited team members</li>
-          <li>Priority support and custom onboarding</li>
+          <li>Priority support</li>
+          <li>Custom onboarding</li>
+          <li>Data export & API access</li>
         </ul>
-        <a href="/?signup=1" class="price-btn">Start Free 14-Day Trial</a>
-        <p class="price-note">No credit card required</p>
+        <a href="mailto:bostonrudi1993@gmail.com?subject=ContractorOS Enterprise" class="price-btn">Contact Us</a>
       </div>
-
     </div>
-
-    <div style="margin-top:36px;background:#fff;border:1px solid #e8e8e4;border-radius:8px;padding:18px 24px;display:flex;gap:20px;flex-wrap:wrap;align-items:center">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:#1a1a1a;flex-shrink:0">How we compare</div>
-      <div style="flex:1;font-size:11px;color:#666;line-height:1.8">eTruckBiz charges $149.95/month starting — for generic fleet software with no segment-specific tools and no stop profit calculator. ContractorOS at $89/month includes purpose-built dashboards, settlement reconciliation, and a lender report that no competitor offers at any price.</div>
-    </div>
-
-    <p style="text-align:center;font-size:11px;color:#888;margin-top:20px">14-day free trial on all plans · No credit card required · Cancel anytime</p>
+    <p style="text-align:center;font-size:11px;color:#888;margin-top:24px">14-day free trial on all plans. No credit card required to start.</p>
   </div>
 </section>
 
-<!-- BOTTOM CTA -->
+<!-- ══ BOTTOM CTA ═════════════════════════════════════════════════ -->
 <section class="cta-bottom">
-  <div class="section-label" style="color:#f59e0b">Ready to Replace the Spreadsheets?</div>
-  <h2 class="section-title" style="font-size:clamp(36px,6vw,72px);margin-bottom:20px">YOUR OPERATION.<br/>ONE PLATFORM.</h2>
-  <p style="font-size:13px;color:#666;max-width:480px;margin:0 auto 36px;line-height:1.8">Join contractors running FedEx Ground, Amazon DSP, Last Mile, USPS, and OTR operations — all on ContractorOS.</p>
-  <a href="/?signup=1" class="btn-primary" style="font-size:16px;padding:16px 44px">Start Your Free 14-Day Trial →</a>
+  <div class="section-label" style="color:#f59e0b">Ready to Get Started?</div>
+  <h2 class="section-title" style="font-size:clamp(36px,6vw,72px);margin-bottom:20px">RUN YOUR OPERATION<br/>FROM ONE PLACE</h2>
+  <p style="font-size:13px;color:#666;max-width:480px;margin:0 auto 36px;line-height:1.8">Join contractors who use ContractorOS to stay compliant, pay drivers, and manage their fleet without the spreadsheets.</p>
+  <a href="/app?view=signup" class="btn-primary" style="font-size:16px;padding:16px 40px">Start Your Free 14-Day Trial →</a>
   <p style="font-size:10px;color:#aaa;margin-top:16px">No credit card required · Cancel anytime · Your data is yours</p>
 </section>
 
-<!-- FOOTER -->
+<!-- ══ FOOTER ══════════════════════════════════════════════════════ -->
 <footer>
   <div>
     <div class="footer-logo">CONTRACTOR<span>OS</span></div>
-    <div style="font-size:10px;color:#444;margin-top:6px">contractoroshub.com</div>
-    <div style="font-size:10px;color:#333;margin-top:3px">bostonrudi1993@gmail.com</div>
+    <div style="font-size:10px;color:#444;margin-top:4px">contractoroshub.com</div>
   </div>
   <div class="footer-copy">
-    © 2025–2026 ContractorOS LLC. All rights reserved. ContractorOS LLC is a proprietary fleet management platform built for independent delivery contractors and owner-operators. Unauthorized reproduction, distribution, modification, or use of this software, its design, code, or content — in whole or in part — is strictly prohibited without express written permission.
+    © 2025–2026 ContractorOS LLC. All rights reserved. ContractorOS LLC is a proprietary fleet management platform. Unauthorized reproduction, distribution, modification, or use of this software, its design, code, or content — in whole or in part — is strictly prohibited without express written permission.
   </div>
   <div class="footer-links">
-    <a href="/">Sign In</a>
-    <a href="/?signup=1">Start Free Trial</a>
+    <a href="/app?view=signin">App Login</a>
     <a href="#pricing">Pricing</a>
-    <a href="#who">Contractor Types</a>
     <a href="mailto:bostonrudi1993@gmail.com">Contact</a>
   </div>
 </footer>
