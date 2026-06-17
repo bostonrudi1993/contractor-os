@@ -74,6 +74,8 @@ export default function Reports(p) {
     whiteGloveOpen, setWhiteGloveOpen,
     claimsTab, setClaimsTab, showAddClaim, setShowAddClaim, claimForm, setClaimForm,
     showCalloutAdd, setShowCalloutAdd, calloutFormMain, setCalloutFormMain,
+    showAlertSetup, setShowAlertSetup, alertPhone, setAlertPhone, alertEmail, setAlertEmail,
+    confirmAlertSetup, sendTestNotif, notifPermission,
     openEdit, saveEdit, closeModal, generatePDF, generateNotifications, canEdit, isOwner,
     analyzeLoad, parseLoad, analyzeRoute, askDot, lookupDOT, applyToSettings,
     importExcelPL, confirmExcelImport, showValidation,
