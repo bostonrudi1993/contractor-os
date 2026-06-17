@@ -1013,7 +1013,7 @@ function ContractorOS() {
     // handlers
     openEdit, saveEdit, closeModal, generatePDF, generateNotifications,
     canEdit, isOwner, getDriverForUser, switchUser, confirmPin, requestPushPermission,
-    confirmAlertSetup, sendTestNotif,
+    confirmAlertSetup, sendTestNotif, notifPermission,
     analyzeLoad, parseLoad, analyzeRoute, askDot, lookupDOT, applyToSettings,
     importExcelPL, confirmExcelImport, showValidation, compressImage, handleNav,
     // computed
