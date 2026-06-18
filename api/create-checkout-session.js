@@ -1,10 +1,11 @@
+import Stripe from "stripe";
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   const { priceId, orgId, userEmail, tierName } = req.body;
 
   if (!priceId || !orgId) {
@@ -16,8 +17,8 @@ export default async function handler(req, res) {
       mode: "subscription",
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `https://contractoroshub.com/?upgrade=success&tier=${tierName}`,
-      cancel_url: "https://contractoroshub.com/",
+      success_url: `https://contractoroshub.com/app?upgrade=success&tier=${tierName}`,
+      cancel_url: "https://contractoroshub.com/app",
       customer_email: userEmail,
       metadata: { orgId, tierName },
       subscription_data: { metadata: { orgId, tierName } },

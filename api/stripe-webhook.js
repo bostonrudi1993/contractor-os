@@ -1,3 +1,4 @@
+import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -42,7 +43,7 @@ async function updateOrgTier(orgId, tier) {
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   const sig = req.headers["stripe-signature"];
   let event;
 
