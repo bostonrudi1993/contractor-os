@@ -1,34 +1,23 @@
-// api/stripe-webhook.js
-// Vercel serverless function — handles Stripe webhook events
-// Uses CommonJS for Vercel compatibility
-// IMPORTANT: bodyParser must be disabled so Stripe signature verification works
-
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-const { createClient } = require("@supabase/supabase-js");
+import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 const PRICE_TO_TIER = {
-  [process.env.VITE_STRIPE_PRICE_SOLO]: "solo",
-  [process.env.VITE_STRIPE_PRICE_FLEET]: "fleet",
-  [process.env.VITE_STRIPE_PRICE_ENTERPRISE]: "enterprise",
+  [process.env.STRIPE_PRICE_SOLO]: "solo",
+  [process.env.STRIPE_PRICE_FLEET]: "fleet",
+  [process.env.STRIPE_PRICE_ENTERPRISE]: "enterprise",
 };
 
 async function updateOrgTier(orgId, tier) {
-  // Get existing settings
-  const { data: existing, error: fetchError } = await supabase
+  const { data: existing } = await supabase
     .from("cos_data")
     .select("data_value")
     .eq("user_id", orgId)
     .eq("data_key", "cos_settings")
     .maybeSingle();
-
-  if (fetchError) {
-    console.error("Supabase fetch error:", fetchError);
-  }
 
   const currentSettings = existing?.data_value || {};
   const updatedSettings = {
@@ -37,34 +26,26 @@ async function updateOrgTier(orgId, tier) {
     tierUpdatedAt: new Date().toISOString(),
   };
 
-  const { error: upsertError } = await supabase
+  const { error } = await supabase
     .from("cos_data")
     .upsert(
       { user_id: orgId, data_key: "cos_settings", data_value: updatedSettings },
       { onConflict: "user_id,data_key" }
     );
 
-  if (upsertError) {
-    console.error("Supabase upsert error:", upsertError);
-    throw upsertError;
+  if (error) {
+    console.error("Supabase update error:", error);
+    throw error;
   }
-
-  console.log(`✓ Updated org ${orgId} to tier: ${tier}`);
 }
 
-module.exports = async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).end();
-  }
+export default async function handler(req, res) {
+  if (req.method !== "POST") return res.status(405).end();
 
-  if (!process.env.STRIPE_WEBHOOK_SECRET) {
-    console.error("STRIPE_WEBHOOK_SECRET not configured");
-    return res.status(500).json({ error: "Webhook secret not configured" });
-  }
-
+  const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
   const sig = req.headers["stripe-signature"];
-
   let event;
+
   try {
     event = stripe.webhooks.constructEvent(
       req.body,
@@ -83,8 +64,7 @@ module.exports = async function handler(req, res) {
         const { orgId, tierName } = session.metadata || {};
         if (orgId && tierName) {
           await updateOrgTier(orgId, tierName);
-        } else {
-          console.warn("checkout.session.completed missing orgId or tierName in metadata");
+          console.log(`✓ Upgraded org ${orgId} to ${tierName}`);
         }
         break;
       }
@@ -96,8 +76,7 @@ module.exports = async function handler(req, res) {
         const tier = PRICE_TO_TIER[priceId];
         if (orgId && tier) {
           await updateOrgTier(orgId, tier);
-        } else {
-          console.warn("subscription.updated — could not resolve tier from priceId:", priceId);
+          console.log(`✓ Updated org ${orgId} to ${tier}`);
         }
         break;
       }
@@ -107,12 +86,13 @@ module.exports = async function handler(req, res) {
         const orgId = sub.metadata?.orgId;
         if (orgId) {
           await updateOrgTier(orgId, "solo");
+          console.log(`✓ Downgraded org ${orgId} to solo`);
         }
         break;
       }
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        console.log(`Unhandled event: ${event.type}`);
     }
 
     return res.status(200).json({ received: true });
@@ -120,9 +100,8 @@ module.exports = async function handler(req, res) {
     console.error("Webhook handler error:", err);
     return res.status(500).json({ error: err.message });
   }
-};
+}
 
-// CRITICAL: disable body parsing so Stripe signature verification works
-module.exports.config = {
+export const config = {
   api: { bodyParser: false },
 };
