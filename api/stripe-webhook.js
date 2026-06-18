@@ -1,14 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 const PRICE_TO_TIER = {
-  [process.env.VITE_STRIPE_PRICE_SOLO]: "solo",
-  [process.env.VITE_STRIPE_PRICE_FLEET]: "fleet",
-  [process.env.VITE_STRIPE_PRICE_ENTERPRISE]: "enterprise",
+  [process.env.STRIPE_PRICE_SOLO]: "solo",
+  [process.env.STRIPE_PRICE_FLEET]: "fleet",
+  [process.env.STRIPE_PRICE_ENTERPRISE]: "enterprise",
 };
 
 async function updateOrgTier(orgId, tier) {
