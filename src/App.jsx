@@ -62,11 +62,11 @@ const TIERS = {
   },
   fleet: {
     label:"Fleet", price:"$89/mo", color:"#f59e0b",
-    screens:["dashboard","compliance","fleet","finance","documents","settings","fmcsa","data","drivers","payroll","dispatch","invoices","contacts","scorecard","stopprofit","settlement","reports","trends","brokers","routes","contracts","claims","driverschedule"],
+    screens:["dashboard","compliance","fleet","finance","documents","settings","fmcsa","data","drivers","payroll","dispatch","invoices","contacts","scorecard","stopprofit","settlement","reports","brokers","routes","contracts","claims","driverschedule"],
   },
   enterprise: {
     label:"Enterprise", price:"$179/mo", color:"#8888cc",
-    screens:["dashboard","compliance","fleet","finance","documents","settings","fmcsa","data","drivers","payroll","dispatch","invoices","contacts","scorecard","stopprofit","settlement","reports","trends","brokers","routes","contracts","claims","driverschedule","lender","deadmiles","analyze","boards","users"],
+    screens:["dashboard","compliance","fleet","finance","documents","settings","fmcsa","data","drivers","payroll","dispatch","invoices","contacts","scorecard","stopprofit","settlement","reports","brokers","routes","contracts","claims","driverschedule","lender","deadmiles","analyze","boards","users"],
   },
 };
 
@@ -266,6 +266,7 @@ function ContractorOS() {
   const [onboardDismissed, setOnboardDismissed] = useState(() => { try { return localStorage.getItem("cos_onboard_done") === "1"; } catch { return false; } });
 
   const [screen, setScreen] = useState("dashboard");
+  const [prevScreen, setPrevScreen] = useState(null);
   const [navOpen, setNavOpen] = useState(false);
   const [settings, setSettings] = useState({mpg:8,dieselPrice:3.85,cpm:0.18,homeBase:"",companyName:"",monthlyInsurance:"",weeklyTruckPayment:"",clientDailyRate:"",mileStipendRate:"",businessStartDate:"",businessLegalName:"",ownerName:"",ein:"",bankName:"",existingLoanBalance:"",existingLoanMonthlyPayment:"",monthlyDepreciation:"",monthlyLoanInterest:"",monthlyTaxEstimate:"",cashReserve:"",subscriptionTier:"fleet",devMode:false});
   const [navExpanded, setNavExpanded] = useState({});
@@ -390,6 +391,7 @@ function ContractorOS() {
     try { return user?.emailAddresses?.[0]?.emailAddress || ""; } catch { return ""; }
   });
   const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [upgradeError, setUpgradeError] = useState("");
   const [scorecardWeek, setScorecardWeek] = useState(() => new Date().toISOString().slice(0,10));
   const [scorecardData, setScorecardData] = useState(() => { try { return JSON.parse(localStorage.getItem("cos_scorecard")||"[]"); } catch { return []; } });
   const [bugForm, setBugForm] = useState({subject:"",description:"",email:""});
@@ -806,7 +808,8 @@ function ContractorOS() {
     alert("Company name applied to Settings.");
   };
 
-  const handleNav = (id) => { setScreen(id); setSubScreen(null); setAiResult(null); setAnalyzeStep("paste"); setNavOpen(false); };
+  const handleNav = (id) => { setPrevScreen(screen); setScreen(id); setSubScreen(null); setAiResult(null); setAnalyzeStep("paste"); setNavOpen(false); };
+  const handleBack = () => { if(prevScreen) { setScreen(prevScreen); setPrevScreen(null); setSubScreen(null); } };
 
   // ── Tier & Nav helpers ──
   const currentTier = settings.subscriptionTier || "fleet";
@@ -947,6 +950,7 @@ function ContractorOS() {
     const newFeatures = targetTier.screens.filter(s=>!tierScreens.includes(s)).map(s=>navLabels[s]||s).slice(0,8);
 
     const handleSendRequest = async () => {
+      setUpgradeError("");
       setUpgradeLoading(true);
       const PRICE_IDS = {
         solo: import.meta.env.VITE_STRIPE_PRICE_SOLO,
@@ -954,6 +958,11 @@ function ContractorOS() {
         enterprise: import.meta.env.VITE_STRIPE_PRICE_ENTERPRISE,
       };
       const priceId = PRICE_IDS[targetTierKey];
+      if (!priceId) {
+        setUpgradeError("Checkout is not configured yet. Please contact support to upgrade.");
+        setUpgradeLoading(false);
+        return;
+      }
       const orgId = organization?.id || db.scopeId;
       try {
         const response = await fetch("/api/create-checkout-session", {
@@ -969,23 +978,23 @@ function ContractorOS() {
         }
       } catch (err) {
         console.error("Checkout error:", err);
-        window.open("mailto:bostonrudi1993@gmail.com?subject=ContractorOS Upgrade Request", "_blank");
+        setUpgradeError("Unable to start checkout. Please try again or contact support.");
         setUpgradeLoading(false);
       }
     };
 
     return (
-      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:700,padding:20}} onClick={()=>{setShowUpgradeModal(false);setUpgradeSent(false);}}>
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:700,padding:20}} onClick={()=>{setShowUpgradeModal(false);setUpgradeSent(false);setUpgradeError("");}}>
         <div style={{background:"#141414",border:`1px solid ${targetTier.color}44`,borderRadius:12,padding:"32px 28px",maxWidth:480,width:"100%",animation:"fadeUp 0.2s ease"}} onClick={e=>e.stopPropagation()}>
           {upgradeSent ? (
             <div style={{textAlign:"center",padding:"16px 0"}}>
               <div style={{fontSize:40,marginBottom:16}}>✅</div>
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#e8e4d8",marginBottom:8}}>Request Sent!</div>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#e8e4d8",marginBottom:8}}>Redirecting to Checkout...</div>
               <div style={{fontSize:12,color:"#666",lineHeight:1.8,marginBottom:24}}>
-                Your upgrade request has been sent. We'll reach out to{upgradeEmail?` ${upgradeEmail}`:" you"} within 24 hours to complete your upgrade to{" "}
+                You will be redirected to Stripe to complete your upgrade to{" "}
                 <span style={{color:targetTier.color,fontWeight:700}}>{targetTier.label}</span>.
               </div>
-              <button onClick={()=>{setShowUpgradeModal(false);setUpgradeSent(false);}} style={{...S.btn,width:"100%"}}>Done</button>
+              <button onClick={()=>{setShowUpgradeModal(false);setUpgradeSent(false);setUpgradeError("");}} style={{...S.btn,width:"100%"}}>Done</button>
             </div>
           ) : (
             <>
@@ -994,7 +1003,7 @@ function ContractorOS() {
                   <div style={{fontSize:10,color:targetTier.color,letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:6}}>Upgrade to {targetTier.label}</div>
                   <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:800,color:"#e8e4d8",lineHeight:1}}>Unlock {navLabels[upgradeTargetScreen]||upgradeTargetScreen}</div>
                 </div>
-                <button onClick={()=>{setShowUpgradeModal(false);setUpgradeSent(false);}} style={{background:"transparent",border:"none",color:"#555",fontSize:20,cursor:"pointer",padding:"4px 8px",lineHeight:1}}>✕</button>
+                <button onClick={()=>{setShowUpgradeModal(false);setUpgradeSent(false);setUpgradeError("");}} style={{background:"transparent",border:"none",color:"#555",fontSize:20,cursor:"pointer",padding:"4px 8px",lineHeight:1}}>✕</button>
               </div>
               <div style={{background:`${targetTier.color}11`,border:`1px solid ${targetTier.color}33`,borderRadius:8,padding:"14px 18px",marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
@@ -1023,15 +1032,16 @@ function ContractorOS() {
                   <textarea value={upgradeMessage} onChange={e=>setUpgradeMessage(e.target.value)} placeholder="Any questions or special requirements..." style={{...S.input,height:70,resize:"vertical"}}/>
                 </div>
               </div>
+              {upgradeError&&<div style={{background:"#1a0808",border:"1px solid #ef444433",borderRadius:6,padding:"10px 14px",marginBottom:12,fontSize:11,color:"#ef4444",lineHeight:1.5}}>{upgradeError}</div>}
               <div style={{display:"flex",gap:10}}>
                 <button onClick={handleSendRequest} disabled={upgradeLoading} style={{...S.btn,flex:1,background:targetTier.color,color:"#0a0a0a",fontSize:13,padding:"13px 20px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.05em",opacity:upgradeLoading?0.7:1,cursor:upgradeLoading?"not-allowed":"pointer"}}>
                 {upgradeLoading?"Redirecting to checkout...":`Upgrade to ${targetTier.label} →`}
               </button>
-                <button onClick={()=>{setShowUpgradeModal(false);setUpgradeSent(false);}} style={{...S.ghost,fontSize:11,padding:"13px 16px"}}>Cancel</button>
+                <button onClick={()=>{setShowUpgradeModal(false);setUpgradeSent(false);setUpgradeError("");}} style={{...S.ghost,fontSize:11,padding:"13px 16px"}}>Cancel</button>
               </div>
               <div style={{fontSize:9,color:"#444",textAlign:"center",marginTop:12,lineHeight:1.7}}>
-                We'll respond within 24 hours. Questions?{" "}
-                <a href="mailto:bostonrudi1993@gmail.com" style={{color:"#666"}} onClick={e=>e.stopPropagation()}>bostonrudi1993@gmail.com</a>
+                Secure checkout via Stripe. Questions?{" "}
+                <a href="mailto:support@contractoroshub.com" style={{color:"#666"}} onClick={e=>e.stopPropagation()}>Contact Support</a>
               </div>
             </>
           )}
@@ -1151,7 +1161,7 @@ function ContractorOS() {
     showAlertSetup, setShowAlertSetup, alertPhone, setAlertPhone, alertEmail, setAlertEmail,
     // handlers
     openEdit, saveEdit, closeModal, generatePDF, generateNotifications,
-    canEdit, isOwner, isRoleOwner, getDriverForUser, switchUser, confirmPin, requestPushPermission,
+    canEdit, isOwner, isRoleOwner, getDriverForUser, switchUser, switchingUser, setSwitchingUser, confirmPin, requestPushPermission,
     confirmAlertSetup, sendTestNotif, notifPermission,
     analyzeLoad, parseLoad, analyzeRoute, askDot, lookupDOT, applyToSettings,
     importExcelPL, confirmExcelImport, showValidation, compressImage, handleNav,
@@ -1239,7 +1249,7 @@ function ContractorOS() {
       <TopBar
         setNavOpen={setNavOpen} seg={seg} accent={accent} screen={screen}
         urgentItems={urgentItems} userEmail={userEmail}
-        onNav={handleNav}
+        onNav={handleNav} prevScreen={prevScreen} onBack={handleBack}
         onSwitchType={()=>{setSegment(null);setScreen("dashboard");localStorage.removeItem("cos_segment_locked");}}
       />
 

@@ -5,7 +5,7 @@ export const NAV_LABELS = {dashboard:"Dashboard",analyze:"Analyze Load",boards:"
 export default function Nav({
   navOpen, setNavOpen, seg, screen, accent, urgentItems, onNav,
   navExpanded, toggleNavExpand, canAccessScreen, SUB_PAGES,
-  currentTier, TIERS, subScreen, setSubScreen,
+  currentTier, TIERS, subScreen, setSubScreen, onLockedClick,
 }) {
   return (
     <>
@@ -36,17 +36,27 @@ export default function Nav({
               <div key={id}>
                 <div style={{display:"flex",alignItems:"center",borderLeft:isActive?`3px solid ${accent}`:"3px solid transparent",background:isActive?accent+"18":"transparent"}}>
                   <button
-                    onClick={()=>{onNav(id);}}
+                    onClick={()=>{
+                      if(isLocked){
+                        if(onLockedClick) onLockedClick(id);
+                      } else {
+                        onNav(id);
+                        setNavOpen(false);
+                      }
+                    }}
                     style={{flex:1,display:"flex",alignItems:"center",gap:12,padding:"11px 18px",background:"transparent",border:"none",color:isLocked?"#444":isActive?accent:"#666",fontSize:12,fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em",textTransform:"uppercase",cursor:"pointer",textAlign:"left",transition:"all 0.12s"}}
                   >
                     <span style={{fontSize:14,width:20,textAlign:"center",flexShrink:0,opacity:isLocked?0.4:1}}>{NAV_ICONS[id]||"·"}</span>
                     <span style={{flex:1,opacity:isLocked?0.4:1}}>{label}</span>
                     {isLocked && <span style={{fontSize:10,color:"#555"}}>🔒</span>}
                   </button>
-                  {hasSubPages && !isLocked && (
+                  {hasSubPages && (
                     <button
-                      onClick={(e)=>toggleNavExpand&&toggleNavExpand(id,e)}
-                      style={{background:"transparent",border:"none",color:isExpanded?accent:"#444",cursor:"pointer",padding:"11px 14px",fontSize:14,transition:"transform 0.2s ease",transform:isExpanded?"rotate(90deg)":"rotate(0deg)"}}
+                      onClick={(e)=>{
+                        if(isLocked){if(onLockedClick) onLockedClick(id);}
+                        else {toggleNavExpand&&toggleNavExpand(id,e);}
+                      }}
+                      style={{background:"transparent",border:"none",color:isLocked?"#444":isExpanded?accent:"#444",cursor:"pointer",padding:"11px 14px",fontSize:14,transition:"transform 0.2s ease",transform:(!isLocked&&isExpanded)?"rotate(90deg)":"rotate(0deg)",opacity:isLocked?0.5:1}}
                     >›</button>
                   )}
                 </div>
