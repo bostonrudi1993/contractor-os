@@ -1,6 +1,6 @@
-const NAV_LABELS = {dashboard:"Dashboard",analyze:"Analyze Load",boards:"Load Boards",compliance:"Compliance",brokers:"Brokers",fleet:"Fleet",finance:"Finance",routes:"Routes",drivers:"Drivers",contracts:"Contracts",reports:"Reports",trends:"P&L Trends",users:"Users",settings:"Settings",payroll:"Payroll",invoices:"Invoices",dispatch:"Dispatch",contacts:"Contacts",documents:"Documents",data:"Data & Backup",fmcsa:"FMCSA Lookup",scorecard:"Scorecard",stopprofit:"Stop Profit",settlement:"Settlement",driverschedule:"Schedule",claims:"Claims",deadmiles:"Dead Miles"};
+const NAV_LABELS = {dashboard:"Dashboard",analyze:"Analyze Load",boards:"Load Boards",compliance:"Compliance",brokers:"Brokers",fleet:"Fleet",finance:"Finance",routes:"Routes",drivers:"Drivers",contracts:"Contracts",reports:"Reports",trends:"P&L Trends",users:"Users",settings:"Settings",payroll:"Payroll",invoices:"Invoices",dispatch:"Dispatch",contacts:"Contacts",documents:"Documents",data:"Data & Backup",fmcsa:"FMCSA Lookup",scorecard:"Scorecard",stopprofit:"Stop Profit",settlement:"Settlement",driverschedule:"Schedule",claims:"Claims",deadmiles:"Dead Miles",lender:"Lender Report"};
 
-export default function TopBar({setNavOpen, seg, accent, screen, urgentItems, userEmail, onNav, onSwitchType}) {
+export default function TopBar({setNavOpen, seg, accent, screen, urgentItems, userEmail, onNav, onSwitchType, prevScreen, onBack}) {
   return (
     <div style={{display:"flex",alignItems:"center",height:50,borderBottom:"1px solid #1e1e1e",background:"#0d0d0d",padding:"0 16px",gap:10,flexShrink:0,position:"sticky",top:0,zIndex:100}}>
       <button onClick={()=>setNavOpen(true)} style={{background:"transparent",border:"none",color:"#888",fontSize:22,cursor:"pointer",padding:"4px 8px",lineHeight:1,flexShrink:0}} aria-label="Open menu">☰</button>
@@ -11,7 +11,10 @@ export default function TopBar({setNavOpen, seg, accent, screen, urgentItems, us
           <div style={{fontSize:8,color:"#444",letterSpacing:"0.15em",textTransform:"uppercase"}}>{seg.icon} {seg.label}</div>
         </div>
       </div>
-      <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+        {prevScreen&&onBack&&(
+          <button onClick={onBack} style={{background:"transparent",border:"none",color:"#555",fontSize:16,cursor:"pointer",padding:"4px 6px",lineHeight:1,flexShrink:0}} aria-label="Go back">←</button>
+        )}
         <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:16,color:"#e8e4d8",textTransform:"uppercase",letterSpacing:"0.08em"}}>{NAV_LABELS[screen]||screen}</span>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>

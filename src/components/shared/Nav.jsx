@@ -50,10 +50,13 @@ export default function Nav({
                     <span style={{flex:1,opacity:isLocked?0.4:1}}>{label}</span>
                     {isLocked && <span style={{fontSize:10,color:"#555"}}>🔒</span>}
                   </button>
-                  {hasSubPages && !isLocked && (
+                  {hasSubPages && (
                     <button
-                      onClick={(e)=>toggleNavExpand&&toggleNavExpand(id,e)}
-                      style={{background:"transparent",border:"none",color:isExpanded?accent:"#444",cursor:"pointer",padding:"11px 14px",fontSize:14,transition:"transform 0.2s ease",transform:isExpanded?"rotate(90deg)":"rotate(0deg)"}}
+                      onClick={(e)=>{
+                        if(isLocked){if(onLockedClick) onLockedClick(id);}
+                        else {toggleNavExpand&&toggleNavExpand(id,e);}
+                      }}
+                      style={{background:"transparent",border:"none",color:isLocked?"#444":isExpanded?accent:"#444",cursor:"pointer",padding:"11px 14px",fontSize:14,transition:"transform 0.2s ease",transform:(!isLocked&&isExpanded)?"rotate(90deg)":"rotate(0deg)",opacity:isLocked?0.5:1}}
                     >›</button>
                   )}
                 </div>
