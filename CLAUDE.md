@@ -15,15 +15,17 @@ No test suite is configured.
 ## User Deployment Workflow
 
 The user deploys manually — NOT via git push. Workflow every session:
-1. Make code changes and commit to branch `claude/contractoros-project-setup-2h9op2`
-2. Send changed source files to user via SendUserFile so they can download them
-3. User replaces files in their local project
-4. User runs: `npm run build` then `vercel --prod`
+1. Make code changes here
+2. Run `npm run build` to verify no errors
+3. Send changed source files to user via SendUserFile so they can download them
+4. User manually replaces files in their local project
+5. User runs `npm run build` then `vercel --prod` to deploy
 
 Always end every coding session by:
 - Running `npm run build` to verify no build errors
-- Sending all changed files via SendUserFile
-- Providing copy-paste commands: `npm run build` then `vercel --prod`
+- Sending all changed files via SendUserFile with a table showing where each file goes
+- Telling the user to run: `npm run build` then `vercel --prod`
+- Never tell the user to use git commands — they deploy manually
 
 ## Environment Variables
 
