@@ -507,10 +507,15 @@ function ContractorOS() {
       const params = new URLSearchParams(window.location.search);
       const upgradeSuccess = params.get("upgrade");
       const newTier = params.get("tier");
-      if(upgradeSuccess==="success"&&newTier){
-        window.history.replaceState({},"","/");
+      if(upgradeSuccess==="success"&&newTier&&TIERS[newTier]){
+        window.history.replaceState({},"","/app");
+        // Immediately apply the tier so user doesn't have to wait for webhook
+        setSettings(prev=>{
+          const updated = {...prev, subscriptionTier: newTier};
+          stor.set(KEYS.settings, updated);
+          return updated;
+        });
         showValidation("✓ Upgraded to "+(TIERS[newTier]?.label||newTier)+"! Your new features are unlocked.");
-        setTimeout(()=>window.location.reload(),2500);
       }
     } catch(err){
       console.error("Upgrade redirect error:",err);
@@ -1251,6 +1256,7 @@ function ContractorOS() {
         urgentItems={urgentItems} userEmail={userEmail}
         onNav={handleNav} prevScreen={prevScreen} onBack={handleBack}
         onSwitchType={()=>{setSegment(null);setScreen("dashboard");localStorage.removeItem("cos_segment_locked");}}
+        signOut={signOut}
       />
 
       {/* Screen routing with tier gating */}
