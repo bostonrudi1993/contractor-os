@@ -221,7 +221,7 @@ export default function Compliance(p) {
                     : <button className="hov" onClick={()=>setShowAddVehicle(!showAddVehicle)} style={S.btn}>{showAddVehicle?"Cancel":"+ Add Vehicle"}</button>
                   }
                 </div>
-                {showAddVehicle&&(
+                {showAddVehicle&&compliance.trucks.length<truckLimit&&(
                   <div style={{...S.card,marginBottom:18}}>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
                       {[
