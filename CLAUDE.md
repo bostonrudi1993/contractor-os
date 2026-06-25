@@ -12,6 +12,19 @@ npm run preview   # Preview production build locally
 
 No test suite is configured.
 
+## User Deployment Workflow
+
+The user deploys manually — NOT via git push. Workflow every session:
+1. Make code changes and commit to branch `claude/contractoros-project-setup-2h9op2`
+2. Send changed source files to user via SendUserFile so they can download them
+3. User replaces files in their local project
+4. User runs: `npm run build` then `vercel --prod`
+
+Always end every coding session by:
+- Running `npm run build` to verify no build errors
+- Sending all changed files via SendUserFile
+- Providing copy-paste commands: `npm run build` then `vercel --prod`
+
 ## Environment Variables
 
 ```
