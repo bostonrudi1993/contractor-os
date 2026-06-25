@@ -85,7 +85,7 @@ export default function Settings({seg, accent, S, settings, setSettings, segment
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,padding:"12px 14px",background:"#0f0f0f",border:`1px solid ${TIERS[currentTier]?.color||accent}33`,borderRadius:6}}>
               <div>
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:TIERS[currentTier]?.color||accent}}>{TIERS[currentTier]?.label||"Fleet"} Plan</div>
-                <div style={{fontSize:10,color:"#555"}}>{TIERS[currentTier]?.price||"$99/mo"} · {TIERS[currentTier]?.screens?.length||0} screens unlocked</div>
+                <div style={{fontSize:10,color:"#555"}}>{TIERS[currentTier]?.price||"$99/mo"} · {TIERS[currentTier]?.desc||""}</div>
               </div>
               <div style={{fontSize:9,color:TIERS[currentTier]?.color||accent,border:`1px solid ${TIERS[currentTier]?.color||accent}44`,padding:"4px 12px",borderRadius:3,letterSpacing:"0.12em",textTransform:"uppercase"}}>Active</div>
             </div>
@@ -94,11 +94,12 @@ export default function Settings({seg, accent, S, settings, setSettings, segment
                 <div key={key} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:currentTier===key?"#111":"#080808",border:`1px solid ${currentTier===key?tier.color+"44":"#1a1a1a"}`,borderRadius:5}}>
                   <div>
                     <span style={{fontSize:11,color:currentTier===key?tier.color:"#555",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{tier.label}</span>
-                    <span style={{fontSize:9,color:"#333",marginLeft:10}}>{tier.screens.length} screens · {tier.price}</span>
+                    <span style={{fontSize:9,color:"#444",marginLeft:8}}>{tier.price}</span>
+                    <span style={{fontSize:9,color:"#333",marginLeft:6}}>— {tier.desc}</span>
                   </div>
                   {currentTier===key
                     ? <span style={{fontSize:9,color:tier.color,letterSpacing:"0.1em"}}>CURRENT</span>
-                    : <a href={`mailto:bostonrudi1993@gmail.com?subject=${encodeURIComponent("Upgrade to "+tier.label+" Plan")}`} style={{fontSize:9,color:"#555",textDecoration:"none",border:"1px solid #2a2a2a",padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Upgrade →</a>
+                    : <button onClick={()=>onUpgrade&&onUpgrade(key)} style={{fontSize:9,color:"#555",background:"transparent",border:"1px solid #2a2a2a",padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace",cursor:"pointer"}}>Upgrade →</button>
                   }
                 </div>
               ))}
@@ -125,7 +126,7 @@ export default function Settings({seg, accent, S, settings, setSettings, segment
                 </div>
               )}
             </div>
-            {onUpgrade&&<button className="hov" onClick={onUpgrade} style={{...S.btn,marginTop:12,width:"100%"}}>Upgrade Plan →</button>}
+            {onUpgrade&&(()=>{const tierOrder=Object.keys(TIERS);const nextTier=tierOrder[tierOrder.indexOf(currentTier)+1];return nextTier?<button className="hov" onClick={()=>onUpgrade(nextTier)} style={{...S.btn,marginTop:12,width:"100%"}}>Upgrade to {TIERS[nextTier].label} →</button>:null;})()}
           </div>
         )}
         <div style={{...S.card,marginBottom:16}}>

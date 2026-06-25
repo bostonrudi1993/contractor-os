@@ -288,7 +288,11 @@ function ContractorOS() {
   const [screen, setScreen] = useState("dashboard");
   const [prevScreen, setPrevScreen] = useState(null);
   const [navOpen, setNavOpen] = useState(false);
-  const [settings, setSettings] = useState({mpg:8,dieselPrice:3.85,cpm:0.18,homeBase:"",companyName:"",monthlyInsurance:"",weeklyTruckPayment:"",clientDailyRate:"",mileStipendRate:"",businessStartDate:"",businessLegalName:"",ownerName:"",ein:"",bankName:"",existingLoanBalance:"",existingLoanMonthlyPayment:"",monthlyDepreciation:"",monthlyLoanInterest:"",monthlyTaxEstimate:"",cashReserve:"",subscriptionTier:"fleet",devMode:false});
+  const [settings, setSettings] = useState(()=>{
+    const defaults = {mpg:8,dieselPrice:3.85,cpm:0.18,homeBase:"",companyName:"",monthlyInsurance:"",weeklyTruckPayment:"",clientDailyRate:"",mileStipendRate:"",businessStartDate:"",businessLegalName:"",ownerName:"",ein:"",bankName:"",existingLoanBalance:"",existingLoanMonthlyPayment:"",monthlyDepreciation:"",monthlyLoanInterest:"",monthlyTaxEstimate:"",cashReserve:"",subscriptionTier:"fleet",devMode:false};
+    const saved = stor.get(KEYS.settings, null);
+    return saved ? {...defaults, ...saved} : defaults;
+  });
   const [navExpanded, setNavExpanded] = useState({});
   const [vehicles, setVehicles] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
@@ -530,11 +534,7 @@ function ContractorOS() {
       if(upgradeSuccess==="success"&&newTier&&TIERS[newTier]){
         window.history.replaceState({},"","/app");
         // Immediately apply the tier so user doesn't have to wait for webhook
-        setSettings(prev=>{
-          const updated = {...prev, subscriptionTier: newTier};
-          stor.set(KEYS.settings, updated);
-          return updated;
-        });
+        setSettings(prev=>({...prev, subscriptionTier: newTier}));
         showValidation("✓ Upgraded to "+(TIERS[newTier]?.label||newTier)+"! Your new features are unlocked.");
       }
     } catch(err){
@@ -1296,7 +1296,7 @@ function ContractorOS() {
         {screen==="reports" && <Reports {...screenProps}/>}
         {screen==="trends" && <Trends {...screenProps}/>}
         {screen==="users" && <Users {...screenProps}/>}
-        {screen==="settings" && <Settings seg={seg} accent={accent} S={S} settings={settings} setSettings={setSettings} segment={segment} organization={organization} currentTier={currentTier} TIERS={TIERS} onUpgrade={()=>{setUpgradeTargetScreen("lender");setUpgradeEmail(user?.emailAddresses?.[0]?.emailAddress||"");setUpgradeSent(false);setShowUpgradeModal(true);}}/>}
+        {screen==="settings" && <Settings seg={seg} accent={accent} S={S} settings={settings} setSettings={setSettings} segment={segment} organization={organization} currentTier={currentTier} TIERS={TIERS} onUpgrade={(tierKey)=>{const tier=TIERS[tierKey||"enterprise"];const screenId=tier?.screens?.[0]||"lender";setUpgradeTargetScreen(screenId);setUpgradeEmail(user?.emailAddresses?.[0]?.emailAddress||"");setUpgradeSent(false);setShowUpgradeModal(true);}}/>}
         {screen==="payroll" && <Payroll {...screenProps}/>}
         {screen==="dispatch" && <Dispatch {...screenProps}/>}
         {screen==="invoices" && <Invoices {...screenProps}/>}
