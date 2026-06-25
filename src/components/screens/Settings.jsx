@@ -99,7 +99,7 @@ export default function Settings({seg, accent, S, settings, setSettings, segment
                   </div>
                   {currentTier===key
                     ? <span style={{fontSize:9,color:tier.color,letterSpacing:"0.1em"}}>CURRENT</span>
-                    : <button onClick={onUpgrade} style={{fontSize:9,color:"#555",background:"transparent",border:"1px solid #2a2a2a",padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace",cursor:"pointer"}}>Upgrade →</button>
+                    : <button onClick={()=>onUpgrade&&onUpgrade(key)} style={{fontSize:9,color:"#555",background:"transparent",border:"1px solid #2a2a2a",padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace",cursor:"pointer"}}>Upgrade →</button>
                   }
                 </div>
               ))}
@@ -126,7 +126,7 @@ export default function Settings({seg, accent, S, settings, setSettings, segment
                 </div>
               )}
             </div>
-            {onUpgrade&&<button className="hov" onClick={onUpgrade} style={{...S.btn,marginTop:12,width:"100%"}}>Upgrade Plan →</button>}
+            {onUpgrade&&(()=>{const tierOrder=Object.keys(TIERS);const nextTier=tierOrder[tierOrder.indexOf(currentTier)+1];return nextTier?<button className="hov" onClick={()=>onUpgrade(nextTier)} style={{...S.btn,marginTop:12,width:"100%"}}>Upgrade to {TIERS[nextTier].label} →</button>:null;})()}
           </div>
         )}
         <div style={{...S.card,marginBottom:16}}>

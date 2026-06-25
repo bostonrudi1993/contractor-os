@@ -6,11 +6,13 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const PRICE_TO_TIER = {
-  [process.env.STRIPE_PRICE_SOLO]: "solo",
-  [process.env.STRIPE_PRICE_FLEET]: "fleet",
-  [process.env.STRIPE_PRICE_ENTERPRISE]: "enterprise",
-};
+const PRICE_TO_TIER = Object.fromEntries(
+  [
+    [process.env.STRIPE_PRICE_SOLO, "solo"],
+    [process.env.STRIPE_PRICE_FLEET, "fleet"],
+    [process.env.STRIPE_PRICE_ENTERPRISE, "enterprise"],
+  ].filter(([k]) => k)
+);
 
 async function updateOrgTier(orgId, tier) {
   const { data: existing } = await supabase
