@@ -57,16 +57,36 @@ import LenderReport from "./components/screens/LenderReport.jsx";
 // ─── TIER CONFIG ──────────────────────────────────────────────────────────────
 const TIERS = {
   solo: {
-    label:"Solo", price:"$39/mo", color:"#888",
-    screens:["dashboard","compliance","fleet","finance","documents","settings","fmcsa","data"],
+    label: "Solo",
+    price: "$39/mo",
+    color: "#888",
+    desc: "1 truck · owner only",
+    screens: [
+      "dashboard","compliance","fleet","finance","documents","fmcsa","settings","data"
+    ],
   },
   fleet: {
-    label:"Fleet", price:"$89/mo", color:"#f59e0b",
-    screens:["dashboard","compliance","fleet","finance","documents","settings","fmcsa","data","drivers","payroll","dispatch","invoices","contacts","scorecard","stopprofit","settlement","reports","brokers","routes","contracts","claims","driverschedule"],
+    label: "Fleet",
+    price: "$89/mo",
+    color: "#f59e0b",
+    desc: "Up to 10 trucks · 5 users",
+    screens: [
+      "dashboard","compliance","fleet","finance","documents","fmcsa","settings","data",
+      "drivers","payroll","dispatch","invoices","contacts","routes","contracts",
+      "scorecard","stopprofit","settlement","driverschedule","claims","reports","brokers"
+    ],
   },
   enterprise: {
-    label:"Enterprise", price:"$179/mo", color:"#8888cc",
-    screens:["dashboard","compliance","fleet","finance","documents","settings","fmcsa","data","drivers","payroll","dispatch","invoices","contacts","scorecard","stopprofit","settlement","reports","brokers","routes","contracts","claims","driverschedule","lender","deadmiles","analyze","boards","users"],
+    label: "Enterprise",
+    price: "$179/mo",
+    color: "#8888cc",
+    desc: "Unlimited trucks · Unlimited users",
+    screens: [
+      "dashboard","compliance","fleet","finance","documents","fmcsa","settings","data",
+      "drivers","payroll","dispatch","invoices","contacts","routes","contracts",
+      "scorecard","stopprofit","settlement","driverschedule","claims","reports","brokers",
+      "lender","users","analyze","deadmiles","boards"
+    ],
   },
 };
 
@@ -1065,9 +1085,10 @@ function ContractorOS() {
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#e8e4d8",marginBottom:8}}>
             {navLabels[screenId]} is a <span style={{color:tier.color}}>{tier.label}</span> feature
           </div>
-          <div style={{fontSize:12,color:"#555",lineHeight:1.8,marginBottom:24}}>
+          <div style={{fontSize:12,color:"#555",lineHeight:1.8,marginBottom:4}}>
             Upgrade to {tier.label} ({tier.price}) to unlock {navLabels[screenId]} and {tier.screens.length} other features.
           </div>
+          <div style={{fontSize:11,color:"#666",marginBottom:24}}>{tier.desc}</div>
           <div style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:6,padding:"12px 16px",marginBottom:20,textAlign:"left"}}>
             <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8}}>{tier.label} includes:</div>
             {tier.screens.filter(s=>!tierScreens.includes(s)).slice(0,5).map(s=>(
