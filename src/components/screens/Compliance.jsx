@@ -79,7 +79,10 @@ export default function Compliance(p) {
     importExcelPL, confirmExcelImport, showValidation,
     urgentItems, SubNav, Stat, ExpiryBadge, Loader, fmt$, fmtDate, daysUntil,
     statusColor, statusLabel, gradeColor, MODAL_CONFIGS,
+    currentTier, TIERS,
   } = p;
+  const TRUCK_LIMITS = { solo: 1, fleet: 5, enterprise: Infinity };
+  const truckLimit = isOwner ? Infinity : (TRUCK_LIMITS[currentTier] ?? Infinity);
   return (
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
           <SubNav tabs={[["overview","Overview"],["vehicles","Vehicles"],["drivers_comp","Drivers"],["docs","Doc Guide"],["ask","Ask DOT AI"]]} active={subScreen||"overview"} onSelect={setSubScreen}/>
@@ -211,7 +214,12 @@ export default function Compliance(p) {
               <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
                   <div style={S.section}>VEHICLE FILES</div>
-                  <button className="hov" onClick={()=>setShowAddVehicle(!showAddVehicle)} style={S.btn}>{showAddVehicle?"Cancel":"+ Add Vehicle"}</button>
+                  {compliance.trucks.length >= truckLimit
+                    ? <div style={{fontSize:10,color:"#ef4444",border:"1px solid #ef444433",padding:"6px 12px",borderRadius:4,background:"#1a0808"}}>
+                        Truck limit reached ({truckLimit} max on {TIERS[currentTier]?.label||currentTier} plan) — upgrade to add more
+                      </div>
+                    : <button className="hov" onClick={()=>setShowAddVehicle(!showAddVehicle)} style={S.btn}>{showAddVehicle?"Cancel":"+ Add Vehicle"}</button>
+                  }
                 </div>
                 {showAddVehicle&&(
                   <div style={{...S.card,marginBottom:18}}>
@@ -232,7 +240,13 @@ export default function Compliance(p) {
                         <div key={f}><label style={S.label}>{lbl}</label><input type={ph==="date"?"date":"text"} value={vehicleForm[f]||""} onChange={e=>setVehicleForm(p=>({...p,[f]:e.target.value}))} placeholder={ph!=="date"?ph:""} style={S.input}/></div>
                       ))}
                     </div>
-                    <button className="hov" onClick={()=>{ if(!vehicleForm.name){showValidation("Truck name is required");return;} setCompliance(p=>({...p,trucks:[...p.trucks,{...vehicleForm,id:Date.now()}]})); setVehicleForm({name:"",nickname:"",vin:"",year:"",make:"",plate:"",dotInspection:"",ifta:"",irp:"",registration:"",insuranceExpiry:""}); setShowAddVehicle(false); }} style={{...S.btn,marginTop:14}}>Save Vehicle</button>
+                    <button className="hov" onClick={()=>{
+                      if(!vehicleForm.name){showValidation("Truck name is required");return;}
+                      if(compliance.trucks.length >= truckLimit){showValidation(`Truck limit reached. Upgrade to add more than ${truckLimit} truck${truckLimit===1?"":"s"}.`);return;}
+                      setCompliance(p=>({...p,trucks:[...p.trucks,{...vehicleForm,id:Date.now()}]}));
+                      setVehicleForm({name:"",nickname:"",vin:"",year:"",make:"",plate:"",dotInspection:"",ifta:"",irp:"",registration:"",insuranceExpiry:""});
+                      setShowAddVehicle(false);
+                    }} style={{...S.btn,marginTop:14}}>Save Vehicle</button>
                   </div>
                 )}
                 {compliance.trucks.length===0&&!showAddVehicle&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No vehicles added yet.</div>}

@@ -69,7 +69,7 @@ const TIERS = {
     label: "Fleet",
     price: "$89/mo",
     color: "#f59e0b",
-    desc: "Up to 10 trucks · 5 users",
+    desc: "5 trucks · 5 users",
     screens: [
       "dashboard","compliance","fleet","finance","documents","fmcsa","settings","data",
       "drivers","payroll","dispatch","invoices","contacts","routes","contracts",
@@ -1204,6 +1204,7 @@ function ContractorOS() {
     lenderTab, setLenderTab,
     lenderAssetForm, setLenderAssetForm, lenderDebtForm, setLenderDebtForm,
     lenderPayableForm, setLenderPayableForm,
+    currentTier, TIERS,
     SubNav, Stat, ExpiryBadge: ExpiryBadgeW, Loader,
     fmt$, fmtDate, daysUntil, statusColor, statusLabel, gradeColor, MODAL_CONFIGS,
   };
