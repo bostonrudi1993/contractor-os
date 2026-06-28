@@ -571,10 +571,9 @@ function ContractorOS() {
 
   // ── AI ──
   const callAI = async (system, content, json=true) => {
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST", headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-      body: JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system,messages:[{role:"user",content}]}),
+    const r = await fetch("/api/claude", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({system, prompt:content, max_tokens:1000}),
     });
     const d = await r.json();
     const text = d.content?.[0]?.text||"";
@@ -611,20 +610,18 @@ function ContractorOS() {
     if(!dotQ.trim()) return;
     setAiLoading(true); setDotAnswer(""); setAiError("");
     try {
-      const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-      if(!apiKey) { setAiError("Anthropic API key not configured. Add VITE_ANTHROPIC_API_KEY to Vercel environment variables."); setAiLoading(false); return; }
-      const res = await fetch("https://api.anthropic.com/v1/messages",{
+      const res = await fetch("/api/claude",{
         method:"POST",
-        headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,messages:[{role:"user",content:`You are a DOT/FMCSA compliance expert for US commercial trucking. Answer this question clearly and practically for an owner-operator or fleet manager. Be specific, cite relevant regulations where applicable, and flag any time-sensitive deadlines. Question: ${dotQ}`}]})
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({prompt:`You are a DOT/FMCSA compliance expert for US commercial trucking. Answer this question clearly and practically for an owner-operator or fleet manager. Be specific, cite relevant regulations where applicable, and flag any time-sensitive deadlines. Question: ${dotQ}`, max_tokens:800})
       });
-      if(!res.ok) { const err = await res.json(); throw new Error(err.error?.message||`API error ${res.status}`); }
+      if(!res.ok) { const err = await res.json(); throw new Error(err.error||`API error ${res.status}`); }
       const data = await res.json();
       const answer = data.content?.[0]?.text;
       if(!answer) throw new Error("No response from AI");
       setDotAnswer(answer);
     } catch(err) {
-      setAiError(`DOT AI error: ${err.message}. Try again or check your API key.`);
+      setAiError(`DOT AI error: ${err.message}. Try again.`);
     }
     setAiLoading(false);
   };

@@ -118,12 +118,10 @@ export default function Documents(p) {
                         reader.onload = async(ev) => {
                           const base64 = ev.target.result.split(",")[1];
                           const mediaType = file.type === "application/pdf" ? "application/pdf" : file.type;
-                          const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-                          if(!apiKey) return;
-                          const res = await fetch("https://api.anthropic.com/v1/messages", {
+                          const res = await fetch("/api/claude", {
                             method:"POST",
-                            headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-                            body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,messages:[{role:"user",content:[{type:mediaType==="application/pdf"?"document":"image",source:{type:"base64",media_type:mediaType,data:base64}},{type:"text",text:"Extract these fields from this document if present. Return ONLY a JSON object with these keys (null if not found): documentName, documentType (Rate Confirmation/BOL/Delivery Confirmation/Invoice/Other), date (YYYY-MM-DD), linkedTo (truck or driver name), referenceNumber, notes (any important info like load#, PO#, rate amount). No other text."}]}]})
+                            headers:{"Content-Type":"application/json"},
+                            body:JSON.stringify({prompt:"Extract these fields from this document if present. Return ONLY a JSON object with these keys (null if not found): documentName, documentType (Rate Confirmation/BOL/Delivery Confirmation/Invoice/Other), date (YYYY-MM-DD), linkedTo (truck or driver name), referenceNumber, notes (any important info like load#, PO#, rate amount). No other text.", base64Data:base64, mediaType, max_tokens:500})
                           });
                           const data = await res.json();
                           try {
