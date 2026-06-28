@@ -8,12 +8,12 @@ export default function TopBar({setNavOpen, seg, accent, screen, urgentItems, us
         <div style={{width:30,height:30,background:accent,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:4,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:13,color:"#0a0a0a"}}>CO</div>
         <div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#e8e4d8",lineHeight:1}}>CONTRACTOR<span style={{color:accent}}>OS</span></div>
-          <div style={{fontSize:8,color:"#444",letterSpacing:"0.15em",textTransform:"uppercase"}}>{seg.icon} {seg.label}</div>
+          <div style={{fontSize:8,color:"#888",letterSpacing:"0.15em",textTransform:"uppercase"}}>{seg.icon} {seg.label}</div>
         </div>
       </div>
       <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
         {prevScreen&&onBack&&(
-          <button onClick={onBack} style={{background:"transparent",border:"none",color:"#555",fontSize:16,cursor:"pointer",padding:"4px 6px",lineHeight:1,flexShrink:0}} aria-label="Go back">←</button>
+          <button onClick={onBack} style={{background:"transparent",border:"none",color:"#999",fontSize:16,cursor:"pointer",padding:"4px 6px",lineHeight:1,flexShrink:0}} aria-label="Go back">←</button>
         )}
         <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:16,color:"#e8e4d8",textTransform:"uppercase",letterSpacing:"0.08em"}}>{NAV_LABELS[screen]||screen}</span>
       </div>
@@ -23,7 +23,7 @@ export default function TopBar({setNavOpen, seg, accent, screen, urgentItems, us
           <button onClick={onSwitchType} style={{background:"#1a0a00",border:"1px solid #f59e0b44",color:"#f59e0b",padding:"4px 10px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>👑 SWITCH TYPE</button>
         )}
         {signOut&&(
-          <button onClick={()=>signOut()} style={{background:"transparent",border:"1px solid #333",color:"#666",padding:"4px 10px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.06em"}} aria-label="Sign out">SIGN OUT</button>
+          <button onClick={()=>signOut()} style={{background:"transparent",border:"1px solid #333",color:"#aaa",padding:"4px 10px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.06em"}} aria-label="Sign out">SIGN OUT</button>
         )}
       </div>
     </div>

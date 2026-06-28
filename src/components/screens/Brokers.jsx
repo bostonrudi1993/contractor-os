@@ -88,7 +88,7 @@ export default function Brokers(p) {
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:10}}>
                 {segment==="fedex"?"FedEx Ground":segment==="amazon"?"Amazon DSP":segment==="lastmile"?"Lowe's / Home Depot":segment==="usps"?"USPS":"Primary Client"}
               </div>
-              <div style={{fontSize:11,color:"#555",marginBottom:12}}>Track your key client relationship details and contract terms.</div>
+              <div style={{fontSize:11,color:"#999",marginBottom:12}}>Track your key client relationship details and contract terms.</div>
               {[["Weekly Stop Guarantee","weeklyStops"],["Revenue Per Stop $","revenuePerStop"],["Fuel Surcharge %","fuelSurcharge"],["Contract Expiry","contractExpiry"],["Performance Tier","performanceTier"]].map(([label,field])=>{
                 const co=segment==="fedex"?"FedEx Ground":segment==="amazon"?"Amazon DSP":segment==="lastmile"?"Lowe's":"USPS";
                 const client=contacts.find(c=>c.type==="Client"&&c.company===co)||{};
@@ -118,7 +118,7 @@ export default function Brokers(p) {
               {(!subScreen||subScreen==="scores")&&(
                 <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
                   <div style={{...S.section,marginBottom:20}}>BROKER SCOREBOARD</div>
-                  {brokers.filter(b=>!b.blacklisted).length===0&&loads.length===0&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No broker data yet. Analyze loads or add brokers manually.</div>}
+                  {brokers.filter(b=>!b.blacklisted).length===0&&loads.length===0&&<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>No broker data yet. Analyze loads or add brokers manually.</div>}
                   <div style={{display:"flex",flexDirection:"column",gap:10}}>
                     {[...new Set([...brokers.map(b=>b.name),...loads.map(l=>l.load?.brokerName).filter(Boolean)])].filter(name=>!brokers.find(b=>b.name===name&&b.blacklisted)).map((name,i)=>{
                       const manual=brokers.find(b=>b.name===name);
@@ -126,12 +126,12 @@ export default function Brokers(p) {
                       const avgNet=bLoads.length?bLoads.reduce((s,l)=>s+(l.result?.netRPM||0),0)/bLoads.length:0;
                       return (
                         <div key={name} style={{...S.card,display:"flex",alignItems:"center",gap:16}} className="cardhov">
-                          <div style={{width:26,fontSize:11,color:"#444",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>#{i+1}</div>
-                          <div style={{flex:1}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{name}</div>{manual?.notes&&<div style={{fontSize:10,color:"#555",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{manual.notes}</div>}</div>
+                          <div style={{width:26,fontSize:11,color:"#888",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>#{i+1}</div>
+                          <div style={{flex:1}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{name}</div>{manual?.notes&&<div style={{fontSize:10,color:"#999",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{manual.notes}</div>}</div>
                           {manual?.rating&&<div style={{fontSize:12,color:"#f59e0b",letterSpacing:2}}>{"★".repeat(manual.rating)}</div>}
-                          {manual?.paySpeed&&<div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Pay Speed</div><div style={{fontSize:11,color:"#8888cc"}}>{manual.paySpeed}</div></div>}
-                          {bLoads.length>0&&<div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Loads</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#c8c4bc"}}>{bLoads.length}</div></div>}
-                          {bLoads.length>0&&<div style={{textAlign:"right"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Avg Net RPM</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:avgNet>=1.5?"#22c55e":avgNet>=1?"#f59e0b":"#ef4444"}}>${avgNet.toFixed(2)}/mi</div></div>}
+                          {manual?.paySpeed&&<div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em"}}>Pay Speed</div><div style={{fontSize:11,color:"#8888cc"}}>{manual.paySpeed}</div></div>}
+                          {bLoads.length>0&&<div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em"}}>Loads</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#c8c4bc"}}>{bLoads.length}</div></div>}
+                          {bLoads.length>0&&<div style={{textAlign:"right"}}><div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em"}}>Avg Net RPM</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:avgNet>=1.5?"#22c55e":avgNet>=1?"#f59e0b":"#ef4444"}}>${avgNet.toFixed(2)}/mi</div></div>}
                         </div>
                       );
                     })}
@@ -141,13 +141,13 @@ export default function Brokers(p) {
               {subScreen==="lanes"&&(
                 <div style={{maxWidth:760,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
                   <div style={{...S.section,marginBottom:20}}>LANE INTELLIGENCE</div>
-                  {laneStats().length===0?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No lane data yet. Analyze loads to populate lanes.</div>:
+                  {laneStats().length===0?<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>No lane data yet. Analyze loads to populate lanes.</div>:
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
                     {laneStats().map((l,i)=>(
                       <div key={l.lane} style={{...S.card,display:"flex",alignItems:"center",gap:14}} className="cardhov">
-                        <div style={{width:24,fontSize:11,color:"#444",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>#{i+1}</div>
-                        <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{l.lane}</div><div style={{fontSize:10,color:"#555"}}>{l.count} load{l.count>1?"s":""}</div></div>
-                        <div style={{textAlign:"right"}}><div style={{fontSize:9,color:"#555"}}>Avg Net RPM</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:l.avg>=1.5?"#22c55e":l.avg>=1?"#f59e0b":"#ef4444"}}>${l.avg.toFixed(2)}/mi</div></div>
+                        <div style={{width:24,fontSize:11,color:"#888",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>#{i+1}</div>
+                        <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{l.lane}</div><div style={{fontSize:10,color:"#999"}}>{l.count} load{l.count>1?"s":""}</div></div>
+                        <div style={{textAlign:"right"}}><div style={{fontSize:9,color:"#999"}}>Avg Net RPM</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:l.avg>=1.5?"#22c55e":l.avg>=1?"#f59e0b":"#ef4444"}}>${l.avg.toFixed(2)}/mi</div></div>
                       </div>
                     ))}
                   </div>}
@@ -156,7 +156,7 @@ export default function Brokers(p) {
               {subScreen==="blacklist"&&(
                 <div style={{maxWidth:700,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
                   <div style={{...S.section,marginBottom:20}}>BLACKLIST</div>
-                  {brokers.filter(b=>b.blacklisted).length===0?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No blacklisted brokers.</div>:
+                  {brokers.filter(b=>b.blacklisted).length===0?<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>No blacklisted brokers.</div>:
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
                     {brokers.filter(b=>b.blacklisted).map(b=>(
                       <div key={b.id} style={{...S.card,background:"#1a0808",border:"1px solid #3a1010",display:"flex",alignItems:"center",gap:14}}>

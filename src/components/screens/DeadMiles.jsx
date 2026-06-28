@@ -127,7 +127,7 @@ export default function DeadMiles(p) {
               </svg>
             </div>;
           })()}
-          {deadMilesLog.length===0&&<div style={{color:"#555",fontSize:12}}>No dead miles logged yet.</div>}
+          {deadMilesLog.length===0&&<div style={{color:"#999",fontSize:12}}>No dead miles logged yet.</div>}
           {deadMilesLog.map(d=>(
             <div key={d.id} style={{...S.card,marginBottom:6}}>
               <div style={{display:"flex",justifyContent:"space-between"}}>

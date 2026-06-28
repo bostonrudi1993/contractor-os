@@ -95,7 +95,7 @@ const SUB_PAGES = {
   fleet:[{id:"log",label:"Maintenance Log"},{id:"fuel",label:"Fuel Log"},{id:"odometer",label:"Odometer"},{id:"tires",label:"Tires"},{id:"fuelcard",label:"Fuel Card",segment:["otr"]},{id:"appearance",label:"Appearance Check",segment:["fedex"]},{id:"vaninspect",label:"Van Inspection",segment:["amazon"]}],
   drivers:[{id:"list",label:"All Drivers"},{id:"onboarding",label:"DOT Onboarding"},{id:"hos",label:"HOS Log"},{id:"incidents",label:"Incidents"},{id:"scorecards",label:"Scorecards"},{id:"coaching",label:"Coaching Log",segment:["fedex"]},{id:"callouts",label:"Callout Tracker",segment:["amazon"]},{id:"substitutes",label:"Substitutes",segment:["usps"]}],
   finance:[{id:"pl",label:"P&L Dashboard"},{id:"expenses",label:"Expenses"},{id:"revenue",label:"Revenue"},{id:"deadmiles",label:"Dead Miles",segment:["otr"]}],
-  compliance:[{id:"overview",label:"Overview"},{id:"trucks",label:"Trucks"},{id:"drivers",label:"Driver Docs"},{id:"filings",label:"Filings"},{id:"dotai",label:"Ask DOT AI"}],
+  compliance:[{id:"overview",label:"Overview"},{id:"trucks",label:"Trucks"},{id:"drivers",label:"Driver Docs"},{id:"filings",label:"Filings"}],
   routes:[{id:"list",label:"Route List"},{id:"analyze",label:"Analyze Route"},{id:"dnr",label:"DNR Cases",segment:["amazon"]},{id:"tripsheets",label:"Trip Sheets",segment:["usps"]}],
   contracts:[{id:"list",label:"Contracts"},{id:"bidtracker",label:"Bid Tracker",segment:["usps"]}],
   stopprofit:[{id:"entry",label:"Daily Entry"},{id:"trend",label:"Weekly Trend"}],
@@ -143,7 +143,7 @@ const SubNavComp = ({tabs,active,accent,onSelect}) => (
 const LoaderComp = ({msg,accent}) => (
   <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"60px 0",gap:16}}>
     <div style={{width:36,height:36,border:`2px solid #1e1e1e`,borderTop:`2px solid ${accent}`,borderRadius:"50%",animation:"spin 0.7s linear infinite"}}/>
-    <div style={{fontSize:11,color:"#555"}}>{msg||"Processing..."}</div>
+    <div style={{fontSize:11,color:"#999"}}>{msg||"Processing..."}</div>
   </div>
 );
 
@@ -158,7 +158,7 @@ class ErrorBoundary extends React.Component {
         <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#0a0a0a",padding:24,flexDirection:"column",gap:16,fontFamily:"'DM Mono',monospace"}}>
           <div style={{fontSize:32}}>⚠</div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#e8e4d8"}}>Something went wrong</div>
-          <div style={{fontSize:12,color:"#555",textAlign:"center",maxWidth:400,lineHeight:1.8}}>
+          <div style={{fontSize:12,color:"#999",textAlign:"center",maxWidth:400,lineHeight:1.8}}>
             ContractorOS hit an unexpected error. Your data is safe — it's saved in the cloud.<br/>Refresh the page to continue.
           </div>
           <div style={{fontSize:10,color:"#333",background:"#141414",border:"1px solid #2a2a2a",borderRadius:6,padding:"10px 16px",maxWidth:500,wordBreak:"break-all"}}>
@@ -167,7 +167,7 @@ class ErrorBoundary extends React.Component {
           <button onClick={()=>window.location.reload()} style={{background:"#f59e0b",color:"#0a0a0a",border:"none",padding:"12px 28px",borderRadius:6,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,cursor:"pointer",letterSpacing:"0.05em"}}>
             Refresh Page →
           </button>
-          <button onClick={()=>this.setState({hasError:false,error:null})} style={{background:"transparent",border:"1px solid #2a2a2a",color:"#555",padding:"8px 20px",borderRadius:6,fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer"}}>
+          <button onClick={()=>this.setState({hasError:false,error:null})} style={{background:"transparent",border:"1px solid #2a2a2a",color:"#999",padding:"8px 20px",borderRadius:6,fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer"}}>
             Try Without Refreshing
           </button>
         </div>
@@ -199,14 +199,14 @@ function AuthGate() {
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:32,color:"#e8e4d8",letterSpacing:"0.05em"}}>
           CONTRACTOR<span style={{color:"#f59e0b"}}>OS</span>
         </div>
-        <div style={{fontSize:11,color:"#555",marginTop:4,letterSpacing:"0.15em",textTransform:"uppercase"}}>Fleet Operating System</div>
+        <div style={{fontSize:11,color:"#999",marginTop:4,letterSpacing:"0.15em",textTransform:"uppercase"}}>Fleet Operating System</div>
       </div>
       {authView === "signin"
         ? <SignIn routing="virtual" afterSignInUrl="/app" appearance={{elements:{rootBox:{width:"100%",maxWidth:400}}}}/>
         : <SignUp routing="virtual" afterSignUpUrl="/app" appearance={{elements:{rootBox:{width:"100%",maxWidth:400}}}}/>
       }
       <button onClick={()=>setAuthView(authView==="signin"?"signup":"signin")}
-        style={{marginTop:16,background:"transparent",border:"none",color:"#555",fontSize:11,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>
+        style={{marginTop:16,background:"transparent",border:"none",color:"#999",fontSize:11,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>
         {authView==="signin"?"Don't have an account? Sign up →":"Already have an account? Sign in →"}
       </button>
     </div>
@@ -220,22 +220,22 @@ function AuthGate() {
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:32,color:"#e8e4d8"}}>
             CONTRACTOR<span style={{color:"#f59e0b"}}>OS</span>
           </div>
-          <div style={{fontSize:11,color:"#555",marginTop:4}}>Welcome, {user?.firstName || user?.emailAddresses?.[0]?.emailAddress}</div>
+          <div style={{fontSize:11,color:"#999",marginTop:4}}>Welcome, {user?.firstName || user?.emailAddresses?.[0]?.emailAddress}</div>
         </div>
         <div style={{background:"#141414",border:"1px solid #2a2a2a",borderRadius:10,padding:"28px 32px",maxWidth:420,width:"100%",textAlign:"center"}}>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#e8e4d8",marginBottom:8}}>Set Up Your Company</div>
-          <div style={{fontSize:11,color:"#555",marginBottom:24,lineHeight:1.8}}>
+          <div style={{fontSize:11,color:"#999",marginBottom:24,lineHeight:1.8}}>
             ContractorOS organizes data by company. Create your company to get started, or ask your owner to invite you.
           </div>
           {hasMemberships ? (
             <div style={{marginBottom:20}}>
-              <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10}}>Your Companies</div>
+              <div style={{fontSize:10,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10}}>Your Companies</div>
               {userMemberships.data.map(m=>(
                 <button key={m.organization.id}
                   onClick={()=>m.organization.setActive()}
                   style={{display:"block",width:"100%",background:"#0f0f0f",border:"1px solid #2a2a2a",borderRadius:6,padding:"12px 16px",color:"#e8e4d8",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,marginBottom:8,textAlign:"left"}}>
                   {m.organization.name}
-                  <span style={{fontSize:10,color:"#555",fontFamily:"'DM Mono',monospace",fontWeight:400,marginLeft:10}}>{m.role}</span>
+                  <span style={{fontSize:10,color:"#999",fontFamily:"'DM Mono',monospace",fontWeight:400,marginLeft:10}}>{m.role}</span>
                 </button>
               ))}
             </div>
@@ -832,6 +832,11 @@ function ContractorOS() {
 
   const handleNav = (id) => { setPrevScreen(screen); setScreen(id); setSubScreen(null); setAiResult(null); setAnalyzeStep("paste"); setNavOpen(false); };
   const handleBack = () => { if(prevScreen) { setScreen(prevScreen); setPrevScreen(null); setSubScreen(null); } };
+  const handleSubNav = (screenId, subId) => {
+    setSubScreen(subId);
+    if(screenId === "finance") setFinanceSubTab(subId);
+    if(screenId === "lender") setLenderTab(subId);
+  };
 
   // ── Tier & Nav helpers ──
   const currentTier = settings.subscriptionTier || "fleet";
@@ -839,6 +844,13 @@ function ContractorOS() {
   const canAccessScreen = (screenId) => {
     if(isOwner) return true;
     return tierScreens.includes(screenId);
+  };
+  const DRIVER_SCREENS = ["dispatch","drivers","payroll","driverschedule"];
+  const canAccessScreenForRole = (screenId) => {
+    if(isOwner) return true;
+    if(!canAccessScreen(screenId)) return false;
+    if(currentUser.role === "driver") return DRIVER_SCREENS.includes(screenId);
+    return true;
   };
   const getScreenTier = (screenId) => {
     if(TIERS.solo.screens.includes(screenId)) return "solo";
@@ -942,7 +954,7 @@ function ContractorOS() {
   if(!dbLoaded) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#0a0a0a",flexDirection:"column",gap:16}}>
       <div style={{width:48,height:48,border:"3px solid #1e1e1e",borderTop:`3px solid ${segment?SEGMENTS[segment]?.color||"#f59e0b":"#f59e0b"}`,borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
-      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,color:"#555",letterSpacing:"0.1em"}}>LOADING YOUR DATA...</div>
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,color:"#999",letterSpacing:"0.1em"}}>LOADING YOUR DATA...</div>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
@@ -1012,7 +1024,7 @@ function ContractorOS() {
             <div style={{textAlign:"center",padding:"16px 0"}}>
               <div style={{fontSize:40,marginBottom:16}}>✅</div>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#e8e4d8",marginBottom:8}}>Redirecting to Checkout...</div>
-              <div style={{fontSize:12,color:"#666",lineHeight:1.8,marginBottom:24}}>
+              <div style={{fontSize:12,color:"#aaa",lineHeight:1.8,marginBottom:24}}>
                 You will be redirected to Stripe to complete your upgrade to{" "}
                 <span style={{color:targetTier.color,fontWeight:700}}>{targetTier.label}</span>.
               </div>
@@ -1025,17 +1037,17 @@ function ContractorOS() {
                   <div style={{fontSize:10,color:targetTier.color,letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:6}}>Upgrade to {targetTier.label}</div>
                   <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:800,color:"#e8e4d8",lineHeight:1}}>Unlock {navLabels[upgradeTargetScreen]||upgradeTargetScreen}</div>
                 </div>
-                <button onClick={()=>{setShowUpgradeModal(false);setUpgradeSent(false);setUpgradeError("");}} style={{background:"transparent",border:"none",color:"#555",fontSize:20,cursor:"pointer",padding:"4px 8px",lineHeight:1}}>✕</button>
+                <button onClick={()=>{setShowUpgradeModal(false);setUpgradeSent(false);setUpgradeError("");}} style={{background:"transparent",border:"none",color:"#999",fontSize:20,cursor:"pointer",padding:"4px 8px",lineHeight:1}}>✕</button>
               </div>
               <div style={{background:`${targetTier.color}11`,border:`1px solid ${targetTier.color}33`,borderRadius:8,padding:"14px 18px",marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
                   <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:32,fontWeight:900,color:targetTier.color,lineHeight:1}}>{targetTier.price}</div>
-                  <div style={{fontSize:10,color:"#555",marginTop:4}}>Upgrade from {currentTierData.label} {currentTierData.price}</div>
+                  <div style={{fontSize:10,color:"#999",marginTop:4}}>Upgrade from {currentTierData.label} {currentTierData.price}</div>
                 </div>
-                <div style={{fontSize:10,color:"#555",textAlign:"right"}}>Cancel anytime<br/>No long-term contract</div>
+                <div style={{fontSize:10,color:"#999",textAlign:"right"}}>Cancel anytime<br/>No long-term contract</div>
               </div>
               <div style={{marginBottom:20}}>
-                <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10}}>What you unlock:</div>
+                <div style={{fontSize:10,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10}}>What you unlock:</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
                   {newFeatures.map(f=>(
                     <div key={f} style={{fontSize:11,color:"#888",display:"flex",alignItems:"center",gap:6}}>
@@ -1061,9 +1073,9 @@ function ContractorOS() {
               </button>
                 <button onClick={()=>{setShowUpgradeModal(false);setUpgradeSent(false);setUpgradeError("");}} style={{...S.ghost,fontSize:11,padding:"13px 16px"}}>Cancel</button>
               </div>
-              <div style={{fontSize:9,color:"#444",textAlign:"center",marginTop:12,lineHeight:1.7}}>
+              <div style={{fontSize:9,color:"#888",textAlign:"center",marginTop:12,lineHeight:1.7}}>
                 Secure checkout via Stripe. Questions?{" "}
-                <a href="mailto:support@contractoroshub.com" style={{color:"#666"}} onClick={e=>e.stopPropagation()}>Contact Support</a>
+                <a href="mailto:support@contractoroshub.com" style={{color:"#aaa"}} onClick={e=>e.stopPropagation()}>Contact Support</a>
               </div>
             </>
           )}
@@ -1082,12 +1094,12 @@ function ContractorOS() {
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#e8e4d8",marginBottom:8}}>
             {navLabels[screenId]} is a <span style={{color:tier.color}}>{tier.label}</span> feature
           </div>
-          <div style={{fontSize:12,color:"#555",lineHeight:1.8,marginBottom:4}}>
+          <div style={{fontSize:12,color:"#999",lineHeight:1.8,marginBottom:4}}>
             Upgrade to {tier.label} ({tier.price}) to unlock {navLabels[screenId]} and {tier.screens.length} other features.
           </div>
-          <div style={{fontSize:11,color:"#666",marginBottom:24}}>{tier.desc}</div>
+          <div style={{fontSize:11,color:"#aaa",marginBottom:24}}>{tier.desc}</div>
           <div style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:6,padding:"12px 16px",marginBottom:20,textAlign:"left"}}>
-            <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8}}>{tier.label} includes:</div>
+            <div style={{fontSize:10,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8}}>{tier.label} includes:</div>
             {tier.screens.filter(s=>!tierScreens.includes(s)).slice(0,5).map(s=>(
               <div key={s} style={{fontSize:11,color:"#888",padding:"3px 0"}}>✓ {navLabels[s]||s}</div>
             ))}
@@ -1237,8 +1249,8 @@ function ContractorOS() {
         <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.9)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000,padding:20}}>
           <div style={{background:"#141414",border:`1px solid ${accent}44`,borderRadius:10,padding:"32px 28px",maxWidth:320,width:"100%",textAlign:"center"}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#e8e4d8",marginBottom:4}}>Switch User</div>
-            <div style={{fontSize:12,color:"#555",marginBottom:20}}>Signing in as <span style={{color:accent}}>{pinEntry.user.name}</span></div>
-            <div style={{fontSize:11,color:"#555",marginBottom:10}}>Enter PIN</div>
+            <div style={{fontSize:12,color:"#999",marginBottom:20}}>Signing in as <span style={{color:accent}}>{pinEntry.user.name}</span></div>
+            <div style={{fontSize:11,color:"#999",marginBottom:10}}>Enter PIN</div>
             <input type="password" maxLength={6} value={pinEntry.enteredPin} onChange={e=>setPinEntry(p=>({...p,enteredPin:e.target.value,error:false}))} onKeyDown={e=>e.key==="Enter"&&confirmPin()} placeholder="••••" style={{...S.input,textAlign:"center",fontSize:24,letterSpacing:"0.3em",marginBottom:8}} autoFocus/>
             {pinEntry.error&&<div style={{fontSize:11,color:"#ef4444",marginBottom:8}}>Incorrect PIN — try again</div>}
             <div style={{display:"flex",gap:10,marginTop:12}}>
@@ -1254,15 +1266,16 @@ function ContractorOS() {
         <div style={{background:currentUser.role==="manager"?"#0d0d1a":"#0a100a",borderBottom:`1px solid ${currentUser.role==="manager"?"#2a2a5a":"#1a3a1a"}`,padding:"6px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
           <div style={{fontSize:10,color:currentUser.role==="manager"?"#8888cc":"#4ade80",letterSpacing:"0.15em",textTransform:"uppercase"}}>
             {currentUser.role==="manager"?"👔 Manager View":"🚗 Driver View"} — {currentUser.name}
-            {currentUser.role==="driver"&&<span style={{color:"#555",marginLeft:8}}>Read only</span>}
+            {currentUser.role==="driver"&&<span style={{color:"#999",marginLeft:8}}>Read only</span>}
           </div>
-          <button onClick={()=>setSwitchingUser(true)} style={{background:"transparent",border:"1px solid #2a2a2a",color:"#555",padding:"3px 10px",fontSize:9,cursor:"pointer",borderRadius:3,fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em"}}>Switch User</button>
+          <button onClick={()=>setSwitchingUser(true)} style={{background:"transparent",border:"1px solid #2a2a2a",color:"#999",padding:"3px 10px",fontSize:9,cursor:"pointer",borderRadius:3,fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em"}}>Switch User</button>
         </div>
       )}
 
       <Nav navOpen={navOpen} setNavOpen={setNavOpen} seg={seg} screen={screen} accent={accent} urgentItems={urgentItems} onNav={handleNav}
-        navExpanded={navExpanded} toggleNavExpand={toggleNavExpand} canAccessScreen={canAccessScreen}
+        navExpanded={navExpanded} toggleNavExpand={toggleNavExpand} canAccessScreen={canAccessScreenForRole}
         SUB_PAGES={SUB_PAGES} currentTier={currentTier} TIERS={TIERS} subScreen={subScreen} setSubScreen={setSubScreen}
+        onSubNav={handleSubNav} currentUser={currentUser}
         onLockedClick={(id)=>{
           setUpgradeTargetScreen(id);
           setUpgradeEmail(user?.emailAddresses?.[0]?.emailAddress||"");
@@ -1278,8 +1291,8 @@ function ContractorOS() {
         signOut={signOut}
       />
 
-      {/* Screen routing with tier gating */}
-      {canAccessScreen(screen) ? <>
+      {/* Screen routing with tier and role gating */}
+      {canAccessScreenForRole(screen) ? <>
         {screen==="dashboard" && <Dashboard {...screenProps}/>}
         {screen==="analyze" && seg.features.loadAnalysis && <Analyze {...screenProps}/>}
         {screen==="boards" && <Boards {...screenProps}/>}
@@ -1315,7 +1328,7 @@ function ContractorOS() {
         <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:500,padding:20}} onClick={()=>setShowBugReport(false)}>
           <div style={{background:"#141414",border:"1px solid #2a2a2a",borderRadius:10,padding:"28px 32px",maxWidth:480,width:"100%"}} onClick={e=>e.stopPropagation()}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#e8e4d8",marginBottom:4}}>Report a Bug / Contact</div>
-            <div style={{fontSize:11,color:"#555",marginBottom:16}}>Found something broken? Have a feature idea? Reach out directly.</div>
+            <div style={{fontSize:11,color:"#999",marginBottom:16}}>Found something broken? Have a feature idea? Reach out directly.</div>
             <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
               <div><label style={S.label}>Your Email (optional)</label><input value={bugForm.email} onChange={e=>setBugForm(p=>({...p,email:e.target.value}))} placeholder="so we can follow up" style={S.input}/></div>
               <div><label style={S.label}>Subject</label><input value={bugForm.subject} onChange={e=>setBugForm(p=>({...p,subject:e.target.value}))} placeholder="Bug: ..., Feature request: ..." style={S.input}/></div>
@@ -1335,7 +1348,7 @@ function ContractorOS() {
           <div style={{maxWidth:860,width:"100%",maxHeight:"90vh",overflow:"auto",borderRadius:10}} onClick={e=>e.stopPropagation()}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8"}}>Manage Team</div>
-              <button onClick={()=>setShowOrgProfile(false)} style={{background:"transparent",border:"none",color:"#555",fontSize:22,cursor:"pointer"}}>✕</button>
+              <button onClick={()=>setShowOrgProfile(false)} style={{background:"transparent",border:"none",color:"#999",fontSize:22,cursor:"pointer"}}>✕</button>
             </div>
             <OrganizationProfile routing="virtual" appearance={{elements:{rootBox:{width:"100%"},card:{backgroundColor:"#141414",border:"1px solid #2a2a2a",boxShadow:"none"}}}}/>
           </div>
@@ -1359,7 +1372,7 @@ function ContractorOS() {
         <div style={{display:"flex",gap:20,alignItems:"center"}}>
           <button onClick={()=>setShowBugReport(true)} style={{background:"transparent",border:"1px solid #444",color:"#ffffff",fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em",padding:"4px 12px",borderRadius:4}}>Report a Bug</button>
           <a href="mailto:bostonrudi1993@gmail.com" style={{color:"#ffffff",fontSize:10,textDecoration:"none",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em"}}>Contact Us</a>
-          <div style={{marginLeft:"auto",fontSize:9,color:"#555"}}>contractoroshub.com</div>
+          <div style={{marginLeft:"auto",fontSize:9,color:"#999"}}>contractoroshub.com</div>
         </div>
       </div>
     </div>

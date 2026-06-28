@@ -116,7 +116,7 @@ export default function Fleet(p) {
                           />
                         )}
                         {compliance.trucks.length===0&&(
-                          <div style={{fontSize:9,color:"#555",marginTop:5}}>No vehicles in Compliance yet — you can enter a custom name above, or <span style={{color:accent,cursor:"pointer"}} onClick={()=>{setScreen("compliance");setSubScreen("vehicles");}}>add vehicles to Compliance first</span>.</div>
+                          <div style={{fontSize:9,color:"#999",marginTop:5}}>No vehicles in Compliance yet — you can enter a custom name above, or <span style={{color:accent,cursor:"pointer"}} onClick={()=>{setScreen("compliance");setSubScreen("vehicles");}}>add vehicles to Compliance first</span>.</div>
                         )}
                       </div>
                       <div><label style={S.label}>Service Type *</label>
@@ -143,15 +143,15 @@ export default function Fleet(p) {
                     }} style={{...S.btn,marginTop:14}}>Save Record</button>
                   </div>
                 )}
-                {maintenance.length===0&&!showAddMaint&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No maintenance records yet.</div>}
+                {maintenance.length===0&&!showAddMaint&&<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>No maintenance records yet.</div>}
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {maintenance.map(m=>(
                     <div key={m.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
-                      <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{m.truckName} — {m.type}</div><div style={{fontSize:10,color:"#555"}}>{m.date} {m.mileage?`· ${parseInt(m.mileage).toLocaleString()} mi`:""} {m.notes?`· ${m.notes}`:""}</div></div>
+                      <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{m.truckName} — {m.type}</div><div style={{fontSize:10,color:"#999"}}>{m.date} {m.mileage?`· ${parseInt(m.mileage).toLocaleString()} mi`:""} {m.notes?`· ${m.notes}`:""}</div></div>
                       {m.cost&&<div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ef4444",flexShrink:0}}>{fmt$(parseFloat(m.cost))}</div>}
-                      {m.nextDueMiles&&<div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:9,color:"#555"}}>Next</div><div style={{fontSize:12,color:"#f59e0b"}}>{parseInt(m.nextDueMiles).toLocaleString()} mi</div></div>}
+                      {m.nextDueMiles&&<div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:9,color:"#999"}}>Next</div><div style={{fontSize:12,color:"#f59e0b"}}>{parseInt(m.nextDueMiles).toLocaleString()} mi</div></div>}
                       <button onClick={()=>openEdit("maintenance",m)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace",flexShrink:0}}>Edit</button>
-                      <button onClick={()=>setMaintenance(p=>p.filter(x=>x.id!==m.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
+                      <button onClick={()=>setMaintenance(p=>p.filter(x=>x.id!==m.id))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
                     </div>
                   ))}
                 </div>
@@ -160,12 +160,12 @@ export default function Fleet(p) {
             {subScreen==="schedule"&&(
               <div style={{maxWidth:700,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
                 <div style={{...S.section,marginBottom:20}}>UPCOMING SERVICE</div>
-                {maintenance.filter(m=>m.nextDueMiles).length===0?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No upcoming service items set.</div>:
+                {maintenance.filter(m=>m.nextDueMiles).length===0?<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>No upcoming service items set.</div>:
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {maintenance.filter(m=>m.nextDueMiles).sort((a,b)=>parseInt(a.nextDueMiles)-parseInt(b.nextDueMiles)).map(m=>(
                     <div key={m.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
-                      <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{m.type} — {m.truckName}</div><div style={{fontSize:10,color:"#555"}}>Last: {m.date||"Unknown"} {m.mileage?`at ${parseInt(m.mileage).toLocaleString()} mi`:""}</div></div>
-                      <div style={{textAlign:"right"}}><div style={{fontSize:9,color:"#555"}}>Next Due</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#f59e0b"}}>{parseInt(m.nextDueMiles).toLocaleString()} mi</div></div>
+                      <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{m.type} — {m.truckName}</div><div style={{fontSize:10,color:"#999"}}>Last: {m.date||"Unknown"} {m.mileage?`at ${parseInt(m.mileage).toLocaleString()} mi`:""}</div></div>
+                      <div style={{textAlign:"right"}}><div style={{fontSize:9,color:"#999"}}>Next Due</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#f59e0b"}}>{parseInt(m.nextDueMiles).toLocaleString()} mi</div></div>
                     </div>
                   ))}
                 </div>}
@@ -175,13 +175,13 @@ export default function Fleet(p) {
               <div style={{flex:1,overflowY:"auto",padding:24}}>
                 <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-                    <div><div style={S.section}>FUEL LOG</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Track every fill-up per truck. IFTA-ready state breakdown.</div></div>
+                    <div><div style={S.section}>FUEL LOG</div><div style={{fontSize:11,color:"#999",marginTop:4}}>Track every fill-up per truck. IFTA-ready state breakdown.</div></div>
                     <button className="hov" onClick={()=>setFuelShowAdd(!fuelShowAdd)} style={S.btn}>{fuelShowAdd?"Cancel":"+ Log Fuel"}</button>
                   </div>
                   {(()=>{const totalGal=fuelLog.reduce((s,r)=>s+parseFloat(r.gallons||0),0);const totalCost=fuelLog.reduce((s,r)=>s+parseFloat(r.totalCost||0),0);return(
                     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
                       {[["Total Gallons",totalGal.toFixed(0)+" gal","#60a5fa"],["Total Fuel Cost",fmt$(totalCost),"#ef4444"],["Avg $/Gal",totalGal>0?fmt$(totalCost/totalGal):"$0.00",accent]].map(([lbl,val,col])=>(
-                        <div key={lbl} style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div><div style={{fontSize:9,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginTop:4}}>{lbl}</div></div>
+                        <div key={lbl} style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div><div style={{fontSize:9,color:"#999",letterSpacing:"0.15em",textTransform:"uppercase",marginTop:4}}>{lbl}</div></div>
                       ))}
                     </div>
                   );})()}
@@ -205,12 +205,12 @@ export default function Fleet(p) {
                     setFuelForm({truckName:"",date:"",gallons:"",pricePerGallon:"",totalCost:"",odometer:"",state:"",cardType:"company",notes:""});setFuelShowAdd(false);}} style={{...S.btn,marginTop:14}}>Save Fuel Entry</button>
                     </div>
                   )}
-                  {fuelLog.length===0&&!fuelShowAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No fuel entries yet.</div>}
+                  {fuelLog.length===0&&!fuelShowAdd&&<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>No fuel entries yet.</div>}
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
                     {fuelLog.map(r=>(<div key={r.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
-                      <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{r.truckName} — {r.gallons} gal{r.state?` · ${r.state}`:""}</div><div style={{fontSize:10,color:"#555"}}>{fmtDate(r.date)} · {r.cardType}{r.odometer?` · ${parseInt(r.odometer).toLocaleString()} mi`:""}{r.notes?` · ${r.notes}`:""}</div></div>
-                      <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ef4444"}}>{fmt$(parseFloat(r.totalCost||0))}</div>{r.pricePerGallon&&<div style={{fontSize:9,color:"#555"}}>${parseFloat(r.pricePerGallon).toFixed(3)}/gal</div>}</div>
-                      <button onClick={()=>setFuelLog(p=>p.filter(x=>x.id!==r.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                      <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{r.truckName} — {r.gallons} gal{r.state?` · ${r.state}`:""}</div><div style={{fontSize:10,color:"#999"}}>{fmtDate(r.date)} · {r.cardType}{r.odometer?` · ${parseInt(r.odometer).toLocaleString()} mi`:""}{r.notes?` · ${r.notes}`:""}</div></div>
+                      <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ef4444"}}>{fmt$(parseFloat(r.totalCost||0))}</div>{r.pricePerGallon&&<div style={{fontSize:9,color:"#999"}}>${parseFloat(r.pricePerGallon).toFixed(3)}/gal</div>}</div>
+                      <button onClick={()=>setFuelLog(p=>p.filter(x=>x.id!==r.id))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12}}>✕</button>
                     </div>))}
                   </div>
                 </div>
@@ -220,7 +220,7 @@ export default function Fleet(p) {
               <div style={{flex:1,overflowY:"auto",padding:24}}>
                 <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-                    <div><div style={S.section}>ODOMETER LOG</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Log readings to track real miles per truck. Pairs with fuel log for IFTA.</div></div>
+                    <div><div style={S.section}>ODOMETER LOG</div><div style={{fontSize:11,color:"#999",marginTop:4}}>Log readings to track real miles per truck. Pairs with fuel log for IFTA.</div></div>
                     <button className="hov" onClick={()=>setOdomShowAdd(!odomShowAdd)} style={S.btn}>{odomShowAdd?"Cancel":"+ Log Reading"}</button>
                   </div>
                   {odomShowAdd&&(<div style={{...S.card,marginBottom:18,border:`1px solid ${accent}33`}}>
@@ -239,21 +239,21 @@ export default function Fleet(p) {
                     Object.values(byTruck).forEach(arr=>{arr.sort((a,b)=>new Date(a.date)-new Date(b.date));});
                     if(Object.keys(byTruck).length>0) return(
                       <div style={{marginBottom:20}}>
-                        <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>Mileage Summary</div>
+                        <div style={{fontSize:10,color:"#999",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>Mileage Summary</div>
                         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
                           {Object.entries(byTruck).map(([truck,arr])=>{const total=arr.length>=2?parseInt(arr[arr.length-1].reading||0)-parseInt(arr[0].reading||0):0;return(
-                            <div key={truck} style={S.card}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8",marginBottom:6}}>{truck}</div><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:accent}}>{total.toLocaleString()} mi</div><div style={{fontSize:9,color:"#555",marginTop:3}}>Latest: {parseInt(arr[arr.length-1]?.reading||0).toLocaleString()}</div></div>
+                            <div key={truck} style={S.card}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8",marginBottom:6}}>{truck}</div><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:accent}}>{total.toLocaleString()} mi</div><div style={{fontSize:9,color:"#999",marginTop:3}}>Latest: {parseInt(arr[arr.length-1]?.reading||0).toLocaleString()}</div></div>
                           );})}
                         </div>
                       </div>
                     );
                   })()}
-                  {odometer.length===0&&!odomShowAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No odometer readings yet. Log start and end of week to track mileage.</div>}
+                  {odometer.length===0&&!odomShowAdd&&<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>No odometer readings yet. Log start and end of week to track mileage.</div>}
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
                     {[...odometer].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(r=>(<div key={r.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
-                      <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{r.truckName}{r.state?` — ${r.state}`:""}</div><div style={{fontSize:10,color:"#555"}}>{fmtDate(r.date)}{r.notes?` · ${r.notes}`:""}</div></div>
+                      <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{r.truckName}{r.state?` — ${r.state}`:""}</div><div style={{fontSize:10,color:"#999"}}>{fmtDate(r.date)}{r.notes?` · ${r.notes}`:""}</div></div>
                       <div style={{fontSize:18,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:accent,flexShrink:0}}>{parseInt(r.reading||0).toLocaleString()} mi</div>
-                      <button onClick={()=>setOdometer(p=>p.filter(x=>x.id!==r.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                      <button onClick={()=>setOdometer(p=>p.filter(x=>x.id!==r.id))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12}}>✕</button>
                     </div>))}
                   </div>
                 </div>
@@ -263,13 +263,13 @@ export default function Fleet(p) {
               <div style={{flex:1,overflowY:"auto",padding:24}}>
                 <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-                    <div><div style={S.section}>TIRE MANAGEMENT</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Track tires by position, tread depth, and replacement cost.</div></div>
+                    <div><div style={S.section}>TIRE MANAGEMENT</div><div style={{fontSize:11,color:"#999",marginTop:4}}>Track tires by position, tread depth, and replacement cost.</div></div>
                     <button className="hov" onClick={()=>setTireShowAdd(!tireShowAdd)} style={S.btn}>{tireShowAdd?"Cancel":"+ Add Tire Record"}</button>
                   </div>
                   {(()=>{const totalSpent=tires.reduce((s,t)=>s+parseFloat(t.cost||0),0);const active=tires.filter(t=>t.status==="active").length;return(
                     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
                       {[["Active Tires",active.toString(),accent],["Total Records",tires.length.toString(),"#888"],["Total Invested",fmt$(totalSpent),"#ef4444"]].map(([lbl,val,col])=>(
-                        <div key={lbl} style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div><div style={{fontSize:9,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginTop:4}}>{lbl}</div></div>
+                        <div key={lbl} style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div><div style={{fontSize:9,color:"#999",letterSpacing:"0.15em",textTransform:"uppercase",marginTop:4}}>{lbl}</div></div>
                       ))}
                     </div>
                   );})()}
@@ -288,16 +288,16 @@ export default function Fleet(p) {
                     </div>
                     <button className="hov" onClick={()=>{const name=tireForm.truckName==="__other__"?(tireForm._customTruck||""):tireForm.truckName;if(!name||!tireForm.position)return;setTires(p=>[{...tireForm,truckName:name,id:Date.now()},...p]);setTireForm({truckName:"",date:"",position:"",brand:"",size:"",treadDepth:"",cost:"",mileageInstalled:"",status:"active",notes:""});setTireShowAdd(false);}} style={{...S.btn,marginTop:14}}>Save Tire Record</button>
                   </div>)}
-                  {tires.length===0&&!tireShowAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No tire records yet.</div>}
+                  {tires.length===0&&!tireShowAdd&&<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>No tire records yet.</div>}
                   {(()=>{const byTruck={};tires.filter(t=>t.status==="active").forEach(t=>{if(!byTruck[t.truckName])byTruck[t.truckName]=[];byTruck[t.truckName].push(t);});if(!Object.keys(byTruck).length)return null;return Object.entries(byTruck).map(([truck,ts])=>(
                     <div key={truck} style={{...S.card,marginBottom:12}}>
                       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>{truck}</div>
                       {ts.map(t=>{const tread=parseInt(t.treadDepth||0);const tc=tread===0?"#555":tread<=4?"#ef4444":tread<=8?"#f59e0b":"#22c55e";return(
                         <div key={t.id} style={{display:"flex",alignItems:"center",gap:14,padding:"8px 0",borderBottom:"1px solid #1a1a1a"}}>
-                          <div style={{flex:1}}><div style={{fontSize:11,color:"#c8c4bc"}}>{t.position}</div><div style={{fontSize:10,color:"#555"}}>{t.brand||"—"} {t.size||""}{t.date?` · ${fmtDate(t.date)}`:""}</div></div>
-                          {t.treadDepth&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:tc}}>{t.treadDepth}/32</div><div style={{fontSize:8,color:"#555",textTransform:"uppercase"}}>Tread</div></div>}
+                          <div style={{flex:1}}><div style={{fontSize:11,color:"#c8c4bc"}}>{t.position}</div><div style={{fontSize:10,color:"#999"}}>{t.brand||"—"} {t.size||""}{t.date?` · ${fmtDate(t.date)}`:""}</div></div>
+                          {t.treadDepth&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:tc}}>{t.treadDepth}/32</div><div style={{fontSize:8,color:"#999",textTransform:"uppercase"}}>Tread</div></div>}
                           {t.cost&&<div style={{fontSize:13,color:"#ef4444",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,flexShrink:0}}>{fmt$(parseFloat(t.cost))}</div>}
-                          <button onClick={()=>setTires(p=>p.filter(x=>x.id!==t.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                          <button onClick={()=>setTires(p=>p.filter(x=>x.id!==t.id))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12}}>✕</button>
                         </div>
                       );})}
                     </div>
@@ -353,7 +353,7 @@ export default function Fleet(p) {
                   }} style={S.btn}>Save Inspection</button>
                 </div>
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:8}}>Recent Inspections</div>
-                {vanInspectionLog.length===0&&<div style={{color:"#555",fontSize:12}}>No inspections logged yet.</div>}
+                {vanInspectionLog.length===0&&<div style={{color:"#999",fontSize:12}}>No inspections logged yet.</div>}
                 {vanInspectionLog.slice(0,20).map(v=>(
                   <div key={v.id} style={{...S.card,marginBottom:6}}>
                     <div style={{display:"flex",justifyContent:"space-between"}}>
@@ -402,7 +402,7 @@ export default function Fleet(p) {
                   }}>Import All Unmatched ({fuelCardParsed.filter(t=>t.status==="Unmatched").length})</button>
                   <div style={{overflowX:"auto"}}>
                     <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
-                      <thead><tr>{["Date","Location","Gallons","Amount","Status","Action"].map(h=><th key={h} style={{textAlign:"left",color:"#555",padding:"6px 8px",borderBottom:"1px solid #1e1e1e"}}>{h}</th>)}</tr></thead>
+                      <thead><tr>{["Date","Location","Gallons","Amount","Status","Action"].map(h=><th key={h} style={{textAlign:"left",color:"#999",padding:"6px 8px",borderBottom:"1px solid #1e1e1e"}}>{h}</th>)}</tr></thead>
                       <tbody>
                         {fuelCardParsed.map((t,i)=>(
                           <tr key={i} style={{background:t.status==="Unmatched"?"#1a1505":"transparent"}}>

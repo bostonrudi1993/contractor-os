@@ -87,7 +87,7 @@ export default function Invoices(p) {
         const totalOpen=open.reduce((s,i)=>s+parseFloat(i.amount||0),0);
         const nextNum=()=>{const nums=invoices.map(i=>parseInt(i.invoiceNum?.replace(/\D/g,"")||0)).filter(Boolean);const max=nums.length>0?Math.max(...nums):1000;return`INV-${max+1}`;};
         const STATUS_COLORS={open:"#f59e0b",partial:"#60a5fa",paid:"#22c55e",void:"#555"};
-        const agingLabel=(dueDate)=>{if(!dueDate)return{label:"No due date",color:"#555"};const days=Math.ceil((new Date()-new Date(dueDate))/86400000);if(days<0)return{label:`Due in ${Math.abs(days)}d`,color:"#22c55e"};if(days<=30)return{label:`${days}d overdue`,color:"#f59e0b"};if(days<=60)return{label:`${days}d overdue`,color:"#f87171"};return{label:`${days}d overdue`,color:"#ef4444"};};
+        const agingLabel=(dueDate)=>{if(!dueDate)return{label:"No due date",color:"#999"};const days=Math.ceil((new Date()-new Date(dueDate))/86400000);if(days<0)return{label:`Due in ${Math.abs(days)}d`,color:"#22c55e"};if(days<=30)return{label:`${days}d overdue`,color:"#f59e0b"};if(days<=60)return{label:`${days}d overdue`,color:"#f87171"};return{label:`${days}d overdue`,color:"#ef4444"};};
         const shown=invoiceSub==="open"?open:invoiceSub==="overdue"?overdue:invoiceSub==="paid"?paid:invoices;
         return(
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
@@ -95,12 +95,12 @@ export default function Invoices(p) {
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-                <div><div style={S.section}>ACCOUNTS RECEIVABLE</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Track what's owed to you and how old each invoice is.</div></div>
+                <div><div style={S.section}>ACCOUNTS RECEIVABLE</div><div style={{fontSize:11,color:"#999",marginTop:4}}>Track what's owed to you and how old each invoice is.</div></div>
                 <button className="hov" onClick={()=>setInvoiceShowAdd(!invoiceShowAdd)} style={S.btn}>{invoiceShowAdd?"Cancel":"+ New Invoice"}</button>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
                 {[["Total Open",fmt$(totalOpen),"#f59e0b"],["Overdue",fmt$(overdue.reduce((s,i)=>s+parseFloat(i.amount||0),0)),overdue.length>0?"#ef4444":"#555"],["Collected YTD",fmt$(paid.reduce((s,i)=>s+parseFloat(i.amount||0),0)),"#22c55e"]].map(([lbl,val,col])=>(
-                  <div key={lbl} style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div><div style={{fontSize:9,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginTop:4}}>{lbl}</div></div>
+                  <div key={lbl} style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div><div style={{fontSize:9,color:"#999",letterSpacing:"0.15em",textTransform:"uppercase",marginTop:4}}>{lbl}</div></div>
                 ))}
               </div>
               {invoiceShowAdd&&(
@@ -142,10 +142,10 @@ export default function Invoices(p) {
                       <div>
                         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
                           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8"}}>{inv.clientName}</div>
-                          <span style={{fontSize:9,color:"#555",border:"1px solid #2a2a2a",padding:"1px 7px",borderRadius:3}}>{inv.invoiceNum}</span>
+                          <span style={{fontSize:9,color:"#999",border:"1px solid #2a2a2a",padding:"1px 7px",borderRadius:3}}>{inv.invoiceNum}</span>
                           <span style={{fontSize:9,color:STATUS_COLORS[inv.status],border:`1px solid ${STATUS_COLORS[inv.status]}44`,padding:"1px 7px",borderRadius:3,textTransform:"uppercase"}}>{inv.status}</span>
                         </div>
-                        <div style={{fontSize:10,color:"#555"}}>{inv.description&&`${inv.description} · `}Issued: {fmtDate(inv.issueDate||inv.createdDate)}{inv.dueDate&&` · Due: ${fmtDate(inv.dueDate)}`}</div>
+                        <div style={{fontSize:10,color:"#999"}}>{inv.description&&`${inv.description} · `}Issued: {fmtDate(inv.issueDate||inv.createdDate)}{inv.dueDate&&` · Due: ${fmtDate(inv.dueDate)}`}</div>
                       </div>
                       <div style={{textAlign:"right",flexShrink:0,marginLeft:16}}>
                         <div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:inv.status==="paid"?"#22c55e":"#e8e4d8"}}>{fmt$(parseFloat(inv.amount||0))}</div>
@@ -158,7 +158,7 @@ export default function Invoices(p) {
                         <button onClick={()=>setInvoices(p=>p.map(i=>i.id===inv.id?{...i,status:"paid",paidDate:new Date().toISOString().slice(0,10)}:i))} style={{...S.btn,background:"#22c55e",fontSize:10,padding:"5px 14px"}}>Mark Paid</button>
                         <button onClick={()=>setInvoices(p=>p.map(i=>i.id===inv.id?{...i,status:"partial"}:i))} style={{background:"transparent",border:"1px solid #60a5fa44",color:"#60a5fa",cursor:"pointer",fontSize:10,padding:"5px 10px",borderRadius:4,fontFamily:"'DM Mono',monospace"}}>Partial</button>
                         <button onClick={()=>{setInvoiceEditId(inv.id);setInvoiceEditForm({clientName:inv.clientName,amount:inv.amount,issueDate:inv.issueDate||"",dueDate:inv.dueDate||"",description:inv.description||"",notes:inv.notes||""});}} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"5px 10px",borderRadius:4,fontFamily:"'DM Mono',monospace"}}>Edit</button>
-                        <button onClick={()=>setInvoices(p=>p.filter(x=>x.id!==inv.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,marginLeft:"auto"}}>✕</button>
+                        <button onClick={()=>setInvoices(p=>p.filter(x=>x.id!==inv.id))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12,marginLeft:"auto"}}>✕</button>
                       </div>
                     )}
                   </div>

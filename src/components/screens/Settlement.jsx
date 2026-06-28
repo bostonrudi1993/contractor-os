@@ -124,7 +124,7 @@ export default function Settlement(p) {
               </div>;
             })()}
             {settlementTab==="history"&&<div>
-              {settlementLog.length===0&&<div style={{color:"#555",fontSize:12}}>No settlement records yet.</div>}
+              {settlementLog.length===0&&<div style={{color:"#999",fontSize:12}}>No settlement records yet.</div>}
               {settlementLog.map(l=>(
                 <div key={l.id} style={{...S.card,marginBottom:8}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>

@@ -85,7 +85,7 @@ export default function Users(p) {
         <div style={{flex:1,overflowY:"auto",padding:24,animation:"fadeUp 0.3s ease"}}>
           <div style={{maxWidth:700,margin:"0 auto"}}>
             <div style={{...S.section,marginBottom:4}}>USERS & ROLES</div>
-            <p style={{fontSize:11,color:"#555",marginBottom:16,lineHeight:1.8}}>Invite drivers and managers to your company. Each person logs in with their own account and only sees your company's data.</p>
+            <p style={{fontSize:11,color:"#999",marginBottom:16,lineHeight:1.8}}>Invite drivers and managers to your company. Each person logs in with their own account and only sees your company's data.</p>
 
             {/* Clerk org management */}
             {organization&&(
@@ -93,7 +93,7 @@ export default function Users(p) {
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
                   <div>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8"}}>{organization.name}</div>
-                    <div style={{fontSize:10,color:"#555"}}>Organization ID: {organization.id?.slice(0,16)}...</div>
+                    <div style={{fontSize:10,color:"#999"}}>Organization ID: {organization.id?.slice(0,16)}...</div>
                   </div>
                   <div style={{fontSize:9,color:"#22c55e",border:"1px solid #22c55e44",padding:"2px 8px",borderRadius:3}}>ACTIVE ORG</div>
                 </div>
@@ -111,7 +111,7 @@ export default function Users(p) {
                 {[["👑 Owner (org:admin)","Full access — all screens, settings, billing, invite users","#f59e0b"],["👔 Manager (org:member)","Can edit routes, drivers, compliance, finance — cannot change billing or delete the org","#8888cc"],["🚛 Driver (org:member)","Read-only — sees their own dispatch, HOS log, and pay stubs only","#22c55e"]].map(([role,desc,col])=>(
                   <div key={role} style={{display:"flex",gap:12,padding:"8px 0",borderBottom:"1px solid #1a1a2a"}}>
                     <div style={{fontSize:12,color:col,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,width:180,flexShrink:0}}>{role}</div>
-                    <div style={{fontSize:11,color:"#555"}}>{desc}</div>
+                    <div style={{fontSize:11,color:"#999"}}>{desc}</div>
                   </div>
                 ))}
               </div>
@@ -122,12 +122,12 @@ export default function Users(p) {
 
             {/* Current user */}
             <div style={{...S.card,marginBottom:20,border:`1px solid ${accent}44`,background:"#0f0f0a"}}>
-              <div style={{fontSize:10,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:10}}>Currently Signed In</div>
+              <div style={{fontSize:10,color:"#999",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:10}}>Currently Signed In</div>
               <div style={{display:"flex",alignItems:"center",gap:14}}>
                 <div style={{width:44,height:44,background:accent+"22",border:`1px solid ${accent}44`,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:18,color:accent}}>{currentUser.name.charAt(0)}</div>
                 <div style={{flex:1}}>
                   <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8"}}>{currentUser.name}</div>
-                  <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>{currentUser.role}</div>
+                  <div style={{fontSize:10,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em"}}>{currentUser.role}</div>
                 </div>
                 {users.length>0&&<button onClick={()=>setSwitchingUser(true)} style={{...S.ghost,fontSize:10}}>Switch User</button>}
               </div>
@@ -136,20 +136,20 @@ export default function Users(p) {
             {/* Switch user panel */}
             {switchingUser&&(
               <div style={{...S.card,marginBottom:20,border:"1px solid #2a2a4a"}}>
-                <div style={{fontSize:10,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:12}}>Switch To</div>
+                <div style={{fontSize:10,color:"#999",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:12}}>Switch To</div>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {/* Owner always available */}
                   <div className="cardhov" onClick={()=>{setCurrentUser({id:"owner",name:"Owner",role:"owner",pin:""});setSwitchingUser(false);}} style={{...S.card,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
                     <div style={{width:32,height:32,background:accent+"22",border:`1px solid ${accent}44`,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:accent}}>O</div>
-                    <div style={{flex:1}}><div style={{fontSize:12,color:"#e8e4d8"}}>Owner</div><div style={{fontSize:10,color:"#555"}}>Full access</div></div>
+                    <div style={{flex:1}}><div style={{fontSize:12,color:"#e8e4d8"}}>Owner</div><div style={{fontSize:10,color:"#999"}}>Full access</div></div>
                     <div style={{fontSize:9,color:"#22c55e",border:"1px solid #22c55e44",padding:"2px 7px",borderRadius:3}}>OWNER</div>
                   </div>
                   {users.map(u=>(
                     <div key={u.id} className="cardhov" onClick={()=>switchUser(u)} style={{...S.card,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
                       <div style={{width:32,height:32,background:"#2a2a2a",border:"1px solid #3a3a3a",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#888"}}>{u.name.charAt(0)}</div>
-                      <div style={{flex:1}}><div style={{fontSize:12,color:"#e8e4d8"}}>{u.name}</div><div style={{fontSize:10,color:"#555"}}>{u.driverId?`Driver: ${drivers.find(d=>d.id===u.driverId)?.name||"Unknown"}`:"No driver linked"}</div></div>
+                      <div style={{flex:1}}><div style={{fontSize:12,color:"#e8e4d8"}}>{u.name}</div><div style={{fontSize:10,color:"#999"}}>{u.driverId?`Driver: ${drivers.find(d=>d.id===u.driverId)?.name||"Unknown"}`:"No driver linked"}</div></div>
                       <div style={{fontSize:9,color:u.role==="manager"?"#8888cc":"#4ade80",border:`1px solid ${u.role==="manager"?"#8888cc44":"#4ade8044"}`,padding:"2px 7px",borderRadius:3,textTransform:"uppercase"}}>{u.role}</div>
-                      {u.pin&&<div style={{fontSize:9,color:"#555"}}>🔒 PIN</div>}
+                      {u.pin&&<div style={{fontSize:9,color:"#999"}}>🔒 PIN</div>}
                     </div>
                   ))}
                 </div>
@@ -159,7 +159,7 @@ export default function Users(p) {
 
             {/* Add user */}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase"}}>Team Members ({users.length})</div>
+              <div style={{fontSize:10,color:"#999",letterSpacing:"0.2em",textTransform:"uppercase"}}>Team Members ({users.length})</div>
               <button className="hov" onClick={()=>setShowAddUser(!showAddUser)} style={S.btn}>{showAddUser?"Cancel":"+ Add User"}</button>
             </div>
 
@@ -181,7 +181,7 @@ export default function Users(p) {
                     </select>
                   </div>}
                 </div>
-                <div style={{marginTop:10,padding:"10px 12px",background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:4,fontSize:10,color:"#555",lineHeight:1.7}}>
+                <div style={{marginTop:10,padding:"10px 12px",background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:4,fontSize:10,color:"#999",lineHeight:1.7}}>
                   <strong style={{color:"#888"}}>Manager:</strong> Can view and edit all data — routes, compliance, drivers, finance.<br/>
                   <strong style={{color:"#888"}}>Driver:</strong> Read-only access. If linked, they can see their own route, compliance dates, and incident history.
                 </div>
@@ -195,7 +195,7 @@ export default function Users(p) {
             )}
 
             {users.length===0&&!showAddUser&&(
-              <div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>
+              <div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:32}}>
                 No team members added yet. Add managers or drivers to give them controlled access.
               </div>
             )}
@@ -206,10 +206,10 @@ export default function Users(p) {
                   <div style={{width:36,height:36,background:u.role==="manager"?"#1a1a2a":"#0a120a",border:`1px solid ${u.role==="manager"?"#2a2a5a":"#1a3a1a"}`,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:u.role==="manager"?"#8888cc":"#4ade80",flexShrink:0}}>{u.name.charAt(0)}</div>
                   <div style={{flex:1}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{u.name}</div>
-                    <div style={{fontSize:10,color:"#555"}}>{u.role==="manager"?"Manager — full edit access":"Driver — read only"}{u.driverId&&` · ${drivers.find(d=>d.id===u.driverId)?.name||"Driver linked"}`}{u.pin&&" · PIN protected"}</div>
+                    <div style={{fontSize:10,color:"#999"}}>{u.role==="manager"?"Manager — full edit access":"Driver — read only"}{u.driverId&&` · ${drivers.find(d=>d.id===u.driverId)?.name||"Driver linked"}`}{u.pin&&" · PIN protected"}</div>
                   </div>
                   <div style={{fontSize:9,color:u.role==="manager"?"#8888cc":"#4ade80",border:`1px solid ${u.role==="manager"?"#8888cc44":"#4ade8044"}`,padding:"2px 8px",borderRadius:3,textTransform:"uppercase",flexShrink:0}}>{u.role}</div>
-                  <button onClick={()=>setUsers(p=>p.filter(x=>x.id!==u.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
+                  <button onClick={()=>setUsers(p=>p.filter(x=>x.id!==u.id))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
                 </div>
               ))}
             </div>
@@ -218,7 +218,7 @@ export default function Users(p) {
             <div style={{marginTop:24,background:"#0c0c14",border:"1px solid #1a1a2a",borderRadius:8,padding:"16px 20px"}}>
               <div style={{fontSize:10,color:"#3a3a6a",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>Role Permissions</div>
               <table style={{width:"100%",fontSize:11,borderCollapse:"collapse"}}>
-                <thead><tr style={{borderBottom:"1px solid #1a1a2a"}}>{["Feature","Owner","Manager","Driver"].map(h=><th key={h} style={{padding:"6px 10px",textAlign:"left",fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
+                <thead><tr style={{borderBottom:"1px solid #1a1a2a"}}>{["Feature","Owner","Manager","Driver"].map(h=><th key={h} style={{padding:"6px 10px",textAlign:"left",fontSize:9,color:"#999",letterSpacing:"0.1em",textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
                 <tbody>
                   {[["View all data","✓","✓","Own only"],["Add/Edit records","✓","✓","✗"],["Delete records","✓","✓","✗"],["View P&L / Finance","✓","✓","✗"],["Generate PDF reports","✓","✓","✗"],["Manage users","✓","✗","✗"],["Switch contractor type","✓","✗","✗"]].map(([feat,...perms])=>(
                     <tr key={feat} style={{borderBottom:"1px solid #14141e"}}>

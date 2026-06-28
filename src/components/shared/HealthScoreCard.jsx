@@ -26,14 +26,14 @@ export default function HealthScoreCard({
       {/* Header row */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
         <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,color:"#555",textTransform:"uppercase",letterSpacing:"0.15em",marginBottom:4}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,color:"#999",textTransform:"uppercase",letterSpacing:"0.15em",marginBottom:4}}>
             Business Health Score
           </div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:42,fontWeight:900,color:scoreColor,lineHeight:1}}>
-            {totalHealthScore}<span style={{fontSize:20,color:"#444"}}>/100</span>
+            {totalHealthScore}<span style={{fontSize:20,color:"#888"}}>/100</span>
           </div>
           <div style={{fontSize:12,color:scoreColor,fontWeight:700,marginTop:4}}>{healthLabel}</div>
-          <div style={{fontSize:10,color:"#555",marginTop:4,maxWidth:240,lineHeight:1.6}}>{healthInsight}</div>
+          <div style={{fontSize:10,color:"#999",marginTop:4,maxWidth:240,lineHeight:1.6}}>{healthInsight}</div>
         </div>
         {sparkData.length>1&&(
           <div style={{textAlign:"center"}}>
@@ -46,7 +46,7 @@ export default function HealthScoreCard({
                 <circle key={i} cx={(i/(sparkData.length-1))*110+5} cy={45-(d.total/sparkMax)*40} r={3} fill={scoreColor}/>
               ))}
             </svg>
-            <div style={{fontSize:8,color:"#444",letterSpacing:"0.1em"}}>8 WEEK TREND</div>
+            <div style={{fontSize:8,color:"#888",letterSpacing:"0.1em"}}>8 WEEK TREND</div>
           </div>
         )}
       </div>
@@ -71,7 +71,7 @@ export default function HealthScoreCard({
               <div style={{height:4,background:"#1e1e1e",borderRadius:2,marginBottom:8}}>
                 <div style={{height:"100%",width:`${(p.score/25)*100}%`,background:pColor,borderRadius:2,transition:"width 0.4s ease"}}/>
               </div>
-              <div style={{fontSize:10,color:"#666",marginBottom:6,lineHeight:1.5}}>{p.why}</div>
+              <div style={{fontSize:10,color:"#aaa",marginBottom:6,lineHeight:1.5}}>{p.why}</div>
               {p.score<20&&(
                 <button onClick={()=>handleNav(p.action)} style={{background:"transparent",border:`1px solid ${pColor}44`,color:pColor,fontSize:10,cursor:"pointer",padding:"4px 12px",borderRadius:4,fontFamily:"'DM Mono',monospace"}}>
                   {p.actionLabel}
@@ -90,7 +90,7 @@ export default function HealthScoreCard({
             {lenderScore}/100
           </div>
         </div>
-        <div style={{fontSize:10,color:"#444",lineHeight:1.7,whiteSpace:"pre-line"}}>
+        <div style={{fontSize:10,color:"#888",lineHeight:1.7,whiteSpace:"pre-line"}}>
           {monthsOfData<6&&`• ${6-monthsOfData} more months of data needed (have ${monthsOfData})\n`}
           {dscr<1.25&&`• DSCR ${dscr.toFixed(2)}x — lenders want 1.25x minimum\n`}
           {!hasActiveContract&&"• No active contract on file\n"}

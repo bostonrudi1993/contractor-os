@@ -95,7 +95,7 @@ export default function Analyze(p) {
             {analyzeStep==="paste"&&!aiLoading&&(
               <div style={{animation:"fadeUp 0.3s ease"}}>
                 <div style={{...S.section,marginBottom:8}}>PASTE YOUR LOAD</div>
-                <p style={{fontSize:11,color:"#555",marginBottom:16,lineHeight:1.8}}>Copy from DAT, Truckstop, broker email or text. Paste everything — AI extracts what it needs.</p>
+                <p style={{fontSize:11,color:"#999",marginBottom:16,lineHeight:1.8}}>Copy from DAT, Truckstop, broker email or text. Paste everything — AI extracts what it needs.</p>
                 <textarea value={pasteText} onChange={e=>setPasteText(e.target.value)} placeholder={"Chicago, IL to Nashville, TN\n487 miles | 42,000 lbs\nRate: $1,450\nPickup: Tomorrow 7am\nBroker: Coyote Logistics"} style={{...S.input,height:160,resize:"vertical",lineHeight:1.7}}/>
                 <div style={{display:"flex",gap:12,marginTop:14}}>
                   <button className="hov" onClick={parseLoad} disabled={!pasteText.trim()} style={{...S.btn,opacity:pasteText.trim()?1:0.4}}>Parse Load →</button>
@@ -133,15 +133,15 @@ export default function Analyze(p) {
                       <div style={{fontSize:12,color:"#888",lineHeight:1.7,marginTop:4}}>{aiResult.summary}</div>
                     </div>
                     <div style={{textAlign:"right",flexShrink:0}}>
-                      <div style={{fontSize:10,color:"#555",marginBottom:2}}>NET RPM</div>
+                      <div style={{fontSize:10,color:"#999",marginBottom:2}}>NET RPM</div>
                       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:36,fontWeight:900,color:aiResult.verdictColor==="green"?"#22c55e":aiResult.verdictColor==="yellow"?"#f59e0b":"#ef4444"}}>${(aiResult.netRPM||0).toFixed(2)}</div>
                     </div>
                   </div>
                   <div style={{...S.card,marginBottom:14}}>
-                    <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>Rate Breakdown</div>
+                    <div style={{fontSize:9,color:"#999",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:12}}>Rate Breakdown</div>
                     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
                       {[["Gross Rate",fmt$(aiResult.grossRate),"#c8c4bc"],["Gross RPM",`$${(aiResult.grossRPM||0).toFixed(2)}/mi`,"#c8c4bc"],["Fuel Cost",`-${fmt$(aiResult.fuelCost)}`,"#ef4444"],["Deadhead",`-${fmt$(aiResult.deadheadCost)}`,"#ef4444"],["Truck Cost",`-${fmt$(aiResult.truckCost)}`,"#ef4444"],["Net Revenue",fmt$(aiResult.netRevenue),"#22c55e"]].map(([lbl,val,col])=>(
-                        <div key={lbl} style={{padding:"8px 0",borderTop:"1px solid #1e1e1e"}}><div style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{lbl}</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{val}</div></div>
+                        <div key={lbl} style={{padding:"8px 0",borderTop:"1px solid #1e1e1e"}}><div style={{fontSize:9,color:"#999",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{lbl}</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{val}</div></div>
                       ))}
                     </div>
                   </div>
@@ -185,7 +185,7 @@ export default function Analyze(p) {
                     <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Pass Rate</div><div style={{fontSize:24,fontWeight:700,color:accent}}>{loadHistory.length>0?(loadHistory.filter(l=>l.verdict==="PASS").length/loadHistory.length*100).toFixed(0):0}%</div></div>
                   </div>;
                 })()}
-                {loadHistory.length===0&&<div style={{color:"#555",fontSize:12}}>No load history yet. Analyze loads and click Take It or Pass.</div>}
+                {loadHistory.length===0&&<div style={{color:"#999",fontSize:12}}>No load history yet. Analyze loads and click Take It or Pass.</div>}
                 {loadHistory.map(l=>(
                   <div key={l.id} style={{...S.card,marginBottom:8}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>

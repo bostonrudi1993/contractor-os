@@ -84,12 +84,12 @@ export default function Dispatch(p) {
         <div style={{flex:1,overflowY:"auto",padding:24}}>
           <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-              <div><div style={S.section}>DISPATCH BOARD</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Assign loads and routes to drivers and trucks. Track run status.</div></div>
+              <div><div style={S.section}>DISPATCH BOARD</div><div style={{fontSize:11,color:"#999",marginTop:4}}>Assign loads and routes to drivers and trucks. Track run status.</div></div>
               <button className="hov" onClick={()=>setDispatchShowAdd(!dispatchShowAdd)} style={S.btn}>{dispatchShowAdd?"Cancel":"+ Assign Run"}</button>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
               {[["Active",dispatches.filter(d=>d.status==="assigned"||d.status==="in_progress"||d.status==="issue").length.toString(),accent],["Completed",dispatches.filter(d=>d.status==="completed").length.toString(),"#22c55e"],["Issues",dispatches.filter(d=>d.status==="issue").length.toString(),dispatches.filter(d=>d.status==="issue").length>0?"#ef4444":"#555"],["Total",dispatches.length.toString(),"#555"]].map(([lbl,val,col])=>(
-                <div key={lbl} style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div><div style={{fontSize:9,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginTop:4}}>{lbl}</div></div>
+                <div key={lbl} style={S.card}><div style={{fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:col}}>{val}</div><div style={{fontSize:9,color:"#999",letterSpacing:"0.15em",textTransform:"uppercase",marginTop:4}}>{lbl}</div></div>
               ))}
             </div>
             {dispatchShowAdd&&(
@@ -118,7 +118,7 @@ export default function Dispatch(p) {
               const active=dispatches.filter(d=>d.status==="assigned"||d.status==="in_progress"||d.status==="issue");
               const history=dispatches.filter(d=>d.status==="completed"||d.status==="cancelled");
               const shown=dispatchFilter==="active"?active:dispatchFilter==="history"?history:dispatches;
-              if(shown.length===0) return <div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>{dispatchFilter==="active"?"No active dispatches.":"No dispatch history yet."}</div>;
+              if(shown.length===0) return <div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>{dispatchFilter==="active"?"No active dispatches.":"No dispatch history yet."}</div>;
               return shown.map(d=>(
                 <div key={d.id} style={{...S.card,borderLeft:`3px solid ${STATUS_COLORS[d.status]||"#555"}`,marginBottom:10}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
@@ -129,7 +129,7 @@ export default function Dispatch(p) {
                         <span style={{fontSize:9,color:STATUS_COLORS[d.status],border:`1px solid ${STATUS_COLORS[d.status]}44`,padding:"1px 7px",borderRadius:3,textTransform:"uppercase"}}>{STATUS_LABELS[d.status]}</span>
                       </div>
                       <div style={{fontSize:11,color:"#888"}}>{d.routeName&&`${d.routeName} · `}{d.origin&&d.destination?`${d.origin} → ${d.destination}`:d.origin||d.destination||"No route details"}</div>
-                      <div style={{fontSize:10,color:"#555",marginTop:3}}>{fmtDate(d.date)}{d.pickupTime?` @ ${d.pickupTime}`:""}{d.notes&&` · ${d.notes}`}</div>
+                      <div style={{fontSize:10,color:"#999",marginTop:3}}>{fmtDate(d.date)}{d.pickupTime?` @ ${d.pickupTime}`:""}{d.notes&&` · ${d.notes}`}</div>
                     </div>
                   </div>
                   {/* ── D14: LastMile dispatch enhancements ── */}
@@ -145,7 +145,7 @@ export default function Dispatch(p) {
                     return <>
                       <div style={{display:"flex",gap:12,fontSize:11,color:"#888",marginTop:6}}>
                         {dailyRate!==null&&<span>Daily Rate: <span style={{color:accent}}>${dailyRate.toFixed(0)}/day</span></span>}
-                        <span>Gas: {gasCost>0?<span style={{color:accent}}>${gasCost.toFixed(2)}</span>:<span style={{color:"#555"}}>Not logged</span>}</span>
+                        <span>Gas: {gasCost>0?<span style={{color:accent}}>${gasCost.toFixed(2)}</span>:<span style={{color:"#999"}}>Not logged</span>}</span>
                       </div>
                       <div style={{marginTop:8}}>
                         <button className="hov" onClick={()=>setWhiteGloveOpen(whiteGloveOpen===d.id?null:d.id)} style={{fontSize:10,padding:"3px 10px",borderRadius:3,border:`1px solid ${wgStatus==="complete"?"#22c55e":wgStatus==="partial"?"#f59e0b":"#888"}44`,background:"transparent",color:wgStatus==="complete"?"#22c55e":wgStatus==="partial"?"#f59e0b":"#888",cursor:"pointer"}}>White Glove {wgStatus==="complete"?"✓":wgStatus==="partial"?`(${wgDone}/${wgTotal})`:"—"}</button>
@@ -170,7 +170,7 @@ export default function Dispatch(p) {
                       {d.status==="assigned"&&<button onClick={()=>setDispatches(p=>p.map(x=>x.id===d.id?{...x,status:"in_progress"}:x))} style={{...S.btn,background:"#60a5fa",fontSize:10,padding:"5px 12px"}}>Start Run</button>}
                       {d.status==="in_progress"&&<button onClick={()=>setDispatches(p=>p.map(x=>x.id===d.id?{...x,status:"completed"}:x))} style={{...S.btn,background:"#22c55e",fontSize:10,padding:"5px 12px"}}>Complete</button>}
                       <button onClick={()=>setDispatches(p=>p.map(x=>x.id===d.id?{...x,status:"issue"}:x))} style={{background:"transparent",border:"1px solid #ef444444",color:"#ef4444",cursor:"pointer",fontSize:10,padding:"5px 10px",borderRadius:4,fontFamily:"'DM Mono',monospace"}}>Flag Issue</button>
-                      <button onClick={()=>setDispatches(p=>p.filter(x=>x.id!==d.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,marginLeft:"auto"}}>✕</button>
+                      <button onClick={()=>setDispatches(p=>p.filter(x=>x.id!==d.id))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12,marginLeft:"auto"}}>✕</button>
                     </div>
                   )}
                 </div>

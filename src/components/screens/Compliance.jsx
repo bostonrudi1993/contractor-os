@@ -85,12 +85,12 @@ export default function Compliance(p) {
   const truckLimit = isOwner ? Infinity : (TRUCK_LIMITS[currentTier] ?? Infinity);
   return (
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <SubNav tabs={[["overview","Overview"],["vehicles","Vehicles"],["drivers_comp","Drivers"],["docs","Doc Guide"],["ask","Ask DOT AI"]]} active={subScreen||"overview"} onSelect={setSubScreen}/>
+          <SubNav tabs={[["overview","Overview"],["vehicles","Vehicles"],["drivers_comp","Drivers"],["docs","Doc Guide"]]} active={subScreen||"overview"} onSelect={setSubScreen}/>
           <div style={{flex:1,overflowY:"auto",padding:24}}>
             {(!subScreen||subScreen==="overview")&&(
               <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
                 <div style={{...S.section,marginBottom:4}}>COMPLIANCE CENTER</div>
-                <p style={{fontSize:11,color:"#555",marginBottom:22,lineHeight:1.8}}>
+                <p style={{fontSize:11,color:"#999",marginBottom:22,lineHeight:1.8}}>
                   {seg.id==="amazon"?"One compliance failure can end your DSP contract. Track everything here.":seg.id==="fedex"?"Protect your ISP route investment with proactive compliance tracking.":"One DOT audit with missing files = up to $16,000 in fines."}
                 </p>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:22}}>
@@ -180,8 +180,8 @@ export default function Compliance(p) {
                                 {isFiled&&(
                                   <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
                                     <span style={{fontSize:10,color:"#22c55e"}}>✓ Filed: {new Date(filing.filedDate).toLocaleDateString()}</span>
-                                    {filing.confirmationNum&&<span style={{fontSize:10,color:"#555"}}>Ref: {filing.confirmationNum}</span>}
-                                    {filing.filedNotes&&<span style={{fontSize:10,color:"#555",fontStyle:"italic"}}>"{filing.filedNotes}"</span>}
+                                    {filing.confirmationNum&&<span style={{fontSize:10,color:"#999"}}>Ref: {filing.confirmationNum}</span>}
+                                    {filing.filedNotes&&<span style={{fontSize:10,color:"#999",fontStyle:"italic"}}>"{filing.filedNotes}"</span>}
                                   </div>
                                 )}
                               </div>
@@ -249,24 +249,24 @@ export default function Compliance(p) {
                     }} style={{...S.btn,marginTop:14}}>Save Vehicle</button>
                   </div>
                 )}
-                {compliance.trucks.length===0&&!showAddVehicle&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No vehicles added yet.</div>}
+                {compliance.trucks.length===0&&!showAddVehicle&&<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:32}}>No vehicles added yet.</div>}
                 <div style={{display:"flex",flexDirection:"column",gap:12}}>
                   {compliance.trucks.map(t=>(
                     <div key={t.id} style={S.card}>
                       <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
                         <div>
                           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:17,fontWeight:700,color:"#e8e4d8"}}>{t.name}{t.nickname&&<span style={{color:accent,marginLeft:8,fontSize:14}}>"{t.nickname}"</span>}</div>
-                          <div style={{fontSize:10,color:"#555"}}>{t.year} {t.make} {t.plate&&`· ${t.plate}`}{t.vin&&<span style={{color:"#444",marginLeft:6}}>· VIN: {t.vin}</span>}</div>
+                          <div style={{fontSize:10,color:"#999"}}>{t.year} {t.make} {t.plate&&`· ${t.plate}`}{t.vin&&<span style={{color:"#888",marginLeft:6}}>· VIN: {t.vin}</span>}</div>
                         </div>
                         <div style={{display:"flex",gap:8}}>
                           <button onClick={()=>openEdit("vehicle",t)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
-                          <button onClick={()=>setCompliance(p=>({...p,trucks:p.trucks.filter(x=>x.id!==t.id)}))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                          <button onClick={()=>setCompliance(p=>({...p,trucks:p.trucks.filter(x=>x.id!==t.id)}))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12}}>✕</button>
                         </div>
                       </div>
                       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-                {[["DOT Inspection",t.dotInspection],["Registration",t.registration],["IFTA",t.ifta],["IRP Plates",t.irp],["Insurance",t.insuranceExpiry]].map(([lbl,date])=>{
+                {[["DOT Inspection","dotInspection",t.dotInspection],["Registration","registration",t.registration],["IFTA","ifta",t.ifta],["IRP Plates","irp",t.irp],["Insurance","insuranceExpiry",t.insuranceExpiry]].map(([lbl,fk,date])=>{
                           const d=daysUntil(date),c=statusColor(d);
-                          return <div key={lbl} style={{background:"#0f0f0f",border:`1px solid ${c}22`,borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{lbl}</div><div style={{fontSize:12,color:c,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{date?new Date(date).toLocaleDateString():"—"}</div>{d!==null&&<div style={{fontSize:9,color:c,marginTop:2}}>{statusLabel(d)}</div>}</div>;
+                          return <div key={lbl} style={{background:"#0f0f0f",border:`1px solid ${c}22`,borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#888",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{lbl}</div><input type="date" value={date||""} onChange={e=>setCompliance(prev=>({...prev,trucks:prev.trucks.map(x=>x.id===t.id?{...x,[fk]:e.target.value}:x)}))} style={{background:"transparent",border:"none",color:c,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",width:"100%",padding:0,outline:"none"}}/>{d!==null&&<div style={{fontSize:9,color:c,marginTop:2}}>{statusLabel(d)}</div>}</div>;
                         })}
                       </div>
                     </div>
@@ -291,7 +291,7 @@ export default function Compliance(p) {
                     <button className="hov" onClick={()=>{ if(!compDriverForm.name)return; setCompliance(p=>({...p,drivers:[...p.drivers,{...compDriverForm,id:Date.now()}]})); setCompDriverForm({name:"",cdlExpiry:"",medCardExpiry:"",mvrDue:"",drugTest:"",annualReview:""}); setShowAddCompDriver(false); }} style={{...S.btn,background:"#60a5fa",marginTop:14}}>Save Driver</button>
                   </div>
                 )}
-                {compliance.drivers.length===0&&!showAddCompDriver&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No drivers added yet.</div>}
+                {compliance.drivers.length===0&&!showAddCompDriver&&<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:32}}>No drivers added yet.</div>}
                 <div style={{display:"flex",flexDirection:"column",gap:12}}>
                   {compliance.drivers.map(d=>(
                     <div key={d.id} style={S.card}>
@@ -299,13 +299,13 @@ export default function Compliance(p) {
                         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:17,fontWeight:700,color:"#e8e4d8"}}>{d.name}</div>
                         <div style={{display:"flex",gap:8}}>
                           <button onClick={()=>openEdit("compdriver",d)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
-                          <button onClick={()=>setCompliance(p=>({...p,drivers:p.drivers.filter(x=>x.id!==d.id)}))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                          <button onClick={()=>setCompliance(p=>({...p,drivers:p.drivers.filter(x=>x.id!==d.id)}))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12}}>✕</button>
                         </div>
                       </div>
                       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
-                        {[["CDL",d.cdlExpiry],["Med Card",d.medCardExpiry],["MVR Due",d.mvrDue],["Drug Test",d.drugTest],["Annual Review",d.annualReview]].map(([lbl,date])=>{
+                        {[["CDL","cdlExpiry",d.cdlExpiry],["Med Card","medCardExpiry",d.medCardExpiry],["MVR Due","mvrDue",d.mvrDue],["Drug Test","drugTest",d.drugTest],["Annual Review","annualReview",d.annualReview]].map(([lbl,fk,date])=>{
                           const dy=daysUntil(date),c=statusColor(dy);
-                          return <div key={lbl} style={{background:"#0f0f0f",border:`1px solid ${c}22`,borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{lbl}</div><div style={{fontSize:12,color:c,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{date?new Date(date).toLocaleDateString():"—"}</div>{dy!==null&&<div style={{fontSize:9,color:c,marginTop:2}}>{statusLabel(dy)}</div>}</div>;
+                          return <div key={lbl} style={{background:"#0f0f0f",border:`1px solid ${c}22`,borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#888",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{lbl}</div><input type="date" value={date||""} onChange={e=>setCompliance(prev=>({...prev,drivers:prev.drivers.map(x=>x.id===d.id?{...x,[fk]:e.target.value}:x)}))} style={{background:"transparent",border:"none",color:c,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",width:"100%",padding:0,outline:"none"}}/>{dy!==null&&<div style={{fontSize:9,color:c,marginTop:2}}>{statusLabel(dy)}</div>}</div>;
                         })}
                       </div>
                     </div>
@@ -317,7 +317,7 @@ export default function Compliance(p) {
             {subScreen==="docs"&&(
               <div style={{maxWidth:820,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
                 <div style={{...S.section,marginBottom:4}}>DOCUMENT GUIDE</div>
-                <p style={{fontSize:11,color:"#555",marginBottom:22,lineHeight:1.8}}>Every document, where it lives, and how long to keep it.</p>
+                <p style={{fontSize:11,color:"#999",marginBottom:22,lineHeight:1.8}}>Every document, where it lives, and how long to keep it.</p>
                 {[
                   {cat:"In Every Vehicle",color:"#ef4444",docs:[["Insurance Certificate","Current primary liability cert","Glove box / door pocket","Current always"],["Vehicle Registration","State registration","Glove box","Current always"],["IFTA License","Fuel tax license","Cab","Renew Jan 1"],["Annual DOT Inspection","Post-inspection certificate","In vehicle","12 months"],["Driver CDL","Driver's commercial license","Driver carries","Per CDL expiry"],["Medical Card","DOT physical certificate","Driver carries + office copy","1–2 years"]]},
                   {cat:"Driver Qualification File",color:"#60a5fa",docs:[["Driver Application","3-year employment history","DQ file","3 yrs post-separation"],["CDL Copy","Copy of current CDL","DQ file","Update on renewal"],["Annual MVR","State DMV record pull","DQ file","Pull annually, keep 3 yrs"],["Pre-Employment Drug Test","Negative result required","DQ file","5 years"],["Annual Driving Review","Signed MVR review","DQ file","3 years"],["Clearinghouse Query","FMCSA annual D&A check","DQ file","3 years"]]},
@@ -328,9 +328,9 @@ export default function Compliance(p) {
                     <div style={{border:"1px solid #1e1e1e",borderRadius:6,overflow:"hidden"}}>
                       {sec.docs.map(([name,desc,loc,ret],i)=>(
                         <div key={name} style={{display:"grid",gridTemplateColumns:"2fr 2fr 1.5fr",borderTop:i>0?"1px solid #161616":"none",background:"#0f0f0f"}}>
-                          <div style={{padding:"9px 13px",borderRight:"1px solid #161616"}}><div style={{fontSize:11,color:"#c8c4bc"}}>{name}</div><div style={{fontSize:9,color:"#555",marginTop:2}}>{desc}</div></div>
-                          <div style={{padding:"9px 13px",borderRight:"1px solid #161616"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Where</div><div style={{fontSize:11,color:"#888"}}>{loc}</div></div>
-                          <div style={{padding:"9px 13px"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Keep</div><div style={{fontSize:11,color:"#888"}}>{ret}</div></div>
+                          <div style={{padding:"9px 13px",borderRight:"1px solid #161616"}}><div style={{fontSize:11,color:"#c8c4bc"}}>{name}</div><div style={{fontSize:9,color:"#999",marginTop:2}}>{desc}</div></div>
+                          <div style={{padding:"9px 13px",borderRight:"1px solid #161616"}}><div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Where</div><div style={{fontSize:11,color:"#888"}}>{loc}</div></div>
+                          <div style={{padding:"9px 13px"}}><div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Keep</div><div style={{fontSize:11,color:"#888"}}>{ret}</div></div>
                         </div>
                       ))}
                     </div>
@@ -339,24 +339,6 @@ export default function Compliance(p) {
               </div>
             )}
 
-            {subScreen==="ask"&&(
-              <div style={{maxWidth:700,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
-                <div style={{...S.section,marginBottom:4}}>ASK DOT AI</div>
-                <p style={{fontSize:11,color:"#555",marginBottom:18,lineHeight:1.8}}>Plain-English answers to any compliance question.</p>
-                <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
-                  {["What goes in a driver qualification file?","When do I pull an MVR?","What is UCR and when to renew?","What triggers a DOT audit?","How to register with Drug Clearinghouse?","What is MCS-150?","How long keep HOS logs?","Documents required in vehicle?"].map(q=>(
-                    <button key={q} onClick={()=>setDotQ(q)} style={{background:"#111",border:"1px solid #222",color:"#666",padding:"5px 10px",fontSize:10,borderRadius:4,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>{q}</button>
-                  ))}
-                </div>
-                <div style={{display:"flex",gap:10,marginBottom:18}}>
-                  <input value={dotQ} onChange={e=>setDotQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&askDot()} placeholder="Ask any DOT/FMCSA compliance question..." style={{...S.input,flex:1}}/>
-                  <button className="hov" onClick={askDot} disabled={!dotQ.trim()||aiLoading} style={{...S.danger,opacity:dotQ.trim()&&!aiLoading?1:0.4}}>{aiLoading?"...":"Ask →"}</button>
-                </div>
-                {aiLoading&&<Loader msg="Consulting FMCSA regulations..."/>}
-                {aiError&&!aiLoading&&screen==="compliance"&&<div style={{...S.card,background:"#1a0808",border:"1px solid #3a1010",color:"#f87171",fontSize:11,marginBottom:12}}>{aiError}</div>}
-                {dotAnswer&&!aiLoading&&<div style={{background:"#110f00",border:"1px solid #2a2000",borderRadius:8,padding:"18px 22px",animation:"fadeUp 0.3s ease"}}><div style={{fontSize:9,color:"#5a4a00",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:10}}>DOT AI Answer</div><div style={{fontSize:12,color:"#c8c4a0",lineHeight:1.9,whiteSpace:"pre-wrap"}}>{dotAnswer}</div><div style={{marginTop:14,fontSize:10,color:"#3a3000",borderTop:"1px solid #2a1800",paddingTop:10}}>⚠ Informational only. Verify with your state DOT and a compliance professional.</div></div>}
-              </div>
-            )}
           </div>
         </div>
 

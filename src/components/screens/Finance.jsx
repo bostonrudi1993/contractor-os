@@ -97,10 +97,10 @@ export default function Finance(p) {
                   revenue.forEach(r=>{ if(!r.date)return; const k=r.date.slice(0,7); if(!months[k])months[k]={rev:0,exp:0}; months[k].rev+=parseFloat(r.amount||0); });
                   expenses.forEach(e=>{ if(!e.date)return; const k=e.date.slice(0,7); if(!months[k])months[k]={rev:0,exp:0}; months[k].exp+=parseFloat(e.amount||0); });
                   const sorted=Object.entries(months).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,6);
-                  if(!sorted.length) return <div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No financial data yet. Add revenue and expenses to see your P&L.</div>;
+                  if(!sorted.length) return <div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:32}}>No financial data yet. Add revenue and expenses to see your P&L.</div>;
                   return (
                     <div style={S.card}>
-                      <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Monthly Summary</div>
+                      <div style={{fontSize:9,color:"#999",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Monthly Summary</div>
                       {sorted.map(([month,d])=>{
                         const net=d.rev-d.exp;
                         return <div key={month} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #1a1a1a"}}>
@@ -144,14 +144,14 @@ export default function Finance(p) {
                     <button className="hov" onClick={()=>{ if(!revenueForm.amount){showValidation("Amount is required");return;} if(!revenueForm.date){showValidation("Date is required");return;} setRevenue(p=>[{...revenueForm,id:Date.now()},...p]); setRevenueForm({date:"",description:"",amount:"",vehicle:""}); setShowAddRevenue(false); }} style={{...S.btn,marginTop:14}}>Save Revenue</button>
                   </div>
                 )}
-                {revenue.length===0&&!showAddRevenue&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No revenue logged yet.</div>}
+                {revenue.length===0&&!showAddRevenue&&<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>No revenue logged yet.</div>}
                 <div style={{display:"flex",flexDirection:"column",gap:6}}>
                   {revenue.map(r=>(
                     <div key={r.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
-                      <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{r.description||"Revenue"}</div><div style={{fontSize:10,color:"#555"}}>{r.date} {r.vehicle?`· ${r.vehicle}`:""}</div></div>
+                      <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{r.description||"Revenue"}</div><div style={{fontSize:10,color:"#999"}}>{r.date} {r.vehicle?`· ${r.vehicle}`:""}</div></div>
                       <div style={{fontSize:15,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e",flexShrink:0}}>{fmt$(parseFloat(r.amount||0))}</div>
                       <button onClick={()=>openEdit("revenue",r)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace",flexShrink:0}}>Edit</button>
-                      <button onClick={()=>setRevenue(p=>p.filter(x=>x.id!==r.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
+                      <button onClick={()=>setRevenue(p=>p.filter(x=>x.id!==r.id))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
                     </div>
                   ))}
                 </div>
@@ -185,20 +185,20 @@ export default function Finance(p) {
                     <button className="hov" onClick={()=>{ if(!expenseForm.amount){showValidation("Amount is required");return;} if(!expenseForm.date){showValidation("Date is required");return;} setExpenses(p=>[{...expenseForm,id:Date.now()},...p]); setExpenseForm({date:"",category:"fuel",amount:"",description:"",vehicle:""}); setShowAddExpense(false); }} style={{...S.btn,background:"#ef4444",marginTop:14}}>Save Expense</button>
                   </div>
                 )}
-                {expenses.length===0&&!showAddExpense&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No expenses logged yet.</div>}
+                {expenses.length===0&&!showAddExpense&&<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>No expenses logged yet.</div>}
                 <div style={{display:"flex",flexDirection:"column",gap:6}}>
                   {expenses.map(e=>(
                     <div key={e.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
                       <div style={{flex:1}}>
                         <div style={{fontSize:12,color:"#c8c4bc",display:"flex",alignItems:"center",gap:8}}>
                           {e.category.replace(/_/g," ").replace(/\w/g,l=>l.toUpperCase())} {e.description?`— ${e.description}`:""}
-                          {e.source&&<span style={{fontSize:8,color:"#555",border:"1px solid #2a2a2a",padding:"1px 5px",borderRadius:3,textTransform:"uppercase",letterSpacing:"0.08em"}}>{e.source==="fuel_log"?"⛽ fuel":e.source==="maintenance"?"🔧 maint":e.source==="payroll"?"💵 payroll":"auto"}</span>}
+                          {e.source&&<span style={{fontSize:8,color:"#999",border:"1px solid #2a2a2a",padding:"1px 5px",borderRadius:3,textTransform:"uppercase",letterSpacing:"0.08em"}}>{e.source==="fuel_log"?"⛽ fuel":e.source==="maintenance"?"🔧 maint":e.source==="payroll"?"💵 payroll":"auto"}</span>}
                         </div>
-                        <div style={{fontSize:10,color:"#555"}}>{e.date} {e.vehicle?`· ${e.vehicle}`:""}</div>
+                        <div style={{fontSize:10,color:"#999"}}>{e.date} {e.vehicle?`· ${e.vehicle}`:""}</div>
                       </div>
                       <div style={{fontSize:15,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ef4444",flexShrink:0}}>{fmt$(parseFloat(e.amount||0))}</div>
                       {!e.source&&<button onClick={()=>openEdit("expense",e)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace",flexShrink:0}}>Edit</button>}
-                      <button onClick={()=>setExpenses(p=>p.filter(x=>x.id!==e.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
+                      <button onClick={()=>setExpenses(p=>p.filter(x=>x.id!==e.id))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
                     </div>
                   ))}
                 </div>
@@ -208,7 +208,7 @@ export default function Finance(p) {
             {subScreen==="import"&&(
               <div style={{maxWidth:700,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
                 <div style={{...S.section,marginBottom:4}}>IMPORT FROM EXCEL / QUICKBOOKS</div>
-                <p style={{fontSize:11,color:"#555",marginBottom:16,lineHeight:1.8}}>
+                <p style={{fontSize:11,color:"#999",marginBottom:16,lineHeight:1.8}}>
                   Export your P&L from QuickBooks Online or Excel as a CSV file, then drop it here. ContractorOS will read it and automatically create your revenue and expense entries.
                 </p>
 
@@ -217,7 +217,7 @@ export default function Finance(p) {
                   <div style={{fontSize:28,flexShrink:0}}>📥</div>
                   <div style={{flex:1}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:3}}>Download the ContractorOS Template</div>
-                    <div style={{fontSize:11,color:"#555",lineHeight:1.7}}>Not using QuickBooks? Download our Excel template — it has step-by-step instructions, example data, a category guide, and auto-calculates your P&L summary.</div>
+                    <div style={{fontSize:11,color:"#999",lineHeight:1.7}}>Not using QuickBooks? Download our Excel template — it has step-by-step instructions, example data, a category guide, and auto-calculates your P&L summary.</div>
                   </div>
                   <a href="/ContractorOS_PL_Template.xlsx" download="ContractorOS_PL_Template.xlsx" style={{...S.btn,background:accent,color:"#0a0a0a",textDecoration:"none",display:"inline-block",flexShrink:0,padding:"10px 20px",textAlign:"center"}}>
                     Download Template →
@@ -250,7 +250,7 @@ export default function Finance(p) {
                       onDrop={e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f)importExcelPL(f);}}>
                       <div style={{fontSize:32,marginBottom:12}}>📊</div>
                       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8",marginBottom:6}}>Drop your CSV file here</div>
-                      <div style={{fontSize:11,color:"#555",marginBottom:16}}>or click to browse</div>
+                      <div style={{fontSize:11,color:"#999",marginBottom:16}}>or click to browse</div>
                       <div style={{fontSize:10,color:"#3a3a5a"}}>Supports: QuickBooks CSV export, Excel CSV, plain text P&L</div>
                     </div>
                     <input type="file" accept=".csv,.txt,.xls,.xlsx" style={{display:"none"}} onChange={e=>{const f=e.target.files[0];if(f)importExcelPL(f);}}/>
@@ -260,7 +260,7 @@ export default function Finance(p) {
                 {excelImporting&&(
                   <div style={{...S.card,textAlign:"center",padding:40}}>
                     <div style={{width:36,height:36,border:`2px solid #1e1e1e`,borderTop:`2px solid ${accent}`,borderRadius:"50%",animation:"spin 0.7s linear infinite",margin:"0 auto 16px"}}/>
-                    <div style={{fontSize:12,color:"#555"}}>Reading your file and extracting line items...</div>
+                    <div style={{fontSize:12,color:"#999"}}>Reading your file and extracting line items...</div>
                   </div>
                 )}
 
@@ -272,7 +272,7 @@ export default function Finance(p) {
                         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
                           {[["Revenue",fmt$(excelResult.summary.totalRevenue||0),"#22c55e"],["Expenses",fmt$(excelResult.summary.totalExpenses||0),"#ef4444"],["Net Profit",fmt$(excelResult.summary.netProfit||0),(excelResult.summary.netProfit||0)>=0?"#22c55e":"#ef4444"]].map(([lbl,val,col])=>(
                             <div key={lbl} style={{background:"#0a0f0a",border:"1px solid #1a2a1a",borderRadius:5,padding:"10px 12px"}}>
-                              <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>{lbl}</div>
+                              <div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>{lbl}</div>
                               <div style={{fontSize:18,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{val}</div>
                             </div>
                           ))}
@@ -291,18 +291,18 @@ export default function Finance(p) {
                     {/* Preview */}
                     {excelResult.revenue?.slice(0,3).map((r,i)=>(
                       <div key={i} style={{...S.card,marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        <div><div style={{fontSize:11,color:"#c8c4bc"}}>{r.description}</div><div style={{fontSize:9,color:"#555"}}>Revenue · {r.date}</div></div>
+                        <div><div style={{fontSize:11,color:"#c8c4bc"}}>{r.description}</div><div style={{fontSize:9,color:"#999"}}>Revenue · {r.date}</div></div>
                         <div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e"}}>{fmt$(r.amount)}</div>
                       </div>
                     ))}
                     {excelResult.expenses?.slice(0,3).map((e,i)=>(
                       <div key={i} style={{...S.card,marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        <div><div style={{fontSize:11,color:"#c8c4bc"}}>{e.description}</div><div style={{fontSize:9,color:"#555"}}>{e.category} · {e.date}</div></div>
+                        <div><div style={{fontSize:11,color:"#c8c4bc"}}>{e.description}</div><div style={{fontSize:9,color:"#999"}}>{e.category} · {e.date}</div></div>
                         <div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ef4444"}}>{fmt$(e.amount)}</div>
                       </div>
                     ))}
                     {((excelResult.revenue?.length||0)+(excelResult.expenses?.length||0))>6&&(
-                      <div style={{fontSize:11,color:"#555",textAlign:"center",padding:"10px 0"}}>...and {((excelResult.revenue?.length||0)+(excelResult.expenses?.length||0))-6} more items</div>
+                      <div style={{fontSize:11,color:"#999",textAlign:"center",padding:"10px 0"}}>...and {((excelResult.revenue?.length||0)+(excelResult.expenses?.length||0))-6} more items</div>
                     )}
                   </div>
                 )}
@@ -317,8 +317,8 @@ export default function Finance(p) {
 
                 {/* QuickBooks API note */}
                 <div style={{marginTop:24,background:"#0d0d0d",border:"1px solid #1e1e1e",borderRadius:8,padding:"16px 20px"}}>
-                  <div style={{fontSize:10,color:"#444",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:8}}>🔌 QuickBooks Direct Sync — Coming Soon</div>
-                  <div style={{fontSize:11,color:"#444",lineHeight:1.7}}>A direct QuickBooks Online integration will automatically sync your P&L without any manual export. Requires a QB developer account and Intuit app review — on the roadmap for Phase 2.</div>
+                  <div style={{fontSize:10,color:"#888",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:8}}>🔌 QuickBooks Direct Sync — Coming Soon</div>
+                  <div style={{fontSize:11,color:"#888",lineHeight:1.7}}>A direct QuickBooks Online integration will automatically sync your P&L without any manual export. Requires a QB developer account and Intuit app review — on the roadmap for Phase 2.</div>
                 </div>
               </div>
             )}
@@ -356,7 +356,7 @@ export default function Finance(p) {
                     <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Est. Cost (CPM)</div><div style={{fontSize:24,fontWeight:700,color:"#ef4444"}}>${estCost.toFixed(0)}</div></div>
                   </div>;
                 })()}
-                {deadMilesLog.length===0&&<div style={{color:"#555",fontSize:12}}>No dead miles logged yet.</div>}
+                {deadMilesLog.length===0&&<div style={{color:"#999",fontSize:12}}>No dead miles logged yet.</div>}
                 {deadMilesLog.map(d=>(
                   <div key={d.id} style={{...S.card,marginBottom:6}}>
                     <div style={{display:"flex",justifyContent:"space-between"}}>

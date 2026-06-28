@@ -84,7 +84,7 @@ export default function Boards(p) {
         <div style={{flex:1,overflowY:"auto",padding:24,animation:"fadeUp 0.3s ease"}}>
           <div style={{maxWidth:860,margin:"0 auto"}}>
             <div style={{...S.section,marginBottom:4}}>LOAD BOARD HUB</div>
-            <p style={{fontSize:11,color:"#555",marginBottom:24,lineHeight:1.8}}>Open any board, find a load, copy the details, then come back and <span style={{color:accent,cursor:"pointer"}} onClick={()=>setScreen("analyze")}>paste into Analyze Load</span>.</p>
+            <p style={{fontSize:11,color:"#999",marginBottom:24,lineHeight:1.8}}>Open any board, find a load, copy the details, then come back and <span style={{color:accent,cursor:"pointer"}} onClick={()=>setScreen("analyze")}>paste into Analyze Load</span>.</p>
             <div style={{background:"#0c120c",border:"1px solid #1a2a1a",borderRadius:8,padding:"18px 22px",marginBottom:28}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#4ade80",marginBottom:12}}>📋 WHAT TO COPY</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0}}>
@@ -98,7 +98,7 @@ export default function Boards(p) {
               {label:"Box Truck Friendly",items:[{name:"Amazon Relay",url:"https://relay.amazon.com",desc:"Direct from Amazon. No broker fees.",tag:"Box Truck ✓",color:"#f59e0b",free:true},{name:"Uber Freight",url:"https://www.uberfreight.com",desc:"Instant rates, transparent pricing.",tag:"Instant Book",color:"#a78bfa",free:true},{name:"GoShip",url:"https://www.goship.com",desc:"Shipper-direct LTL and FTL.",tag:"Shipper Direct",color:"#60a5fa",free:true}]},
             ].map(cat=>(
               <div key={cat.label} style={{marginBottom:24}}>
-                <div style={{fontSize:10,color:"#444",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:10}}>{cat.label}</div>
+                <div style={{fontSize:10,color:"#888",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:10}}>{cat.label}</div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:10}}>
                   {cat.items.map(b=>(
                     <div key={b.name} style={{background:"#111",border:"1px solid #1e1e1e",borderRadius:8,padding:"16px 18px",display:"flex",flexDirection:"column",gap:8}} className="cardhov">
@@ -106,7 +106,7 @@ export default function Boards(p) {
                         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{b.name}</div>
                         <div style={{display:"flex",gap:4}}>{b.free&&<span style={{fontSize:8,padding:"2px 5px",background:"#052e16",color:"#4ade80",border:"1px solid #166534",borderRadius:2}}>FREE</span>}<span style={{fontSize:8,padding:"2px 5px",background:b.color+"18",color:b.color,border:`1px solid ${b.color}33`,borderRadius:2}}>{b.tag}</span></div>
                       </div>
-                      <div style={{fontSize:11,color:"#555",flex:1}}>{b.desc}</div>
+                      <div style={{fontSize:11,color:"#999",flex:1}}>{b.desc}</div>
                       <a href={b.url} target="_blank" rel="noopener noreferrer" style={{display:"flex",justifyContent:"space-between",background:"#0a0a0a",border:"1px solid #1e1e1e",borderRadius:4,padding:"7px 12px",fontSize:11,color:accent,textDecoration:"none",fontFamily:"'DM Mono',monospace"}}><span>Open →</span><span style={{fontSize:9,color:"#333"}}>new tab</span></a>
                     </div>
                   ))}

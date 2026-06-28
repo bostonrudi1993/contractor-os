@@ -151,11 +151,11 @@ export default function Scorecard(p) {
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
               <div>
                 <div style={{...S.section}}>{segLabel.toUpperCase()} SCORECARD</div>
-                <div style={{fontSize:11,color:"#555",marginTop:4}}>Track your weekly performance metrics. Enter your scores from your contractor portal.</div>
+                <div style={{fontSize:11,color:"#999",marginTop:4}}>Track your weekly performance metrics. Enter your scores from your contractor portal.</div>
               </div>
               <div style={{textAlign:"center",background:"#141414",border:`1px solid ${accent}44`,borderRadius:8,padding:"12px 18px"}}>
                 <div style={{fontSize:32,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:overallScore>=95?"#22c55e":overallScore>=85?"#f59e0b":"#ef4444"}}>{isNaN(overallScore)?"-":overallScore.toFixed(0)}%</div>
-                <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Overall Score</div>
+                <div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em"}}>Overall Score</div>
               </div>
             </div>
 
@@ -204,7 +204,7 @@ export default function Scorecard(p) {
                 <div style={{fontSize:11,color:"#22c55e",marginBottom:6}}>✓ Imported {Object.keys(scorecardImportResult).length} metrics</div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                   {Object.entries(scorecardImportResult).map(([k,v])=>(
-                    <div key={k} style={{fontSize:10,color:"#555",background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:4,padding:"2px 8px"}}>{k}: <span style={{color:"#22c55e"}}>{v}</span></div>
+                    <div key={k} style={{fontSize:10,color:"#999",background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:4,padding:"2px 8px"}}>{k}: <span style={{color:"#22c55e"}}>{v}</span></div>
                   ))}
                 </div>
               </div>}
@@ -219,10 +219,10 @@ export default function Scorecard(p) {
                 return(
                   <div key={m.key} style={{...S.card,borderTop:`3px solid ${m.color}`}}>
                     <div style={{fontSize:11,color:"#888",marginBottom:8,lineHeight:1.4}}>{m.label}</div>
-                    {m.desc&&<div style={{fontSize:9,color:"#444",marginBottom:6}}>{m.desc}</div>}
+                    {m.desc&&<div style={{fontSize:9,color:"#888",marginBottom:6}}>{m.desc}</div>}
                     <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
                       <input type="number" value={val} onChange={e=>updateMetric(m.key,e.target.value)} placeholder={m.target.toString()} style={{...S.input,maxWidth:90}} min={0} max={m.unit==="%"?100:undefined}/>
-                      <div style={{fontSize:9,color:"#555"}}>{m.unit}</div>
+                      <div style={{fontSize:9,color:"#999"}}>{m.unit}</div>
                       <div style={{marginLeft:"auto",fontSize:10,color:val?status:"#444",fontWeight:700}}>Target: {m.target}{m.unit}</div>
                     </div>
                     <div style={{height:4,background:"#1e1e1e",borderRadius:2}}>
@@ -261,10 +261,10 @@ export default function Scorecard(p) {
             {/* Segment-specific tips */}
             <div style={{marginTop:16,background:"#0a0a14",border:"1px solid #1a1a2a",borderRadius:6,padding:"14px 18px"}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"#e8e4d8",marginBottom:10}}>{segLabel} Tips</div>
-              {isFedex&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• Pickup compliance is the most-watched FedEx metric — missing pickups triggers contractor reviews<br/>• Vehicle appearance inspections happen randomly — keep trucks clean and branded<br/>• Route completion below 99% for 3+ weeks can trigger ISP contract review<br/>• Log incidents in the Drivers → Incidents screen immediately — delays hurt your rating</div>}
-              {isAmazon&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• DART below 95% for 2 consecutive weeks flags your DSP for coaching<br/>• Mentor scores below 700 require mandatory retraining — check scores weekly<br/>• POD compliance dropped below 98% is the #1 reason DSPs lose packages<br/>• Keep a rescue driver on standby for unexpected driver callouts</div>}
-              {isLastMile&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• Always call ahead for large item deliveries (appliances, lumber) — it's contractually required<br/>• Log every delivery attempt with timestamp even if no one is home<br/>• Damage claims over 0.5% of stops triggers Lowe's contract review<br/>• White glove delivery requires two-person team — log both drivers</div>}
-              {isUsps&&<div style={{fontSize:11,color:"#555",lineHeight:1.9}}>• HCR routes must be completed regardless of volume — no partial days<br/>• Substitute drivers must be pre-approved by your postmaster before running routes<br/>• Vehicle inspection forms must be completed daily and kept 90 days<br/>• Mail security incidents must be reported within 1 hour — no exceptions</div>}
+              {isFedex&&<div style={{fontSize:11,color:"#999",lineHeight:1.9}}>• Pickup compliance is the most-watched FedEx metric — missing pickups triggers contractor reviews<br/>• Vehicle appearance inspections happen randomly — keep trucks clean and branded<br/>• Route completion below 99% for 3+ weeks can trigger ISP contract review<br/>• Log incidents in the Drivers → Incidents screen immediately — delays hurt your rating</div>}
+              {isAmazon&&<div style={{fontSize:11,color:"#999",lineHeight:1.9}}>• DART below 95% for 2 consecutive weeks flags your DSP for coaching<br/>• Mentor scores below 700 require mandatory retraining — check scores weekly<br/>• POD compliance dropped below 98% is the #1 reason DSPs lose packages<br/>• Keep a rescue driver on standby for unexpected driver callouts</div>}
+              {isLastMile&&<div style={{fontSize:11,color:"#999",lineHeight:1.9}}>• Always call ahead for large item deliveries (appliances, lumber) — it's contractually required<br/>• Log every delivery attempt with timestamp even if no one is home<br/>• Damage claims over 0.5% of stops triggers Lowe's contract review<br/>• White glove delivery requires two-person team — log both drivers</div>}
+              {isUsps&&<div style={{fontSize:11,color:"#999",lineHeight:1.9}}>• HCR routes must be completed regardless of volume — no partial days<br/>• Substitute drivers must be pre-approved by your postmaster before running routes<br/>• Vehicle inspection forms must be completed daily and kept 90 days<br/>• Mail security incidents must be reported within 1 hour — no exceptions</div>}
             </div>
           </div>
         </div>
