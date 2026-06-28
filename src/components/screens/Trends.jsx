@@ -119,7 +119,7 @@ export default function Trends(p) {
           <div style={{flex:1,overflowY:"auto",padding:24,animation:"fadeUp 0.3s ease"}}>
             <div style={{maxWidth:1000,margin:"0 auto"}}>
               <div style={{...S.section,marginBottom:4}}>P&L TRENDS</div>
-              <p style={{fontSize:11,color:"#555",marginBottom:22,lineHeight:1.8}}>Month over month revenue, expenses, and net profit. Route-level breakdown shows which lanes are improving or declining.</p>
+              <p style={{fontSize:11,color:"#999",marginBottom:22,lineHeight:1.8}}>Month over month revenue, expenses, and net profit. Route-level breakdown shows which lanes are improving or declining.</p>
 
               {/* View toggle */}
               <div style={{display:"flex",gap:8,marginBottom:22}}>
@@ -129,14 +129,14 @@ export default function Trends(p) {
               </div>
 
               {monthlyData.length===0?(
-                <div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No financial data yet. Add revenue and expenses in Finance to see trends.</div>
+                <div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>No financial data yet. Add revenue and expenses in Finance to see trends.</div>
               ):(
                 <>
                 {trendsView==="monthly"&&(
                   <>
                     {/* Bar chart */}
                     <div style={{...S.card,marginBottom:20}}>
-                      <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:16}}>Monthly Revenue vs Expenses</div>
+                      <div style={{fontSize:10,color:"#999",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:16}}>Monthly Revenue vs Expenses</div>
                       <div style={{display:"flex",alignItems:"flex-end",gap:8,height:180,padding:"0 8px"}}>
                         {monthlyData.map(m=>(
                           <div key={m.month} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
@@ -144,11 +144,11 @@ export default function Trends(p) {
                               <div style={{flex:1,background:"#22c55e",borderRadius:"3px 3px 0 0",height:`${(m.revenue/maxRev)*140}px`,minHeight:2,transition:"height 0.5s ease"}} title={`Revenue: ${fmt$(m.revenue)}`}/>
                               <div style={{flex:1,background:"#ef4444",borderRadius:"3px 3px 0 0",height:`${(m.expenses/maxRev)*140}px`,minHeight:2,transition:"height 0.5s ease"}} title={`Expenses: ${fmt$(m.expenses)}`}/>
                             </div>
-                            <div style={{fontSize:8,color:"#444",textAlign:"center",whiteSpace:"nowrap"}}>{m.month.slice(5)}</div>
+                            <div style={{fontSize:8,color:"#888",textAlign:"center",whiteSpace:"nowrap"}}>{m.month.slice(5)}</div>
                           </div>
                         ))}
                       </div>
-                      <div style={{display:"flex",gap:16,marginTop:10,fontSize:10,color:"#555"}}>
+                      <div style={{display:"flex",gap:16,marginTop:10,fontSize:10,color:"#999"}}>
                         <span><span style={{display:"inline-block",width:10,height:10,background:"#22c55e",borderRadius:2,marginRight:4}}/>Revenue</span>
                         <span><span style={{display:"inline-block",width:10,height:10,background:"#ef4444",borderRadius:2,marginRight:4}}/>Expenses</span>
                       </div>
@@ -156,7 +156,7 @@ export default function Trends(p) {
 
                     {/* Net profit line */}
                     <div style={{...S.card,marginBottom:20}}>
-                      <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:16}}>Net Profit Trend</div>
+                      <div style={{fontSize:10,color:"#999",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:16}}>Net Profit Trend</div>
                       <div style={{position:"relative",height:100,padding:"0 8px"}}>
                         <svg width="100%" height="100" viewBox={`0 0 ${Math.max(monthlyData.length*60,300)} 100`} preserveAspectRatio="none">
                           <defs>
@@ -191,12 +191,12 @@ export default function Trends(p) {
 
                     {/* Monthly table */}
                     <div style={S.card}>
-                      <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Monthly Summary</div>
+                      <div style={{fontSize:10,color:"#999",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Monthly Summary</div>
                       <div style={{overflowX:"auto"}}>
                         <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
                           <thead>
                             <tr style={{borderBottom:"1px solid #1e1e1e"}}>
-                              {["Month","Revenue","Expenses","Net Profit","Margin"].map(h=><th key={h} style={{padding:"8px 12px",textAlign:h==="Month"?"left":"right",fontSize:9,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase"}}>{h}</th>)}
+                              {["Month","Revenue","Expenses","Net Profit","Margin"].map(h=><th key={h} style={{padding:"8px 12px",textAlign:h==="Month"?"left":"right",fontSize:9,color:"#999",letterSpacing:"0.15em",textTransform:"uppercase"}}>{h}</th>)}
                             </tr>
                           </thead>
                           <tbody>
@@ -218,8 +218,8 @@ export default function Trends(p) {
 
                 {trendsView==="weekly"&&(
                   <div style={{display:"flex",flexDirection:"column",gap:16}}>
-                    <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase"}}>Route Profitability — All Time</div>
-                    {routes.length===0?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:32}}>No routes added. Add routes in the Routes screen first.</div>:
+                    <div style={{fontSize:10,color:"#999",letterSpacing:"0.2em",textTransform:"uppercase"}}>Route Profitability — All Time</div>
+                    {routes.length===0?<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:32}}>No routes added. Add routes in the Routes screen first.</div>:
                     routes.map(r=>{
                       const netEst = parseFloat(r.rate||0)-((parseFloat(r.miles||0)/settings.mpg)*settings.dieselPrice)-parseFloat(r.driverPay||0)-parseFloat(r.otherCosts||0);
                       const margin = parseFloat(r.rate||0)>0?(netEst/parseFloat(r.rate))*100:0;
@@ -229,7 +229,7 @@ export default function Trends(p) {
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
                             <div>
                               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:17,fontWeight:700,color:"#e8e4d8"}}>{r.name}</div>
-                              <div style={{fontSize:10,color:"#555"}}>{r.stops||0} stops · {r.miles||0} mi · {r.frequency||"Daily"}</div>
+                              <div style={{fontSize:10,color:"#999"}}>{r.stops||0} stops · {r.miles||0} mi · {r.frequency||"Daily"}</div>
                             </div>
                             <div style={{display:"flex",gap:10,alignItems:"center"}}>
                               <div style={{width:36,height:36,background:gradeColor(grade)+"22",border:`1px solid ${gradeColor(grade)}44`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:18,color:gradeColor(grade),borderRadius:4}}>{grade}</div>
@@ -238,14 +238,14 @@ export default function Trends(p) {
                           <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:12}}>
                             {[["Contracted",fmt$(parseFloat(r.rate||0)),"#22c55e"],["Est Expenses",fmt$(parseFloat(r.rate||0)-netEst),"#ef4444"],["Net Profit",fmt$(netEst),netEst>=0?"#22c55e":"#ef4444"],["Margin",`${margin.toFixed(1)}%`,parseFloat(margin)>=20?"#22c55e":parseFloat(margin)>=10?"#f59e0b":"#ef4444"]].map(([lbl,val,col])=>(
                               <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}>
-                                <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>{lbl}</div>
+                                <div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>{lbl}</div>
                                 <div style={{fontSize:15,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{val}</div>
                               </div>
                             ))}
                           </div>
                           {/* Mini profitability bar */}
                           <div>
-                            <div style={{fontSize:9,color:"#555",marginBottom:4}}>Profitability</div>
+                            <div style={{fontSize:9,color:"#999",marginBottom:4}}>Profitability</div>
                             <div style={{height:8,background:"#1a1a1a",borderRadius:4,overflow:"hidden"}}>
                               <div style={{height:"100%",width:`${Math.min(100,Math.max(0,margin))}%`,background:parseFloat(margin)>=20?"#22c55e":parseFloat(margin)>=10?"#f59e0b":"#ef4444",borderRadius:4,transition:"width 0.5s ease"}}/>
                             </div>

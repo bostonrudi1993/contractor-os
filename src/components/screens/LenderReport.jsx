@@ -199,7 +199,7 @@ export default function LenderReport(p) {
         </div>
         {topCats.length>0&&(
           <div style={{marginTop:8}}>
-            <div style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6}}>Top Expense Categories</div>
+            <div style={{fontSize:9,color:"#999",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6}}>Top Expense Categories</div>
             {topCats.map(([cat,total])=>(
               <DataRow key={cat} label={cat.replace(/_/g," ")} value={fmt$(total)} indent/>
             ))}
@@ -236,7 +236,7 @@ export default function LenderReport(p) {
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
             <thead>
               <tr style={{borderBottom:"1px solid #222"}}>
-                {["Month","Revenue","Expenses","Net","Cumulative"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"right",color:"#555",letterSpacing:"0.08em",fontWeight:600,textTransform:"uppercase",whiteSpace:"nowrap",":first-child":{textAlign:"left"}}}>{h}</th>)}
+                {["Month","Revenue","Expenses","Net","Cumulative"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"right",color:"#999",letterSpacing:"0.08em",fontWeight:600,textTransform:"uppercase",whiteSpace:"nowrap",":first-child":{textAlign:"left"}}}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -254,27 +254,27 @@ export default function LenderReport(p) {
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:12}}>
           <div style={{...S.card,padding:"10px 14px"}}>
-            <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Positive Months</div>
+            <div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Positive Months</div>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:posMonths>=9?"#22c55e":posMonths>=6?"#f59e0b":"#ef4444"}}>{posMonths}/12</div>
           </div>
           <div style={{...S.card,padding:"10px 14px"}}>
-            <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Avg Monthly Net</div>
+            <div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Avg Monthly Net</div>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#c8c4bc"}}>{fmt$(months12.reduce((s,m)=>s+m.net,0)/12)}</div>
           </div>
           <div style={{...S.card,padding:"10px 14px"}}>
-            <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Consistency</div>
+            <div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Consistency</div>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#c8c4bc"}}>{fmtPct((posMonths/12)*100)}</div>
           </div>
         </div>
         <div style={{...S.card,padding:"12px 16px",marginBottom:8}}>
-          <div style={{fontSize:10,color:"#555",marginBottom:8,letterSpacing:"0.1em",textTransform:"uppercase"}}>Cash Position</div>
+          <div style={{fontSize:10,color:"#999",marginBottom:8,letterSpacing:"0.1em",textTransform:"uppercase"}}>Cash Position</div>
           <DataRow label="Current Cash Reserve" value={cashReserve>0?fmt$(cashReserve):"Not set"} bold/>
           <DataRow label="Monthly Avg Expenses" value={fmt$(avg3Exp)}/>
           {cashReserve>0&&avg3Exp>0&&<DataRow label="Cash Runway" value={`${cashRunway.toFixed(1)} months`} valueColor={cashRunwayColor} bold/>}
           <div style={{marginTop:8,display:"flex",gap:10,alignItems:"flex-end"}}>
             <div style={{flex:1}}><label style={S.label}>Update Cash Reserve ($)</label><input type="number" value={settings.cashReserve||""} onChange={e=>setSettings(prev=>({...prev,cashReserve:e.target.value}))} placeholder="e.g. 15000" style={S.input}/></div>
           </div>
-          <div style={{fontSize:10,color:"#555",marginTop:8}}>Lenders want 2-3 months cash reserve. You currently have {cashReserve>0&&avg3Exp>0?`${cashRunway.toFixed(1)} months.`:"—."}</div>
+          <div style={{fontSize:10,color:"#999",marginTop:8}}>Lenders want 2-3 months cash reserve. You currently have {cashReserve>0&&avg3Exp>0?`${cashRunway.toFixed(1)} months.`:"—."}</div>
         </div>
 
         <SectionHeader title="6. Debt Service Coverage"/>
@@ -291,20 +291,20 @@ export default function LenderReport(p) {
               <div style={{fontSize:10,color:dscrColor}}>{monthlyFixed>0?dscrMsg:"Add obligations in Settings"}</div>
             </div>
           </div>
-          <div style={{fontSize:10,color:"#555",marginTop:8,lineHeight:1.6,padding:"8px 12px",background:"#0f0f0f",borderRadius:4}}>
+          <div style={{fontSize:10,color:"#999",marginTop:8,lineHeight:1.6,padding:"8px 12px",background:"#0f0f0f",borderRadius:4}}>
             Debt Service Coverage Ratio shows how many times your income covers your debt payments. Most lenders require 1.25x minimum.
           </div>
         </div>
 
         <SectionHeader title="7. Contract History"/>
         {contracts.length===0?(
-          <div style={{fontSize:11,color:"#555",padding:"12px 0"}}>No contracts logged — add contracts in the Contracts screen</div>
+          <div style={{fontSize:11,color:"#999",padding:"12px 0"}}>No contracts logged — add contracts in the Contracts screen</div>
         ):(
           <div>
             <div style={{overflowX:"auto"}}>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
                 <thead><tr style={{borderBottom:"1px solid #222"}}>
-                  {["Contract","Client","Start Date","Value","Status"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:"#555",letterSpacing:"0.08em",textTransform:"uppercase"}}>{h}</th>)}
+                  {["Contract","Client","Start Date","Value","Status"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:"#999",letterSpacing:"0.08em",textTransform:"uppercase"}}>{h}</th>)}
                 </tr></thead>
                 <tbody>
                   {contracts.map(c=>(
@@ -319,13 +319,13 @@ export default function LenderReport(p) {
                 </tbody>
               </table>
             </div>
-            <div style={{fontSize:10,color:"#555",marginTop:8}}>Active contracts demonstrate stable recurring revenue to lenders</div>
+            <div style={{fontSize:10,color:"#999",marginTop:8}}>Active contracts demonstrate stable recurring revenue to lenders</div>
           </div>
         )}
 
         <SectionHeader title="8. Fleet Assets"/>
         {compliance.trucks.length===0?(
-          <div style={{fontSize:11,color:"#555",padding:"12px 0"}}>No vehicles on file — add vehicles in Compliance</div>
+          <div style={{fontSize:11,color:"#999",padding:"12px 0"}}>No vehicles on file — add vehicles in Compliance</div>
         ):(
           <div>
             {compliance.trucks.map(t=>(
@@ -333,7 +333,7 @@ export default function LenderReport(p) {
                 <div style={{fontSize:14}}>🚛</div>
                 <div style={{flex:1}}>
                   <div style={{fontSize:11,color:"#c8c4bc",fontWeight:600}}>{t.name}</div>
-                  <div style={{fontSize:9,color:"#555"}}>{[t.year,t.make].filter(Boolean).join(" ")||"—"}{t.vin?` · VIN: ${t.vin}`:""}</div>
+                  <div style={{fontSize:9,color:"#999"}}>{[t.year,t.make].filter(Boolean).join(" ")||"—"}{t.vin?` · VIN: ${t.vin}`:""}</div>
                 </div>
               </div>
             ))}
@@ -361,16 +361,16 @@ export default function LenderReport(p) {
     return (
       <div>
         <button onClick={()=>window.print()} className="no-print" style={{...S.ghost,fontSize:10,marginBottom:16}}>🖨 Print Balance Sheet</button>
-        <div style={{fontSize:10,color:"#555",marginBottom:16}}>As of {today.toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})}</div>
+        <div style={{fontSize:10,color:"#999",marginBottom:16}}>As of {today.toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})}</div>
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
           <div>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:accent,marginBottom:8,letterSpacing:"0.1em"}}>ASSETS</div>
-            <div style={{fontSize:10,color:"#555",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.1em"}}>Current Assets</div>
+            <div style={{fontSize:10,color:"#999",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.1em"}}>Current Assets</div>
             <DataRow label="Cash & Equivalents" value={fmt$(cashAmt)} indent/>
             <DataRow label="Accounts Receivable" value={fmt$(arTotal)} indent/>
             <DataRow label="Total Current Assets" value={fmt$(totalCurrentAssets)} bold/>
-            <div style={{fontSize:10,color:"#555",marginBottom:4,marginTop:12,textTransform:"uppercase",letterSpacing:"0.1em"}}>Fixed Assets</div>
+            <div style={{fontSize:10,color:"#999",marginBottom:4,marginTop:12,textTransform:"uppercase",letterSpacing:"0.1em"}}>Fixed Assets</div>
             {assetsList.length===0&&<div style={{fontSize:10,color:"#333",padding:"4px 8px"}}>None added — add in Assets tab</div>}
             {assetsList.map(a=><DataRow key={a.id} label={a.assetName} value={fmt$(parseFloat(a.currentValue||0))} indent/>)}
             <DataRow label="Total Fixed Assets" value={fmt$(fixedAssetsTotal)} bold/>
@@ -381,10 +381,10 @@ export default function LenderReport(p) {
 
           <div>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#ef4444",marginBottom:8,letterSpacing:"0.1em"}}>LIABILITIES</div>
-            <div style={{fontSize:10,color:"#555",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.1em"}}>Current Liabilities</div>
+            <div style={{fontSize:10,color:"#999",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.1em"}}>Current Liabilities</div>
             <DataRow label="Accounts Payable (current/overdue)" value={fmt$(apCurrentTotal)} indent/>
             <DataRow label="Total Current Liabilities" value={fmt$(apCurrentTotal)} bold/>
-            <div style={{fontSize:10,color:"#555",marginBottom:4,marginTop:12,textTransform:"uppercase",letterSpacing:"0.1em"}}>Long-term Liabilities</div>
+            <div style={{fontSize:10,color:"#999",marginBottom:4,marginTop:12,textTransform:"uppercase",letterSpacing:"0.1em"}}>Long-term Liabilities</div>
             {debtList.length===0&&<div style={{fontSize:10,color:"#333",padding:"4px 8px"}}>None added — add in Debt Schedule tab</div>}
             {debtList.map(d=><DataRow key={d.id} label={`${d.creditorName} (${d.debtType})`} value={fmt$(parseFloat(d.currentBalance||0))} indent/>)}
             <DataRow label="Total Long-term Liabilities" value={fmt$(ltDebtTotal)} bold/>
@@ -403,7 +403,7 @@ export default function LenderReport(p) {
             </div>
           </div>
         </div>
-        <div style={{fontSize:10,color:"#444",marginTop:16,padding:"10px 14px",background:"#0a0a12",borderRadius:4,border:"1px solid #1a1a2a",lineHeight:1.7}}>
+        <div style={{fontSize:10,color:"#888",marginTop:16,padding:"10px 14px",background:"#0a0a12",borderRadius:4,border:"1px solid #1a1a2a",lineHeight:1.7}}>
           This balance sheet is generated from data entered in ContractorOS. For tax and legal purposes, have your accountant review and certify.
         </div>
       </div>
@@ -429,7 +429,7 @@ export default function LenderReport(p) {
             {label:"Annual Interest Cost",value:fmt$(annualInterest),color:"#888"},
           ].map(card=>(
             <div key={card.label} style={{...S.card,padding:"10px 14px"}}>
-              <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{card.label}</div>
+              <div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{card.label}</div>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:card.color}}>{card.value}</div>
             </div>
           ))}
@@ -455,7 +455,7 @@ export default function LenderReport(p) {
                 <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={debtForm.notes} onChange={e=>setDebtForm(prev=>({...prev,notes:e.target.value}))} style={S.input}/></div>
               </div>
               {debtForm.currentBalance&&debtForm.monthlyPayment&&(
-                <div style={{fontSize:10,color:"#555",marginTop:8}}>
+                <div style={{fontSize:10,color:"#999",marginTop:8}}>
                   Payoff in ~{Math.ceil(parseFloat(debtForm.currentBalance)/parseFloat(debtForm.monthlyPayment))} months ({new Date(Date.now()+Math.ceil(parseFloat(debtForm.currentBalance)/parseFloat(debtForm.monthlyPayment))*30*86400000).toLocaleDateString("en-US",{month:"short",year:"numeric"})})
                 </div>
               )}
@@ -465,12 +465,12 @@ export default function LenderReport(p) {
         </div>
 
         {debtList.length===0?(
-          <div style={{fontSize:11,color:"#555",padding:"12px 0"}}>No debts logged yet. Add your truck loans, lines of credit, and other obligations.</div>
+          <div style={{fontSize:11,color:"#999",padding:"12px 0"}}>No debts logged yet. Add your truck loans, lines of credit, and other obligations.</div>
         ):(
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
               <thead><tr style={{borderBottom:"1px solid #222"}}>
-                {["Creditor","Type","Original","Balance","Payment","Rate","Payoff","Collateral",""].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:"#555",letterSpacing:"0.08em",textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>)}
+                {["Creditor","Type","Original","Balance","Payment","Rate","Payoff","Collateral",""].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:"#999",letterSpacing:"0.08em",textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>)}
               </tr></thead>
               <tbody>
                 {debtList.map(d=>{
@@ -486,7 +486,7 @@ export default function LenderReport(p) {
                       <td style={{padding:"6px 8px",color:"#888"}}>{d.interestRate?`${d.interestRate}%`:"—"}</td>
                       <td style={{padding:"6px 8px",color:"#888",whiteSpace:"nowrap"}}>{payoff}</td>
                       <td style={{padding:"6px 8px",color:"#888"}}>{d.collateral||"—"}</td>
-                      <td style={{padding:"6px 8px"}}><button onClick={()=>setDebtList(prev=>prev.filter(x=>x.id!==d.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12,padding:"2px 6px"}}>✕</button></td>
+                      <td style={{padding:"6px 8px"}}><button onClick={()=>setDebtList(prev=>prev.filter(x=>x.id!==d.id))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12,padding:"2px 6px"}}>✕</button></td>
                     </tr>
                   );
                 })}
@@ -501,7 +501,7 @@ export default function LenderReport(p) {
             </table>
           </div>
         )}
-        <div style={{fontSize:10,color:"#555",marginTop:12}}>Provide this schedule to your lender with your loan application. It demonstrates full disclosure of existing obligations.</div>
+        <div style={{fontSize:10,color:"#999",marginTop:12}}>Provide this schedule to your lender with your loan application. It demonstrates full disclosure of existing obligations.</div>
       </div>
     );
   }
@@ -524,20 +524,20 @@ export default function LenderReport(p) {
         <div style={{...S.card,padding:"12px 16px",marginBottom:16,border:`1px solid ${netWC>=0?"#22c55e22":"#ef444422"}`}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div>
-              <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Net Working Capital</div>
+              <div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Net Working Capital</div>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:900,color:netWC>=0?"#22c55e":"#ef4444"}}>{fmt$(netWC)}</div>
               <div style={{fontSize:10,color:netWC>=0?"#22c55e":"#ef4444",marginTop:2}}>{netWC>=0?`You are owed ${fmt$(netWC)} more than you owe`:`You owe ${fmt$(Math.abs(netWC))} more than you are owed — cash flow risk`}</div>
             </div>
             <div style={{display:"flex",gap:16}}>
-              <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",marginBottom:2}}>TOTAL AR</div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#22c55e"}}>{fmt$(totalAR)}</div></div>
-              <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",marginBottom:2}}>TOTAL AP</div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#ef4444"}}>{fmt$(totalAP)}</div></div>
+              <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#999",marginBottom:2}}>TOTAL AR</div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#22c55e"}}>{fmt$(totalAR)}</div></div>
+              <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#999",marginBottom:2}}>TOTAL AP</div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#ef4444"}}>{fmt$(totalAP)}</div></div>
             </div>
           </div>
         </div>
 
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#e8e4d8",marginBottom:12,letterSpacing:"0.1em"}}>ACCOUNTS RECEIVABLE (Money Owed To You)</div>
         {unpaidInvoices.length===0?(
-          <div style={{fontSize:11,color:"#555",padding:"8px 0",marginBottom:16}}>No open invoices</div>
+          <div style={{fontSize:11,color:"#999",padding:"8px 0",marginBottom:16}}>No open invoices</div>
         ):(
           <div style={{marginBottom:20}}>
             {grouped.map(bucket=>(
@@ -549,7 +549,7 @@ export default function LenderReport(p) {
                 {bucket.items.map(inv=>(
                   <div key={inv.id||inv.invoiceNum} style={{display:"flex",gap:10,padding:"5px 8px",background:"#0f0f0f",borderRadius:4,marginBottom:4,fontSize:10}}>
                     <span style={{color:"#888",flex:1}}>{inv.clientName||"—"}</span>
-                    <span style={{color:"#555"}}>{inv.invoiceNum||"—"}</span>
+                    <span style={{color:"#999"}}>{inv.invoiceNum||"—"}</span>
                     <span style={{color:"#22c55e"}}>{fmt$(parseFloat(inv.amount||0))}</span>
                     <span style={{color:bucket.color}}>{getDays(inv)}d</span>
                   </div>
@@ -581,7 +581,7 @@ export default function LenderReport(p) {
           )}
         </div>
         {payablesList.length===0?(
-          <div style={{fontSize:11,color:"#555",padding:"8px 0"}}>No payables logged</div>
+          <div style={{fontSize:11,color:"#999",padding:"8px 0"}}>No payables logged</div>
         ):(
           <div>
             {payablesList.map(item=>(
@@ -590,7 +590,7 @@ export default function LenderReport(p) {
                 <span style={{color:"#888"}}>{item.description||"—"}</span>
                 <span style={{color:"#ef4444"}}>{fmt$(parseFloat(item.amountOwed||0))}</span>
                 <span style={{fontSize:9,color:item.status==="Overdue"?"#ef4444":item.status==="Disputed"?"#f59e0b":"#22c55e",background:item.status==="Overdue"?"#ef444418":item.status==="Disputed"?"#f59e0b18":"#22c55e18",padding:"2px 6px",borderRadius:3}}>{item.status}</span>
-                <button onClick={()=>setPayablesList(prev=>prev.filter(x=>x.id!==item.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                <button onClick={()=>setPayablesList(prev=>prev.filter(x=>x.id!==item.id))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12}}>✕</button>
               </div>
             ))}
           </div>
@@ -615,7 +615,7 @@ export default function LenderReport(p) {
             {label:"Net Worth",value:fmt$(totalEquity),color:totalEquity>=0?"#22c55e":"#ef4444"},
           ].map(card=>(
             <div key={card.label} style={{...S.card,padding:"10px 14px"}}>
-              <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{card.label}</div>
+              <div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{card.label}</div>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:card.color}}>{card.value}</div>
             </div>
           ))}
@@ -653,7 +653,7 @@ export default function LenderReport(p) {
                 <div><label style={S.label}>Lender Name</label><input value={assetForm.lenderName} onChange={e=>setAssetForm(prev=>({...prev,lenderName:e.target.value}))} style={S.input}/></div>
               </div>
               {assetForm.currentValue&&assetForm.lienBalance&&(
-                <div style={{fontSize:10,color:"#555",marginTop:8}}>Equity: {fmt$(parseFloat(assetForm.currentValue||0)-parseFloat(assetForm.lienBalance||0))}</div>
+                <div style={{fontSize:10,color:"#999",marginTop:8}}>Equity: {fmt$(parseFloat(assetForm.currentValue||0)-parseFloat(assetForm.lienBalance||0))}</div>
               )}
               <button onClick={()=>{if(!assetForm.assetName||!assetForm.currentValue)return;setAssetsList(prev=>[...prev,{id:Date.now(),...assetForm}]);setAssetForm({assetName:"",assetType:"Vehicle",purchaseDate:"",purchasePrice:"",currentValue:"",lienBalance:"",monthlyPayment:"",lenderName:"",notes:""});setShowAssetForm(false);}} style={{...S.btn,marginTop:12}}>Add Asset</button>
             </div>
@@ -661,12 +661,12 @@ export default function LenderReport(p) {
         </div>
 
         {assetsList.length===0?(
-          <div style={{fontSize:11,color:"#555",padding:"12px 0"}}>No assets logged. Add your trucks, equipment, and other business assets.</div>
+          <div style={{fontSize:11,color:"#999",padding:"12px 0"}}>No assets logged. Add your trucks, equipment, and other business assets.</div>
         ):(
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
               <thead><tr style={{borderBottom:"1px solid #222"}}>
-                {["Asset","Type","Value","Lien","Equity","Pmt/mo",""].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:"#555",letterSpacing:"0.08em",textTransform:"uppercase"}}>{h}</th>)}
+                {["Asset","Type","Value","Lien","Equity","Pmt/mo",""].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left",color:"#999",letterSpacing:"0.08em",textTransform:"uppercase"}}>{h}</th>)}
               </tr></thead>
               <tbody>
                 {assetsList.map(a=>{
@@ -679,7 +679,7 @@ export default function LenderReport(p) {
                       <td style={{padding:"6px 8px",color:"#ef4444"}}>{a.lienBalance?fmt$(parseFloat(a.lienBalance||0)):"—"}</td>
                       <td style={{padding:"6px 8px",color:eq>=0?"#22c55e":"#ef4444"}}>{fmt$(eq)}</td>
                       <td style={{padding:"6px 8px",color:"#888"}}>{a.monthlyPayment?`${fmt$(parseFloat(a.monthlyPayment||0))}`:"—"}</td>
-                      <td style={{padding:"6px 8px"}}><button onClick={()=>setAssetsList(prev=>prev.filter(x=>x.id!==a.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button></td>
+                      <td style={{padding:"6px 8px"}}><button onClick={()=>setAssetsList(prev=>prev.filter(x=>x.id!==a.id))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12}}>✕</button></td>
                     </tr>
                   );
                 })}
@@ -755,7 +755,7 @@ export default function LenderReport(p) {
 
         {groups.map(group=>(
           <div key={group} style={{marginBottom:20}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:800,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:10,borderBottom:"1px solid #1a1a1a",paddingBottom:6}}>{group}</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:800,color:"#999",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:10,borderBottom:"1px solid #1a1a1a",paddingBottom:6}}>{group}</div>
             {items.filter(i=>i.group===group).map((item,idx)=>{
               const statusColor={READY:"#22c55e",PARTIAL:"#f59e0b",NEEDED:"#ef4444",EXTERNAL:"#6366f1"}[item.status]||"#555";
               return(
@@ -767,7 +767,7 @@ export default function LenderReport(p) {
                       <StatusBadge status={item.status}/>
                       {item.isAuto&&<span style={{fontSize:8,color:"#22c55e",background:"#22c55e18",padding:"2px 6px",borderRadius:3,letterSpacing:"0.1em"}}>AUTO</span>}
                     </div>
-                    <div style={{fontSize:10,color:"#555",marginBottom:item.actionFn||item.externalHref?6:0,lineHeight:1.5}}>{item.note}</div>
+                    <div style={{fontSize:10,color:"#999",marginBottom:item.actionFn||item.externalHref?6:0,lineHeight:1.5}}>{item.note}</div>
                     <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                       {item.actionFn&&<button onClick={item.actionFn} style={{background:"transparent",border:`1px solid ${statusColor}44`,color:statusColor,fontSize:10,cursor:"pointer",padding:"3px 10px",borderRadius:4,fontFamily:"'DM Mono',monospace"}}>{item.actionLabel}</button>}
                       {item.externalHref&&<a href={item.externalHref} target="_blank" rel="noopener noreferrer" style={{background:item.externalBig?"#1a1a3a":"transparent",border:`1px solid ${item.externalBig?"#4444aa":"#2a2a4a"}`,color:item.externalBig?"#8888dd":"#5555aa",fontSize:10,cursor:"pointer",padding:item.externalBig?"6px 16px":"3px 10px",borderRadius:4,fontFamily:"'DM Mono',monospace",textDecoration:"none",display:"inline-block"}}>{item.externalLabel}</a>}
@@ -792,7 +792,7 @@ export default function LenderReport(p) {
         {/* Header */}
         <div style={{marginBottom:20}}>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:32,fontWeight:900,color:"#e8e4d8"}}>🏦 LENDER REPORT</div>
-          <div style={{fontSize:11,color:"#555",marginTop:4}}>{settings.businessLegalName||settings.companyName||"Your Company"} · ContractorOS</div>
+          <div style={{fontSize:11,color:"#999",marginTop:4}}>{settings.businessLegalName||settings.companyName||"Your Company"} · ContractorOS</div>
         </div>
 
         {/* Lender Meeting Prep Card */}

@@ -1,5 +1,9 @@
 // Claims screen
+import { useState } from "react";
 export default function Claims(p) {
+  const [expandedClaimId, setExpandedClaimId] = useState(null);
+  const [editClaimId, setEditClaimId] = useState(null);
+  const [editClaimForm, setEditClaimForm] = useState({});
   const {
     seg, accent, S, segment, screen,
     compliance, drivers, vehicles, maintenance, expenses, revenue, routes, contracts,
@@ -117,7 +121,7 @@ export default function Claims(p) {
               <div style={{fontSize:11,color:"#888"}}>Total Open Claim Value</div>
               <div style={{fontSize:28,fontWeight:700,color:"#ef4444"}}>${damageClaims.filter(c=>c.claimStatus==="Open").reduce((s,c)=>s+parseFloat(c.estimatedValue||0),0).toFixed(0)}</div>
             </div>
-            {damageClaims.filter(c=>c.claimStatus==="Open").length===0&&<div style={{color:"#555",fontSize:12}}>No open claims.</div>}
+            {damageClaims.filter(c=>c.claimStatus==="Open").length===0&&<div style={{color:"#999",fontSize:12}}>No open claims.</div>}
             {damageClaims.filter(c=>c.claimStatus==="Open").map(c=>{
               const daysOpen=Math.floor((Date.now()-new Date(c.date).getTime())/(1000*60*60*24));
               return <div key={c.id} style={{...S.card,marginBottom:8,border:daysOpen>=14?"1px solid #f59e0b55":""}}>
@@ -147,10 +151,48 @@ export default function Claims(p) {
             </div>
             {damageClaims.filter(c=>c.claimStatus!=="Open").map(c=>(
               <div key={c.id} style={{...S.card,marginBottom:8}}>
-                <div style={{display:"flex",justifyContent:"space-between"}}>
-                  <div><div style={{fontSize:13,color:"#e8e4d8"}}>{c.itemDescription}</div><div style={{fontSize:11,color:"#888"}}>{c.driverName} · {c.date}</div></div>
-                  <span style={{fontSize:11,padding:"2px 8px",borderRadius:3,background:c.claimStatus==="Resolved"?"#22c55e33":"#ef444433",color:c.claimStatus==="Resolved"?"#22c55e":"#ef4444"}}>{c.claimStatus}</span>
+                <div onClick={()=>setExpandedClaimId(expandedClaimId===c.id?null:c.id)} style={{display:"flex",justifyContent:"space-between",cursor:"pointer",userSelect:"none"}}>
+                  <div>
+                    <div style={{fontSize:13,color:"#e8e4d8"}}>{c.itemDescription}</div>
+                    <div style={{fontSize:11,color:"#888"}}>{c.driverName} · {c.date}</div>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:11,padding:"2px 8px",borderRadius:3,background:c.claimStatus==="Resolved"?"#22c55e33":"#ef444433",color:c.claimStatus==="Resolved"?"#22c55e":"#ef4444"}}>{c.claimStatus}</span>
+                    <span style={{color:"#888",fontSize:10}}>{expandedClaimId===c.id?"▲":"▼"}</span>
+                  </div>
                 </div>
+                {expandedClaimId===c.id&&(
+                  editClaimId===c.id?(
+                    <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #1e1e1e"}}>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                        <div><label style={S.label}>Item Description</label><input value={editClaimForm.itemDescription||""} onChange={e=>setEditClaimForm(v=>({...v,itemDescription:e.target.value}))} style={S.input}/></div>
+                        <div><label style={S.label}>Damage Description</label><input value={editClaimForm.damageDescription||""} onChange={e=>setEditClaimForm(v=>({...v,damageDescription:e.target.value}))} style={S.input}/></div>
+                        <div><label style={S.label}>Est. Value ($)</label><input type="number" value={editClaimForm.estimatedValue||""} onChange={e=>setEditClaimForm(v=>({...v,estimatedValue:e.target.value}))} style={S.input}/></div>
+                        <div><label style={S.label}>Claim Amount ($)</label><input type="number" value={editClaimForm.claimAmount||""} onChange={e=>setEditClaimForm(v=>({...v,claimAmount:e.target.value}))} style={S.input}/></div>
+                        <div><label style={S.label}>Resolution</label><input value={editClaimForm.resolution||""} onChange={e=>setEditClaimForm(v=>({...v,resolution:e.target.value}))} placeholder="How was it resolved?" style={S.input}/></div>
+                        <div><label style={S.label}>Notes</label><input value={editClaimForm.notes||""} onChange={e=>setEditClaimForm(v=>({...v,notes:e.target.value}))} style={S.input}/></div>
+                      </div>
+                      <div style={{display:"flex",gap:8}}>
+                        <button className="hov" onClick={()=>{setDamageClaims(prev=>prev.map(x=>x.id===c.id?{...x,...editClaimForm}:x));setEditClaimId(null);}} style={S.btn}>Save</button>
+                        <button onClick={()=>setEditClaimId(null)} style={S.ghost}>Cancel</button>
+                      </div>
+                    </div>
+                  ):(
+                    <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #1e1e1e"}}>
+                      {c.deliveryType&&<div style={{fontSize:11,color:"#999",marginBottom:4}}>Type: {c.deliveryType}</div>}
+                      {c.customerAddress&&<div style={{fontSize:11,color:"#999",marginBottom:4}}>Address: {c.customerAddress}</div>}
+                      {c.damageDescription&&<div style={{fontSize:11,color:"#999",marginBottom:4}}>Damage: {c.damageDescription}</div>}
+                      {c.estimatedValue&&<div style={{fontSize:11,color:"#999",marginBottom:4}}>Est. Value: ${parseFloat(c.estimatedValue||0).toFixed(2)}</div>}
+                      {c.claimAmount&&<div style={{fontSize:11,color:"#999",marginBottom:4}}>Claim Amount: ${parseFloat(c.claimAmount||0).toFixed(2)}</div>}
+                      {c.resolution&&<div style={{fontSize:11,color:"#999",marginBottom:4}}>Resolution: {c.resolution}</div>}
+                      {c.notes&&<div style={{fontSize:11,color:"#999",marginBottom:4}}>Notes: {c.notes}</div>}
+                      <div style={{display:"flex",gap:8,marginTop:10}}>
+                        <button className="hov" onClick={e=>{e.stopPropagation();setEditClaimId(c.id);setEditClaimForm({...c});}} style={{...S.ghost,fontSize:10,padding:"4px 10px"}}>Edit</button>
+                        <button className="hov" onClick={e=>{e.stopPropagation();setDamageClaims(prev=>prev.map(x=>x.id===c.id?{...x,claimStatus:"Open"}:x));setExpandedClaimId(null);}} style={{fontSize:10,padding:"4px 10px",borderRadius:3,border:"1px solid #f59e0b44",background:"transparent",color:"#f59e0b",cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>Reopen</button>
+                      </div>
+                    </div>
+                  )
+                )}
               </div>
             ))}
           </>}

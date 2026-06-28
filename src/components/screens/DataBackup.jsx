@@ -119,7 +119,7 @@ export default function DataBackup(p) {
         <div style={{flex:1,overflowY:"auto",padding:24}}>
           <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
             <div style={{...S.section,marginBottom:4}}>DATA & BACKUP</div>
-            <p style={{fontSize:11,color:"#555",marginBottom:24,lineHeight:1.8}}>Export your data for backup, accounting, or migration. ContractorOS stores everything in your browser — export regularly so you don't lose anything if you clear your cache.</p>
+            <p style={{fontSize:11,color:"#999",marginBottom:24,lineHeight:1.8}}>Export your data for backup, accounting, or migration. ContractorOS stores everything in your browser — export regularly so you don't lose anything if you clear your cache.</p>
             {/* Storage Usage */}
             <div style={{...S.card,marginBottom:24,background:"#0a0f1a",border:"1px solid #1a1a3a"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
@@ -133,7 +133,7 @@ export default function DataBackup(p) {
                 {breakdowns.slice(0,5).map(b=>(
                   <div key={b.label} style={{display:"flex",alignItems:"center",gap:10}}>
                     <div style={{width:8,height:8,borderRadius:"50%",background:b.color,flexShrink:0}}/>
-                    <div style={{flex:1,fontSize:10,color:"#666"}}>{b.label}</div>
+                    <div style={{flex:1,fontSize:10,color:"#aaa"}}>{b.label}</div>
                     <div style={{fontSize:10,color:"#888",width:60,textAlign:"right"}}>{fmtKB(b.bytes)}</div>
                     <div style={{width:80,height:3,background:"#1a1a2a",borderRadius:2}}>
                       <div style={{height:"100%",width:`${totalBytes>0?Math.min(100,(b.bytes/totalBytes)*100):0}%`,background:b.color,borderRadius:2}}/>
@@ -146,7 +146,7 @@ export default function DataBackup(p) {
             {/* Data Cleanup */}
             <div style={{...S.card,marginBottom:24,background:"#0a0f1a",border:"1px solid #1a1a3a"}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8",marginBottom:4}}>Data Cleanup</div>
-              <div style={{fontSize:11,color:"#555",marginBottom:14,lineHeight:1.7}}>Archive records older than 12 months and clear all uploaded file data (images/PDFs stored in browser). Document names and metadata are kept. <strong style={{color:"#888"}}>Export a backup before running.</strong></div>
+              <div style={{fontSize:11,color:"#999",marginBottom:14,lineHeight:1.7}}>Archive records older than 12 months and clear all uploaded file data (images/PDFs stored in browser). Document names and metadata are kept. <strong style={{color:"#888"}}>Export a backup before running.</strong></div>
               {lastCleanup&&<div style={{fontSize:10,color:"#3a3a6a",marginBottom:10}}>Last cleanup: {fmtDate(lastCleanup)}</div>}
               <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
                 <button className="hov" onClick={()=>{if(window.confirm("Archive records older than 12 months and clear all uploaded files from browser storage?\n\nDocument names/references are kept. Download a backup first."))doCleanup(12);}} style={{...S.btn,background:"#1a1a2a",border:"1px solid #3a3a6a",fontSize:11}}>Archive Old Records + Clear Files</button>
@@ -159,9 +159,9 @@ export default function DataBackup(p) {
               <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
                 {[["Revenue",fmt$(ly.rev),fmt$(cy.rev),revChange],["Expenses",fmt$(ly.exp),fmt$(cy.exp),null],["Net Profit",fmt$(ly.net),fmt$(cy.net),netChange]].map(([lbl,prev,curr,chg])=>{const isPos=lbl==="Expenses"?false:parseFloat(chg)>0;return(
                   <div key={lbl} style={{background:"#0f0f1a",border:"1px solid #1a1a2a",borderRadius:6,padding:14}}>
-                    <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8}}>{lbl}</div>
-                    <div style={{marginBottom:6}}><div style={{fontSize:10,color:"#444"}}>{lastYear}</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#666"}}>{prev}</div></div>
-                    <div><div style={{fontSize:10,color:"#666"}}>{currentYear}</div><div style={{fontSize:18,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:lbl==="Expenses"?"#ef4444":"#22c55e"}}>{curr}</div></div>
+                    <div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8}}>{lbl}</div>
+                    <div style={{marginBottom:6}}><div style={{fontSize:10,color:"#888"}}>{lastYear}</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#aaa"}}>{prev}</div></div>
+                    <div><div style={{fontSize:10,color:"#aaa"}}>{currentYear}</div><div style={{fontSize:18,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:lbl==="Expenses"?"#ef4444":"#22c55e"}}>{curr}</div></div>
                     {chg!==null&&<div style={{marginTop:8,fontSize:11,color:isPos?"#22c55e":"#ef4444",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{parseFloat(chg)>0?"▲":"▼"} {Math.abs(parseFloat(chg))}% vs last year</div>}
                   </div>
                 );})}
@@ -172,7 +172,7 @@ export default function DataBackup(p) {
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                 <div>
                   <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8"}}>Restore from Backup</div>
-                  <div style={{fontSize:11,color:"#555",marginTop:4}}>Upload a previously exported JSON backup to restore all your data.</div>
+                  <div style={{fontSize:11,color:"#999",marginTop:4}}>Upload a previously exported JSON backup to restore all your data.</div>
                 </div>
               </div>
               <input type="file" accept=".json" onChange={async(e)=>{
@@ -198,20 +198,20 @@ export default function DataBackup(p) {
             {/* Full backup */}
             <div style={{...S.card,marginBottom:20}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-                <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8"}}>Full Data Backup (JSON)</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Exports all data — drivers, vehicles, compliance, finance, payroll, everything. Note: uploaded files are excluded to keep backup small.</div></div>
+                <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8"}}>Full Data Backup (JSON)</div><div style={{fontSize:11,color:"#999",marginTop:4}}>Exports all data — drivers, vehicles, compliance, finance, payroll, everything. Note: uploaded files are excluded to keep backup small.</div></div>
                 <button className="hov" onClick={downloadJSON} style={S.btn}>Download →</button>
               </div>
-              <div style={{padding:"10px 14px",background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,fontSize:10,color:"#444",lineHeight:1.7}}>💡 <strong style={{color:"#666"}}>Tip:</strong> Save to Google Drive or Dropbox. If you clear browser cache, this is your only recovery option until cloud sync is added.</div>
+              <div style={{padding:"10px 14px",background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,fontSize:10,color:"#888",lineHeight:1.7}}>💡 <strong style={{color:"#aaa"}}>Tip:</strong> Save to Google Drive or Dropbox. If you clear browser cache, this is your only recovery option until cloud sync is added.</div>
             </div>
             {/* CSV exports */}
             <div style={{...S.card,marginBottom:20}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8",marginBottom:4}}>Spreadsheet Exports (CSV)</div>
-              <div style={{fontSize:11,color:"#555",marginBottom:16}}>Individual tables as CSV — open in Excel, Google Sheets, or send to your accountant.</div>
+              <div style={{fontSize:11,color:"#999",marginBottom:16}}>Individual tables as CSV — open in Excel, Google Sheets, or send to your accountant.</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
                 {[[revenue,"Revenue","revenue.csv",["date","description","amount","vehicle"]],[expenses,"Expenses","expenses.csv",["date","category","amount","description","vehicle"]],[drivers,"Drivers","drivers.csv",["name","phone","hireDate","payType","payRate","status"]],[maintenance,"Maintenance","maintenance.csv",["truckName","type","date","mileage","cost","notes"]],[payroll,"Payroll","payroll.csv",["driverName","periodStart","periodEnd","gross","status","paidDate"]],[fuelLog,"Fuel Log","fuel.csv",["date","truckName","gallons","pricePerGallon","totalCost","state"]]].map(([data,label,file,cols])=>(
                   <button key={file} className="hov" onClick={()=>downloadCSV(data,file,cols)} style={{...S.card,textAlign:"left",cursor:"pointer",display:"block",border:`1px solid ${accent}33`}}>
                     <div style={{fontSize:13,color:accent,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{label}</div>
-                    <div style={{fontSize:10,color:"#555",marginTop:3}}>{data.length} records · .csv</div>
+                    <div style={{fontSize:10,color:"#999",marginTop:3}}>{data.length} records · .csv</div>
                   </button>
                 ))}
               </div>

@@ -112,16 +112,16 @@ export default function Drivers(p) {
                     <button className="hov" onClick={()=>{ if(!driverForm.name){showValidation("Driver name is required");return;} if(!driverForm.payRate){showValidation("Pay rate is required");return;} setDrivers(p=>[...p,{...driverForm,id:Date.now(),incidents:[],scores:[]}]); setDriverForm({name:"",route:"",payType:"per_mile",payRate:"",ytdPay:"",phone:"",hireDate:"",status:"active"}); setShowAddDriver(false); }} style={{...S.btn,background:"#60a5fa",marginTop:14}}>Save Driver</button>
                   </div>
                 )}
-                {drivers.length===0&&!showAddDriver&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No drivers added yet.</div>}
+                {drivers.length===0&&!showAddDriver&&<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>No drivers added yet.</div>}
                 <div style={{display:"flex",flexDirection:"column",gap:10}}>
                   {drivers.map(d=>(
                     <div key={d.id} style={{...S.card,display:"flex",alignItems:"center",gap:16}}>
                       <div style={{width:36,height:36,background:d.status==="active"?"#22c55e22":"#ef444422",border:`1px solid ${d.status==="active"?"#22c55e44":"#ef444444"}`,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:d.status==="active"?"#22c55e":"#ef4444",flexShrink:0}}>{d.name.charAt(0)}</div>
-                      <div style={{flex:1}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{d.name}</div><div style={{fontSize:10,color:"#555"}}>{d.route||"No route"} · {d.payType==="per_mile"?`$${d.payRate}/mi`:d.payType==="per_stop"?`$${d.payRate}/stop`:d.payType==="per_day"?`$${d.payRate}/day`:d.payType==="percentage"?`${d.payRate}% of route`:d.payType==="hourly"?`$${d.payRate}/hr`:`$${d.payRate}/yr`}</div></div>
-                      <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>YTD Pay</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e"}}>{fmt$(parseFloat(d.ytdPay||0))}</div></div>
-                      <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Incidents</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:(d.incidents||[]).length>0?"#ef4444":"#22c55e"}}>{(d.incidents||[]).length}</div></div>
+                      <div style={{flex:1}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8"}}>{d.name}</div><div style={{fontSize:10,color:"#999"}}>{d.route||"No route"} · {d.payType==="per_mile"?`$${d.payRate}/mi`:d.payType==="per_stop"?`$${d.payRate}/stop`:d.payType==="per_day"?`$${d.payRate}/day`:d.payType==="percentage"?`${d.payRate}% of route`:d.payType==="hourly"?`$${d.payRate}/hr`:`$${d.payRate}/yr`}</div></div>
+                      <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em"}}>YTD Pay</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e"}}>{fmt$(parseFloat(d.ytdPay||0))}</div></div>
+                      <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em"}}>Incidents</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:(d.incidents||[]).length>0?"#ef4444":"#22c55e"}}>{(d.incidents||[]).length}</div></div>
                       <button onClick={()=>openEdit("driver",d)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
-                      <button onClick={()=>setDrivers(p=>p.filter(x=>x.id!==d.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                      <button onClick={()=>setDrivers(p=>p.filter(x=>x.id!==d.id))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12}}>✕</button>
                     </div>
                   ))}
                 </div>
@@ -130,17 +130,17 @@ export default function Drivers(p) {
             {subScreen==="scorecards"&&(
               <div style={{maxWidth:760,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
                 <div style={{...S.section,marginBottom:20}}>DRIVER SCORECARDS</div>
-                {drivers.length===0?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No drivers added yet.</div>:
+                {drivers.length===0?<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>No drivers added yet.</div>:
                 <div style={{display:"flex",flexDirection:"column",gap:12}}>
                   {drivers.map(d=>(
                     <div key={d.id} style={S.card}>
                       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:14}}>{d.name} — {d.route||"Unassigned"}</div>
                       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:12}}>
                         {[["On-Time %","—"],["Package Care","—"],["Customer Rating","—"],["Incidents",(d.incidents||[]).length.toString()],["Tenure",d.hireDate?`${Math.floor((new Date()-new Date(d.hireDate))/86400000/30)}mo`:"—"]].map(([lbl,val])=>(
-                          <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px",textAlign:"center"}}><div style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}}>{lbl}</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:val==="0"?"#22c55e":lbl==="Incidents"&&val!=="0"?"#ef4444":accent}}>{val}</div></div>
+                          <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px",textAlign:"center"}}><div style={{fontSize:9,color:"#999",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}}>{lbl}</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:val==="0"?"#22c55e":lbl==="Incidents"&&val!=="0"?"#ef4444":accent}}>{val}</div></div>
                         ))}
                       </div>
-                      <div style={{fontSize:10,color:"#444",fontStyle:"italic"}}>Connect telematics data (e.g. Amazon Mentor, FedEx GPS) to populate real-time scores.</div>
+                      <div style={{fontSize:10,color:"#888",fontStyle:"italic"}}>Connect telematics data (e.g. Amazon Mentor, FedEx GPS) to populate real-time scores.</div>
                     </div>
                   ))}
                 </div>}
@@ -203,11 +203,11 @@ export default function Drivers(p) {
                           <div style={{display:"flex",gap:10,alignItems:"center"}}>
                             <div style={{textAlign:"center"}}>
                               <div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:count===0?"#22c55e":critical>0?"#ef4444":"#f59e0b"}}>{count}</div>
-                              <div style={{fontSize:8,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Total</div>
+                              <div style={{fontSize:8,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em"}}>Total</div>
                             </div>
                             {critical>0&&<div style={{textAlign:"center"}}>
                               <div style={{fontSize:20,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#ef4444"}}>{critical}</div>
-                              <div style={{fontSize:8,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Major+</div>
+                              <div style={{fontSize:8,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em"}}>Major+</div>
                             </div>}
                             {count===0&&<div style={{fontSize:10,color:"#2d4a2d"}}>Clean record</div>}
                           </div>
@@ -218,7 +218,7 @@ export default function Drivers(p) {
                 )}
 
                 {/* Incident list */}
-                {incidents.length===0&&!showAddIncident&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No incidents logged yet.</div>}
+                {incidents.length===0&&!showAddIncident&&<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>No incidents logged yet.</div>}
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {incidents.sort((a,b)=>new Date(b.date||0)-new Date(a.date||0)).map(inc=>{
                     const sc={minor:"#555",moderate:"#f59e0b",major:"#f87171",critical:"#ef4444"}[inc.severity]||"#555";
@@ -272,7 +272,7 @@ export default function Drivers(p) {
                               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
                                 <div style={{background:sc+"22",border:`1px solid ${sc}44`,borderRadius:3,padding:"2px 8px",fontSize:10,color:sc,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em"}}>{inc.severity}</div>
                                 <div style={{fontSize:10,color:"#f59e0b",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{inc.driverName||"Unknown Driver"}</div>
-                                <div style={{fontSize:10,color:"#444"}}>· {inc.type?.replace(/_/g," ")} · {inc.date||"No date"}</div>
+                                <div style={{fontSize:10,color:"#888"}}>· {inc.type?.replace(/_/g," ")} · {inc.date||"No date"}</div>
                               </div>
                               <div style={{fontSize:12,color:"#c8c4bc",lineHeight:1.6}}>{inc.description}</div>
                             </div>
@@ -281,7 +281,7 @@ export default function Drivers(p) {
                               <button onClick={()=>{
                                 setIncidents(p=>p.filter(i=>i.id!==inc.id));
                                 setDrivers(p=>p.map(d=>({...d,incidents:(d.incidents||[]).filter(i=>i.id!==inc.id)})));
-                              }} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                              }} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12}}>✕</button>
                             </div>
                           </div>
                         )}
@@ -301,7 +301,7 @@ export default function Drivers(p) {
                 {subScreen==="onboarding"&&(
                   <>
                     <div style={{...S.section,marginBottom:4}}>DRIVER ONBOARDING</div>
-                    <p style={{fontSize:11,color:"#555",marginBottom:20,lineHeight:1.8}}>Track every required step when hiring a new driver. DOT requires most of these before the first day behind the wheel.</p>
+                    <p style={{fontSize:11,color:"#999",marginBottom:20,lineHeight:1.8}}>Track every required step when hiring a new driver. DOT requires most of these before the first day behind the wheel.</p>
                     <div style={{marginBottom:16}}><label style={S.label}>Select Driver</label><select value={selectedOnboardDriver} onChange={e=>setSelectedOnboardDriver(e.target.value)} style={{...S.input,maxWidth:320}}><option value="">Choose a driver...</option>{drivers.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
                     {selDriver&&(()=>{
                       const checklist=selDriver.onboarding||{};
@@ -312,9 +312,9 @@ export default function Drivers(p) {
                       const OnboardDetail = () => (
                         <>
                         <div style={{...S.card,marginBottom:16,display:"flex",alignItems:"center",gap:16}}>
-                          <div style={{flex:1}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#e8e4d8"}}>{selDriver.name}</div><div style={{fontSize:11,color:"#555"}}>Hired: {fmtDate(selDriver.hireDate)||"Not set"}</div></div>
-                          <div style={{textAlign:"center"}}><div style={{fontSize:32,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:pct===100?"#22c55e":pct>60?"#f59e0b":"#ef4444"}}>{pct}%</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Complete</div></div>
-                          <div style={{background:readyToDrive?"#051a05":"#1a0808",border:`1px solid ${readyToDrive?"#22c55e44":"#ef444444"}`,borderRadius:6,padding:"8px 16px",textAlign:"center"}}><div style={{fontSize:12,color:readyToDrive?"#22c55e":"#ef4444",fontWeight:700}}>{readyToDrive?"✓ DOT Ready":"⚠ Not Ready"}</div><div style={{fontSize:9,color:"#555"}}>Required items</div></div>
+                          <div style={{flex:1}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#e8e4d8"}}>{selDriver.name}</div><div style={{fontSize:11,color:"#999"}}>Hired: {fmtDate(selDriver.hireDate)||"Not set"}</div></div>
+                          <div style={{textAlign:"center"}}><div style={{fontSize:32,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:pct===100?"#22c55e":pct>60?"#f59e0b":"#ef4444"}}>{pct}%</div><div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em"}}>Complete</div></div>
+                          <div style={{background:readyToDrive?"#051a05":"#1a0808",border:`1px solid ${readyToDrive?"#22c55e44":"#ef444444"}`,borderRadius:6,padding:"8px 16px",textAlign:"center"}}><div style={{fontSize:12,color:readyToDrive?"#22c55e":"#ef4444",fontWeight:700}}>{readyToDrive?"✓ DOT Ready":"⚠ Not Ready"}</div><div style={{fontSize:9,color:"#999"}}>Required items</div></div>
                         </div>
                         <div style={{fontSize:10,color:"#ef4444",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:10}}>Required (DOT)</div>
                         <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:20}}>
@@ -326,7 +326,7 @@ export default function Drivers(p) {
                             </div>
                           ))}
                         </div>
-                        <div style={{fontSize:10,color:"#555",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:10}}>Optional / Company Policy</div>
+                        <div style={{fontSize:10,color:"#999",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:10}}>Optional / Company Policy</div>
                         <div style={{display:"flex",flexDirection:"column",gap:6}}>
                           {ONBOARDING_STEPS.filter(s=>!s.req).map(step=>(
                             <div key={step.id} onClick={()=>toggleStep(selDriver.id,step.id)} style={{...S.card,display:"flex",alignItems:"center",gap:12,cursor:"pointer",borderLeft:`3px solid ${checklist[step.id]?"#22c55e":"#333"}`,opacity:checklist[step.id]?0.7:1}}>
@@ -339,14 +339,14 @@ export default function Drivers(p) {
                       );
                       return <OnboardDetail/>;
                     })()}
-                    {!selDriver&&selectedOnboardDriver&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>Driver not found.</div>}
-                    {drivers.length===0&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>Add drivers in the All Drivers tab first.</div>}
+                    {!selDriver&&selectedOnboardDriver&&<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>Driver not found.</div>}
+                    {drivers.length===0&&<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>Add drivers in the All Drivers tab first.</div>}
                   </>
                 )}
                 {subScreen==="hos"&&(
                   <>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-                      <div><div style={S.section}>HOURS OF SERVICE</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Federal limit: 11 hrs driving, 14 hrs on-duty per day. Keep 6 months minimum.</div></div>
+                      <div><div style={S.section}>HOURS OF SERVICE</div><div style={{fontSize:11,color:"#999",marginTop:4}}>Federal limit: 11 hrs driving, 14 hrs on-duty per day. Keep 6 months minimum.</div></div>
                       <button className="hov" onClick={()=>setHosShowAdd(!hosShowAdd)} style={S.btn}>{hosShowAdd?"Cancel":"+ Log Hours"}</button>
                     </div>
                     {drivers.filter(d=>d.status==="active").length>0&&(
@@ -355,9 +355,9 @@ export default function Drivers(p) {
                           <div key={d.id} style={{...S.card,borderTop:`3px solid ${over?"#ef4444":week.driving>50?"#f59e0b":"#22c55e"}`}}>
                             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"#e8e4d8",marginBottom:8}}>{d.name}</div>
                             <div style={{fontSize:18,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:over?"#ef4444":"#e8e4d8"}}>{week.driving.toFixed(1)} hrs</div>
-                            <div style={{fontSize:9,color:"#555"}}>driving · {week.onDuty.toFixed(1)} on-duty this week</div>
+                            <div style={{fontSize:9,color:"#999"}}>driving · {week.onDuty.toFixed(1)} on-duty this week</div>
                             <div style={{marginTop:8,height:4,background:"#1e1e1e",borderRadius:2}}><div style={{height:"100%",width:`${Math.min((week.driving/60)*100,100)}%`,background:over?"#ef4444":week.driving>50?"#f59e0b":"#22c55e",borderRadius:2}}/></div>
-                            <div style={{fontSize:9,color:"#555",marginTop:3}}>{Math.max(0,60-week.driving).toFixed(1)} hrs remaining (60hr limit)</div>
+                            <div style={{fontSize:9,color:"#999",marginTop:3}}>{Math.max(0,60-week.driving).toFixed(1)} hrs remaining (60hr limit)</div>
                           </div>
                         );})}
                       </div>
@@ -374,12 +374,12 @@ export default function Drivers(p) {
                       </div>
                       <button className="hov" onClick={()=>{if(!hosForm.driverId||!hosForm.date)return;const drv=drivers.find(d=>String(d.id)===String(hosForm.driverId));setHosLog(p=>[{...hosForm,id:Date.now(),driverName:drv?.name||"Unknown"},...p]);setHosForm(prev=>({...prev,date:"",hoursOnDuty:"",hoursDriving:"",hoursOffDuty:"",miles:"",notes:""}));setHosShowAdd(false);}} style={{...S.btn,marginTop:14}}>Save HOS Log</button>
                     </div>)}
-                    {hosLog.length===0&&!hosShowAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No HOS records yet. Log driver hours daily to stay DOT compliant (6-month retention required).</div>}
+                    {hosLog.length===0&&!hosShowAdd&&<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>No HOS records yet. Log driver hours daily to stay DOT compliant (6-month retention required).</div>}
                     <div style={{display:"flex",flexDirection:"column",gap:6}}>
                       {[...hosLog].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(h=>{const dOver=parseFloat(h.hoursDriving||0)>11;const oOver=parseFloat(h.hoursOnDuty||0)>14;const viol=dOver||oOver;return(
                         <div key={h.id} style={{...S.card,display:"flex",alignItems:"center",gap:14,borderLeft:`3px solid ${viol?"#ef4444":"#22c55e"}`}}>
-                          <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{h.driverName} — {h.date}</div><div style={{fontSize:10,color:"#555"}}>Driving: <span style={{color:dOver?"#ef4444":"#888"}}>{h.hoursDriving||0}h</span> · On-duty: <span style={{color:oOver?"#ef4444":"#888"}}>{h.hoursOnDuty||0}h</span> · Off: {h.hoursOffDuty||0}h{h.miles?` · ${h.miles} mi`:""}{h.notes?` · ${h.notes}`:""}</div>{viol&&<div style={{fontSize:10,color:"#ef4444",marginTop:3}}>⚠ HOS Violation: {dOver?"Driving >11hr":"On-duty >14hr"}</div>}</div>
-                          <button onClick={()=>setHosLog(p=>p.filter(x=>x.id!==h.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                          <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{h.driverName} — {h.date}</div><div style={{fontSize:10,color:"#999"}}>Driving: <span style={{color:dOver?"#ef4444":"#888"}}>{h.hoursDriving||0}h</span> · On-duty: <span style={{color:oOver?"#ef4444":"#888"}}>{h.hoursOnDuty||0}h</span> · Off: {h.hoursOffDuty||0}h{h.miles?` · ${h.miles} mi`:""}{h.notes?` · ${h.notes}`:""}</div>{viol&&<div style={{fontSize:10,color:"#ef4444",marginTop:3}}>⚠ HOS Violation: {dOver?"Driving >11hr":"On-duty >14hr"}</div>}</div>
+                          <button onClick={()=>setHosLog(p=>p.filter(x=>x.id!==h.id))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12}}>✕</button>
                         </div>
                       );})}
                     </div>
@@ -424,7 +424,7 @@ export default function Drivers(p) {
                   }} style={S.btn}>Save Entry</button>
                 </div>}
                 <div style={{fontSize:12,fontWeight:700,color:accent,marginBottom:8}}>Open ({coachingLog.filter(c=>!c.followUpComplete).length})</div>
-                {coachingLog.filter(c=>!c.followUpComplete).length===0&&<div style={{color:"#555",fontSize:12,marginBottom:16}}>No open coaching entries.</div>}
+                {coachingLog.filter(c=>!c.followUpComplete).length===0&&<div style={{color:"#999",fontSize:12,marginBottom:16}}>No open coaching entries.</div>}
                 {coachingLog.filter(c=>!c.followUpComplete).map(c=>{
                   const overdue=c.followUpDate&&new Date(c.followUpDate)<new Date();
                   return <div key={c.id} style={{...S.card,marginBottom:8,border:overdue?"1px solid #ef444455":""}}>
@@ -439,7 +439,7 @@ export default function Drivers(p) {
                   </div>;
                 })}
                 {coachingLog.filter(c=>c.followUpComplete).length>0&&<>
-                  <div style={{fontSize:12,fontWeight:700,color:"#555",marginBottom:8,marginTop:16}}>Completed ({coachingLog.filter(c=>c.followUpComplete).length})</div>
+                  <div style={{fontSize:12,fontWeight:700,color:"#999",marginBottom:8,marginTop:16}}>Completed ({coachingLog.filter(c=>c.followUpComplete).length})</div>
                   {coachingLog.filter(c=>c.followUpComplete).map(c=>(
                     <div key={c.id} style={{...S.card,marginBottom:6,opacity:0.7}}>
                       <div style={{fontSize:12,color:"#e8e4d8"}}>{c.driverName} — {c.issueType} <span style={{fontSize:10,color:"#22c55e"}}>✓ Complete</span></div>
@@ -480,7 +480,7 @@ export default function Drivers(p) {
                   return !recent||((Date.now()-new Date(recent.date).getTime())>7*24*3600*1000);
                 }).map((t,i)=><div key={i} style={{...S.card,marginBottom:8,background:"#1a1005",border:"1px solid #f59e0b44",color:"#f59e0b",fontSize:11}}>⚠ {t.name||t.truckName} — no appearance check in 7+ days</div>)}
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:8,marginTop:8}}>Inspection History</div>
-                {appearanceLog.length===0&&<div style={{color:"#555",fontSize:12}}>No inspections logged yet.</div>}
+                {appearanceLog.length===0&&<div style={{color:"#999",fontSize:12}}>No inspections logged yet.</div>}
                 {appearanceLog.slice(0,20).map(a=>(
                   <div key={a.id} style={{...S.card,marginBottom:6}}>
                     <div style={{display:"flex",justifyContent:"space-between"}}>

@@ -169,7 +169,7 @@ export default function StopProfit(p) {
     <div style={{background:"#0f0f18",border:"1px solid #1e1e2e",borderRadius:6,padding:"10px 14px",marginBottom:8}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
         <div style={{flex:1}}>
-          <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>
+          <div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>
             {label}{isOverride&&<span style={{color:"#f59e0b",fontSize:8,marginLeft:6}}>(manual)</span>}
           </div>
           {isOverride ? editNode : displayNode}
@@ -206,7 +206,16 @@ export default function StopProfit(p) {
               {/* Date */}
               <div style={{marginBottom:14}}>
                 <label style={S.label}>Date</label>
-                <input type="date" value={stopProfitForm.date||today} onChange={e=>setStopProfitForm(pr=>({...pr,date:e.target.value}))} style={{...S.input,maxWidth:200}}/>
+                <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                  <input type="date" value={stopProfitForm.date||today} onChange={e=>setStopProfitForm(pr=>({...pr,date:e.target.value}))} style={{...S.input,maxWidth:200}}/>
+                  {stopProfitLog.length>0&&(
+                    <button onClick={()=>{
+                      const last=[...stopProfitLog].sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+                      if(!last) return;
+                      setStopProfitForm({date:today,stops:last.stops||"",stopRate:last.stopRate||"",dailyGuarantee:last.dailyGuarantee||"",milesDriven:last.milesDriven||"",mileStipendRate:last.mileStipendRate||"",revenuePerStop:"",driverPay:"",fuelCost:"",vehicleCost:"",otherCosts:last.otherCosts||""});
+                    }} style={{background:"transparent",border:"1px solid #2a2a2a",color:"#aaa",padding:"5px 12px",fontSize:10,borderRadius:4,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>Repeat Yesterday →</button>
+                  )}
+                </div>
               </div>
 
               {/* Revenue section */}
@@ -215,12 +224,12 @@ export default function StopProfit(p) {
                 <div>
                   <label style={S.label}>Daily Guarantee ($)</label>
                   <input type="number" placeholder={settings?.clientDailyRate?"Pre-filled from settings":"e.g. 500.00"} value={stopProfitForm.dailyGuarantee!=null?stopProfitForm.dailyGuarantee:""} onChange={e=>setStopProfitForm(pr=>({...pr,dailyGuarantee:e.target.value}))} style={S.input} min={0} step={0.01}/>
-                  <div style={{fontSize:9,color:"#555",marginTop:3}}>Fixed daily rate regardless of stops</div>
+                  <div style={{fontSize:9,color:"#999",marginTop:3}}>Fixed daily rate regardless of stops</div>
                 </div>
                 <div>
                   <label style={S.label}>Stop Rate ($/stop)</label>
                   <input type="number" placeholder="e.g. 35.00" value={stopProfitForm.stopRate||""} onChange={e=>setStopProfitForm(pr=>({...pr,stopRate:e.target.value}))} style={S.input} min={0} step={0.01}/>
-                  <div style={{fontSize:9,color:"#555",marginTop:3}}>Bonus Lowe's pays per stop completed</div>
+                  <div style={{fontSize:9,color:"#999",marginTop:3}}>Bonus Lowe's pays per stop completed</div>
                 </div>
                 <div>
                   <label style={S.label}>Stops Completed</label>
@@ -229,12 +238,12 @@ export default function StopProfit(p) {
                 <div>
                   <label style={S.label}>Miles Driven Today</label>
                   <input type="number" placeholder={odomMiles!=null?`Auto: ${odomMiles} mi`:"e.g. 180"} value={stopProfitForm.milesDriven!=null?stopProfitForm.milesDriven:""} onChange={e=>setStopProfitForm(pr=>({...pr,milesDriven:e.target.value}))} style={S.input} min={0}/>
-                  <div style={{fontSize:9,color:"#555",marginTop:3}}>{odomMiles!=null?"Auto-filled from odometer":"Enter or log odometer readings"}</div>
+                  <div style={{fontSize:9,color:"#999",marginTop:3}}>{odomMiles!=null?"Auto-filled from odometer":"Enter or log odometer readings"}</div>
                 </div>
                 <div>
                   <label style={S.label}>Mile Stipend Rate ($/mile)</label>
                   <input type="number" placeholder={settings?.mileStipendRate?"Pre-filled from settings":"e.g. 0.45"} value={stopProfitForm.mileStipendRate!=null?stopProfitForm.mileStipendRate:""} onChange={e=>setStopProfitForm(pr=>({...pr,mileStipendRate:e.target.value}))} style={S.input} min={0} step={0.01}/>
-                  <div style={{fontSize:9,color:"#555",marginTop:3}}>Per-mile rate your client pays</div>
+                  <div style={{fontSize:9,color:"#999",marginTop:3}}>Per-mile rate your client pays</div>
                 </div>
               </div>
 
@@ -288,10 +297,10 @@ export default function StopProfit(p) {
                     <div>
                       <div style={{display:"flex",alignItems:"center",gap:8}}>
                         <div style={{fontSize:13,color:"#e8e4d8"}}>{fmt$(fuelAuto)}/day</div>
-                        <button onClick={()=>setGasExpanded(x=>!x)} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:9,fontFamily:"'DM Mono',monospace",padding:0}}>{gasExpanded?"▲ less":"▼ detail"}</button>
+                        <button onClick={()=>setGasExpanded(x=>!x)} style={{background:"none",border:"none",color:"#999",cursor:"pointer",fontSize:9,fontFamily:"'DM Mono',monospace",padding:0}}>{gasExpanded?"▲ less":"▼ detail"}</button>
                       </div>
                       {gasExpanded&&fuelCalc&&(
-                        <div style={{marginTop:6,fontSize:10,color:"#666",lineHeight:1.9}}>
+                        <div style={{marginTop:6,fontSize:10,color:"#aaa",lineHeight:1.9}}>
                           Last fill: {fmt$(fuelCalc.lastFillAmount)} on {fmtDate(fuelCalc.lastFillDate)}<br/>
                           Auto range: ~{fuelCalc.daysOfRange} days · {fmt$(fuelCalc.lastFillAmount/Math.max(fuelCalc.daysOfRange,1))}/day<br/>
                           Based on: {fuelCalc.gallons} gal ÷ ({fuelCalc.avgDailyMiles} mi/day ÷ {fuelCalc.mpg} MPG)<br/>
@@ -301,7 +310,7 @@ export default function StopProfit(p) {
                           <div style={{marginTop:8,display:"flex",alignItems:"center",gap:8}}>
                             <span style={{color:"#888"}}>Override days this tank lasts:</span>
                             <input type="number" placeholder={`auto: ${fuelCalc.daysOfRange}`} value={manualDays} onChange={e=>setManualDays(e.target.value)} min={1} step={0.5} style={{...S.input,width:80,padding:"2px 8px",fontSize:10}}/>
-                            {manualDays&&<button onClick={()=>setManualDays("")} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:9,fontFamily:"'DM Mono',monospace",padding:0}}>reset</button>}
+                            {manualDays&&<button onClick={()=>setManualDays("")} style={{background:"none",border:"none",color:"#999",cursor:"pointer",fontSize:9,fontFamily:"'DM Mono',monospace",padding:0}}>reset</button>}
                           </div>
                           {manualDaysNum>0&&<div style={{color:accent,marginTop:2}}>Using {manualDaysNum} days → {fmt$(fuelAuto)}/day</div>}
                         </div>
@@ -374,7 +383,7 @@ export default function StopProfit(p) {
                     <div><div style={{fontSize:9,color:"#888"}}>Net/Stop</div><div style={{fontSize:18,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:stops>0?marginColor:"#444"}}>{stops>0?`$${netPerStop.toFixed(2)}`:"—"}</div></div>
                     <div><div style={{fontSize:9,color:"#888"}}>Margin</div><div style={{fontSize:18,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:totalRevenue>0?marginColor:"#444"}}>{totalRevenue>0?`${marginPct.toFixed(1)}%`:"—"}</div></div>
                   </div>
-                  {totalCost>0&&<div style={{fontSize:10,color:"#555",marginTop:8}}>Wages {costPct(driverPay)} · Gas {costPct(gasCost)} · Insurance {costPct(insuranceCost)} · Truck {costPct(truckCost)}</div>}
+                  {totalCost>0&&<div style={{fontSize:10,color:"#999",marginTop:8}}>Wages {costPct(driverPay)} · Gas {costPct(gasCost)} · Insurance {costPct(insuranceCost)} · Truck {costPct(truckCost)}</div>}
                 </div>
               </div>
 
@@ -411,7 +420,7 @@ export default function StopProfit(p) {
                       <div key={f.id||i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:"1px solid #1a1a2a"}}>
                         <div>
                           <div style={{fontSize:11,color:"#e8e4d8"}}>{fmtDate(f.date)}{f.truckName?` · ${f.truckName}`:""}</div>
-                          <div style={{fontSize:10,color:"#555"}}>{gallons>0?`${gallons} gal`:""}{daysRange>0?` · ~${daysRange.toFixed(1)} days range`:""}{dayRate>0?` · ${fmt$(dayRate)}/day`:""}</div>
+                          <div style={{fontSize:10,color:"#999"}}>{gallons>0?`${gallons} gal`:""}{daysRange>0?` · ~${daysRange.toFixed(1)} days range`:""}{dayRate>0?` · ${fmt$(dayRate)}/day`:""}</div>
                         </div>
                         <div style={{fontSize:13,fontWeight:700,color:accent}}>{fmt$(amount)}</div>
                       </div>
@@ -422,7 +431,7 @@ export default function StopProfit(p) {
             )}
 
             {/* Recent log */}
-            {stopProfitLog.length===0&&<div style={{color:"#555",fontSize:12,marginTop:16}}>No entries yet.</div>}
+            {stopProfitLog.length===0&&<div style={{color:"#999",fontSize:12,marginTop:16}}>No entries yet.</div>}
             <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:12}}>
               {stopProfitLog.slice(0,10).map(e=>{
                 const mc=parseFloat(e.marginPct||e.margin||0)>20?"#22c55e":parseFloat(e.marginPct||e.margin||0)>=10?"#f59e0b":"#ef4444";
@@ -431,7 +440,7 @@ export default function StopProfit(p) {
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <div>
                         <div style={{fontSize:12,color:"#e8e4d8"}}>{fmtDate(e.date)} · {e.stops} stops</div>
-                        <div style={{fontSize:10,color:"#555"}}>Rev: {fmt$(e.totalRevenue)} · Cost: {fmt$(e.totalCost)}</div>
+                        <div style={{fontSize:10,color:"#999"}}>Rev: {fmt$(e.totalRevenue)} · Cost: {fmt$(e.totalCost)}</div>
                       </div>
                       <div style={{textAlign:"right"}}>
                         <div style={{fontSize:16,fontWeight:700,color:mc}}>${parseFloat(e.netPerStop||0).toFixed(2)}/stop</div>
@@ -466,7 +475,7 @@ export default function StopProfit(p) {
             )}
 
             {/* Bar chart */}
-            {last14.length===0&&<div style={{color:"#555",fontSize:12,marginBottom:16}}>No entries to chart yet.</div>}
+            {last14.length===0&&<div style={{color:"#999",fontSize:12,marginBottom:16}}>No entries to chart yet.</div>}
             {last14.length>0&&(
               <div style={{...S.card,marginBottom:20}}>
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>Last 14 Days — Net Per Stop</div>
@@ -480,7 +489,7 @@ export default function StopProfit(p) {
                       <div key={e.id||i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
                         <div style={{fontSize:7,color:barColor,fontFamily:"'DM Mono',monospace",whiteSpace:"nowrap"}}>${val.toFixed(0)}</div>
                         <div style={{width:"100%",height:barH,background:barColor,borderRadius:"2px 2px 0 0",minHeight:4}}/>
-                        <div style={{fontSize:7,color:"#444",transform:"rotate(-45deg)",transformOrigin:"top left",whiteSpace:"nowrap",marginTop:4}}>{e.date?.slice(5)}</div>
+                        <div style={{fontSize:7,color:"#888",transform:"rotate(-45deg)",transformOrigin:"top left",whiteSpace:"nowrap",marginTop:4}}>{e.date?.slice(5)}</div>
                       </div>
                     );
                   })}
@@ -499,7 +508,7 @@ export default function StopProfit(p) {
                       <div style={{height:"100%",width:`${wkCostBreak>0?(val/wkCostBreak*100):0}%`,background:accent,borderRadius:3}}/>
                     </div>
                     <div style={{width:60,fontSize:10,color:"#e8e4d8",textAlign:"right"}}>{fmt$(val)}</div>
-                    <div style={{width:32,fontSize:9,color:"#555",textAlign:"right"}}>{wkPct(val)}</div>
+                    <div style={{width:32,fontSize:9,color:"#999",textAlign:"right"}}>{wkPct(val)}</div>
                   </div>
                 ))}
               </div>

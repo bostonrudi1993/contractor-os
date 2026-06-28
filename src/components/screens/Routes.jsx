@@ -90,20 +90,20 @@ export default function Routes(p) {
                   <div style={S.section}>ROUTE PROFITABILITY</div>
                   <button className="hov" onClick={()=>setSubScreen("add")} style={S.btn}>+ Add Route</button>
                 </div>
-                {routes.length===0&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No routes added yet. Click "+ Add Route" to get started.</div>}
+                {routes.length===0&&<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>No routes added yet. Click "+ Add Route" to get started.</div>}
                 <div style={{display:"flex",flexDirection:"column",gap:12}}>
                   {routes.map(r=>(
                     <div key={r.id} style={S.card}>
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
                         <div>
                           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8"}}>{r.name}</div>
-                          <div style={{fontSize:10,color:"#555"}}>{r.stops} stops · {r.miles} mi · {r.frequency||"Daily"}</div>
+                          <div style={{fontSize:10,color:"#999"}}>{r.stops} stops · {r.miles} mi · {r.frequency||"Daily"}</div>
                         </div>
                         <div style={{display:"flex",gap:8,alignItems:"center"}}>
                           {r.analysis&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:gradeColor(r.analysis.profitabilityScore)}}>{r.analysis.verdict}</div>}
                           <button onClick={()=>openEdit("route",r)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
                           <button className="hov" onClick={()=>analyzeRoute(r)} style={{...S.btn,padding:"6px 14px",fontSize:11}}>Analyze</button>
-                          <button onClick={()=>setRoutes(p=>p.filter(x=>x.id!==r.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                          <button onClick={()=>setRoutes(p=>p.filter(x=>x.id!==r.id))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12}}>✕</button>
                         </div>
                       </div>
                       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
@@ -117,7 +117,7 @@ export default function Routes(p) {
                           ["Stops",r.stops||"—","#c8c4bc"],
                           ["Miles",r.miles||"—","#c8c4bc"],
                         ].map(([lbl,val,col])=>(
-                          <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{lbl}</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{val}</div></div>
+                          <div key={lbl} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#999",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{lbl}</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{val}</div></div>
                         ))}
                       </div>
                       {r.analysis&&(
@@ -207,7 +207,7 @@ export default function Routes(p) {
                   <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Cleared</div><div style={{fontSize:24,fontWeight:700,color:"#22c55e"}}>{dnrLog.filter(d=>d.resolution==="Cleared").length}</div></div>
                   <div style={S.card}><div style={{fontSize:11,color:"#888"}}>Penalized</div><div style={{fontSize:24,fontWeight:700,color:"#ef4444"}}>{dnrLog.filter(d=>d.resolution==="Penalized").length}</div></div>
                 </div>
-                {dnrLog.length===0&&<div style={{color:"#555",fontSize:12}}>No DNR cases logged.</div>}
+                {dnrLog.length===0&&<div style={{color:"#999",fontSize:12}}>No DNR cases logged.</div>}
                 {dnrLog.map(d=>(
                   <div key={d.id} style={{...S.card,marginBottom:8}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
@@ -273,7 +273,7 @@ export default function Routes(p) {
                   const csv=rows.map(r=>r.join(",")).join("\n");
                   const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="trip_sheets.csv";a.click();
                 }} style={{...S.btn,marginBottom:16}}>Export CSV</button>
-                {tripSheets.length===0&&<div style={{color:"#555",fontSize:12}}>No trip sheets logged yet.</div>}
+                {tripSheets.length===0&&<div style={{color:"#999",fontSize:12}}>No trip sheets logged yet.</div>}
                 {tripSheets.map(t=>(
                   <div key={t.id} style={{...S.card,marginBottom:6}}>
                     <div style={{display:"flex",justifyContent:"space-between"}}>
@@ -288,14 +288,14 @@ export default function Routes(p) {
             {subScreen==="performance"&&(
               <div style={{maxWidth:800,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
                 <div style={{...S.section,marginBottom:20}}>ROUTE PERFORMANCE</div>
-                {routes.filter(r=>r.analysis).length===0?<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>No routes analyzed yet. Go to My Routes and click Analyze on each route.</div>:
+                {routes.filter(r=>r.analysis).length===0?<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>No routes analyzed yet. Go to My Routes and click Analyze on each route.</div>:
                 <div style={{display:"flex",flexDirection:"column",gap:10}}>
                   {routes.filter(r=>r.analysis).sort((a,b)=>parseFloat(b.rate||0)-parseFloat(a.rate||0)).map((r,i)=>(
                     <div key={r.id} style={{...S.card,display:"flex",alignItems:"center",gap:16}}>
-                      <div style={{width:28,fontSize:12,color:"#555",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>#{i+1}</div>
-                      <div style={{flex:1}}><div style={{fontSize:13,color:"#e8e4d8"}}>{r.name}</div><div style={{fontSize:10,color:"#555"}}>{r.stops} stops · {r.miles} mi</div></div>
-                      <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Net/Stop</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:accent}}>{fmt$(r.analysis.netPerStop)}</div></div>
-                      <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em"}}>Net/Mile</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e"}}>{fmt$(r.analysis.netPerMile)}</div></div>
+                      <div style={{width:28,fontSize:12,color:"#999",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>#{i+1}</div>
+                      <div style={{flex:1}}><div style={{fontSize:13,color:"#e8e4d8"}}>{r.name}</div><div style={{fontSize:10,color:"#999"}}>{r.stops} stops · {r.miles} mi</div></div>
+                      <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em"}}>Net/Stop</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:accent}}>{fmt$(r.analysis.netPerStop)}</div></div>
+                      <div style={{textAlign:"center"}}><div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em"}}>Net/Mile</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e"}}>{fmt$(r.analysis.netPerMile)}</div></div>
                       <div style={{width:32,height:32,background:gradeColor(r.analysis.profitabilityScore)+"22",border:`1px solid ${gradeColor(r.analysis.profitabilityScore)}44`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:gradeColor(r.analysis.profitabilityScore),borderRadius:4}}>{r.analysis.profitabilityScore}</div>
                     </div>
                   ))}

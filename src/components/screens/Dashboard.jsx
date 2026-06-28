@@ -29,7 +29,7 @@ export default function Dashboard(p) {
           {settings.companyName||"YOUR FLEET"}<br/>
           <span style={{color:accent,fontSize:28}}>OPERATIONS DASHBOARD</span>
         </div>
-        <div style={{fontSize:11,color:"#555",marginTop:8}}>{seg.icon} {seg.label} · ContractorOS</div>
+        <div style={{fontSize:11,color:"#999",marginTop:8}}>{seg.icon} {seg.label} · ContractorOS</div>
       </div>
 
       <HealthScoreCard
@@ -51,7 +51,7 @@ export default function Dashboard(p) {
 
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
         <div style={S.card}>
-          <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Quick Actions</div>
+          <div style={{fontSize:9,color:"#999",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Quick Actions</div>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {seg.features.loadAnalysis&&<button className="cardhov" onClick={()=>setScreen("analyze")} style={{...S.card,padding:"10px 14px",fontSize:11,color:accent,cursor:"pointer",textAlign:"left",border:`1px solid ${accent}22`}}>→ Analyze a Load</button>}
             {seg.features.routeProfit&&<button className="cardhov" onClick={()=>setScreen("routes")} style={{...S.card,padding:"10px 14px",fontSize:11,color:accent,cursor:"pointer",textAlign:"left",border:`1px solid ${accent}22`}}>→ View Route Profitability</button>}
@@ -63,25 +63,25 @@ export default function Dashboard(p) {
           </div>
         </div>
         <div style={S.card}>
-          <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>
+          <div style={{fontSize:9,color:"#999",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>
             {urgentItems.length>0?"⚠ Urgent Items":"Compliance Status"}
           </div>
           {urgentItems.length===0&&<div style={{fontSize:12,color:"#22c55e"}}>✓ No urgent compliance items</div>}
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
             {urgentItems.slice(0,4).map((item,i)=><ExBadge key={i} {...item}/>)}
-            {urgentItems.length>4&&<div style={{fontSize:10,color:"#555",textAlign:"center",paddingTop:4}}>+{urgentItems.length-4} more — check Compliance tab</div>}
+            {urgentItems.length>4&&<div style={{fontSize:10,color:"#999",textAlign:"center",paddingTop:4}}>+{urgentItems.length-4} more — check Compliance tab</div>}
           </div>
         </div>
       </div>
 
       {seg.features.loadAnalysis&&loads.length>0&&(
         <div style={S.card}>
-          <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Recent Load Analysis</div>
+          <div style={{fontSize:9,color:"#999",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Recent Load Analysis</div>
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
             {loads.slice(0,4).map(l=>(
               <div key={l.id} style={{display:"flex",alignItems:"center",gap:12,padding:"7px 0",borderBottom:"1px solid #1a1a1a"}}>
                 <div style={{width:24,height:24,background:gradeColor(l.result?.grade)+"22",border:`1px solid ${gradeColor(l.result?.grade)}44`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:gradeColor(l.result?.grade),borderRadius:3,flexShrink:0}}>{l.result?.grade}</div>
-                <div style={{flex:1,minWidth:0}}><div style={{fontSize:11,color:"#c8c4bc",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.load?.origin} → {l.load?.destination}</div><div style={{fontSize:9,color:"#555"}}>{l.date} · {l.load?.brokerName}</div></div>
+                <div style={{flex:1,minWidth:0}}><div style={{fontSize:11,color:"#c8c4bc",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.load?.origin} → {l.load?.destination}</div><div style={{fontSize:9,color:"#999"}}>{l.date} · {l.load?.brokerName}</div></div>
                 <div style={{fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:l.result?.verdictColor==="green"?"#22c55e":l.result?.verdictColor==="yellow"?"#f59e0b":"#ef4444",flexShrink:0}}>{l.result?.verdict}</div>
               </div>
             ))}
@@ -91,12 +91,12 @@ export default function Dashboard(p) {
 
       {seg.features.routeProfit&&routes.length>0&&(
         <div style={{...S.card,marginTop:16}}>
-          <div style={{fontSize:9,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Route Summary</div>
+          <div style={{fontSize:9,color:"#999",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Route Summary</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
             {routes.slice(0,4).map(r=>(
               <div key={r.id} style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:6,padding:"12px 14px"}}>
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,color:"#e8e4d8",marginBottom:4}}>{r.name}</div>
-                <div style={{fontSize:10,color:"#555"}}>{r.stops} stops · {r.miles} mi</div>
+                <div style={{fontSize:10,color:"#999"}}>{r.stops} stops · {r.miles} mi</div>
                 {r.analysis&&<div style={{fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:gradeColor(r.analysis.profitabilityScore),marginTop:6}}>{r.analysis.verdict}</div>}
               </div>
             ))}

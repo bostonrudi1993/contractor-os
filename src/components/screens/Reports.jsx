@@ -86,7 +86,7 @@ export default function Reports(p) {
         <div style={{flex:1,overflowY:"auto",padding:24,animation:"fadeUp 0.3s ease"}}>
           <div style={{maxWidth:800,margin:"0 auto"}}>
             <div style={{...S.section,marginBottom:4}}>REPORTS</div>
-            <p style={{fontSize:11,color:"#555",marginBottom:28,lineHeight:1.8}}>Generate professional PDF reports. Opens in a new tab — use your browser's print dialog to save as PDF or print.</p>
+            <p style={{fontSize:11,color:"#999",marginBottom:28,lineHeight:1.8}}>Generate professional PDF reports. Opens in a new tab — use your browser's print dialog to save as PDF or print.</p>
 
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:28}}>
               {[
@@ -110,7 +110,7 @@ export default function Reports(p) {
                   <div style={{fontSize:32}}>{r.icon}</div>
                   <div>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8",marginBottom:4}}>{r.title}</div>
-                    <div style={{fontSize:11,color:"#555",lineHeight:1.7,marginBottom:8}}>{r.desc}</div>
+                    <div style={{fontSize:11,color:"#999",lineHeight:1.7,marginBottom:8}}>{r.desc}</div>
                     <div style={{fontSize:10,color:r.color,marginBottom:12}}>{r.stats}</div>
                   </div>
                   <button className="hov" onClick={r.action} style={{...S.btn,background:r.color,marginTop:"auto"}}>Generate PDF →</button>
@@ -123,12 +123,12 @@ export default function Reports(p) {
               <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:500,padding:20}} onClick={()=>setShowAlertSetup(false)}>
                 <div style={{background:"#141414",border:`1px solid ${accent}44`,borderRadius:10,padding:"28px 32px",maxWidth:440,width:"100%",animation:"fadeUp 0.2s ease"}} onClick={e=>e.stopPropagation()}>
                   <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#e8e4d8",marginBottom:4}}>Set Up Compliance Alerts</div>
-                  <div style={{fontSize:11,color:"#555",marginBottom:20,lineHeight:1.8}}>Enter your contact info to receive compliance deadline reminders. Browser push notifications will also be enabled.</div>
+                  <div style={{fontSize:11,color:"#999",marginBottom:20,lineHeight:1.8}}>Enter your contact info to receive compliance deadline reminders. Browser push notifications will also be enabled.</div>
                   <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:20}}>
                     <div>
                       <label style={S.label}>Phone Number (SMS reminders)</label>
                       <input value={alertPhone} onChange={e=>setAlertPhone(e.target.value)} placeholder="(864) 555-0100" style={S.input} type="tel"/>
-                      <div style={{fontSize:9,color:"#444",marginTop:4}}>Saved for your records. Automated SMS requires Twilio integration — can be added in a future update.</div>
+                      <div style={{fontSize:9,color:"#888",marginTop:4}}>Saved for your records. Automated SMS requires Twilio integration — can be added in a future update.</div>
                     </div>
                     <div>
                       <label style={S.label}>Email for Alert Summaries</label>
@@ -147,7 +147,7 @@ export default function Reports(p) {
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
                 <div>
                   <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8",marginBottom:2}}>Push Notifications</div>
-                  <div style={{fontSize:11,color:"#555"}}>Get alerts on your phone before compliance items expire</div>
+                  <div style={{fontSize:11,color:"#999"}}>Get alerts on your phone before compliance items expire</div>
                 </div>
                 <div style={{display:"flex",gap:8}}>
                   {notifPermission!=="granted"&&<button className="hov" onClick={()=>setShowAlertSetup(true)} style={S.btn}>Enable Alerts</button>}
@@ -157,8 +157,8 @@ export default function Reports(p) {
               {notifPermission==="granted"&&(
                   <div>
                     <div style={{fontSize:11,color:"#22c55e",marginBottom:6}}>✓ Push notifications enabled</div>
-                    {alertPhone&&<div style={{fontSize:10,color:"#555",marginBottom:3}}>📱 {alertPhone}</div>}
-                    {alertEmail&&<div style={{fontSize:10,color:"#555",marginBottom:10}}>✉ {alertEmail}</div>}
+                    {alertPhone&&<div style={{fontSize:10,color:"#999",marginBottom:3}}>📱 {alertPhone}</div>}
+                    {alertEmail&&<div style={{fontSize:10,color:"#999",marginBottom:10}}>✉ {alertEmail}</div>}
                     {alertEmail&&urgentItems.length>0&&(
                       <button onClick={async()=>{
                         try {
@@ -175,7 +175,7 @@ export default function Reports(p) {
                   </div>
                 )}
               {notifPermission==="denied"&&<div style={{fontSize:11,color:"#ef4444"}}>Notifications blocked. Go to browser settings → Site Settings → Notifications to re-enable.</div>}
-              {notifPermission==="default"&&<div style={{fontSize:11,color:"#555"}}>Click "Enable Alerts" to receive push notifications for compliance deadlines, incidents, and contract renewals.</div>}
+              {notifPermission==="default"&&<div style={{fontSize:11,color:"#999"}}>Click "Enable Alerts" to receive push notifications for compliance deadlines, incidents, and contract renewals.</div>}
             </div>
 
             {/* Active alerts */}
@@ -183,11 +183,11 @@ export default function Reports(p) {
               const notifs = generateNotifications();
               return notifs.length>0?(
                 <div>
-                  <div style={{fontSize:10,color:"#555",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:10}}>Current Alerts ({notifs.length})</div>
+                  <div style={{fontSize:10,color:"#999",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:10}}>Current Alerts ({notifs.length})</div>
                   <div style={{display:"flex",flexDirection:"column",gap:6}}>
                     {notifs.slice(0,10).map(n=>(
                       <div key={n.id} style={{...S.card,display:"flex",alignItems:"center",gap:14,borderLeft:`3px solid ${n.severity==="urgent"?"#ef4444":"#f59e0b"}`,background:n.severity==="urgent"?"#1a0808":"#120e00"}}>
-                        <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{n.title}</div><div style={{fontSize:10,color:"#555"}}>{n.body}</div></div>
+                        <div style={{flex:1}}><div style={{fontSize:12,color:"#c8c4bc"}}>{n.title}</div><div style={{fontSize:10,color:"#999"}}>{n.body}</div></div>
                         <div style={{fontSize:11,color:n.severity==="urgent"?"#ef4444":"#f59e0b",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,flexShrink:0}}>{n.severity==="urgent"?"🔴 URGENT":"🟡 SOON"}</div>
                       </div>
                     ))}

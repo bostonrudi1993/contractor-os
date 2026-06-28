@@ -115,7 +115,7 @@ export default function Contracts(p) {
                 }} style={S.btn}>Save Bid</button>
               </div>}
               {bidsTab==="active"&&<>
-                {bidTracker.filter(b=>b.awardStatus==="Pending").length===0&&<div style={{color:"#555",fontSize:12}}>No pending bids.</div>}
+                {bidTracker.filter(b=>b.awardStatus==="Pending").length===0&&<div style={{color:"#999",fontSize:12}}>No pending bids.</div>}
                 {bidTracker.filter(b=>b.awardStatus==="Pending").map(b=>{
                   const daysSince=b.bidSubmittedDate?Math.floor((Date.now()-new Date(b.bidSubmittedDate).getTime())/(1000*60*60*24)):0;
                   return <div key={b.id} style={{...S.card,marginBottom:8}}>
@@ -136,7 +136,7 @@ export default function Contracts(p) {
                 })}
               </>}
               {bidsTab==="history"&&<>
-                {bidTracker.filter(b=>b.awardStatus!=="Pending").length===0&&<div style={{color:"#555",fontSize:12}}>No completed bids yet.</div>}
+                {bidTracker.filter(b=>b.awardStatus!=="Pending").length===0&&<div style={{color:"#999",fontSize:12}}>No completed bids yet.</div>}
                 {bidTracker.filter(b=>b.awardStatus!=="Pending").map(b=>(
                   <div key={b.id} style={{...S.card,marginBottom:8}}>
                     <div style={{display:"flex",justifyContent:"space-between"}}>
@@ -152,7 +152,7 @@ export default function Contracts(p) {
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
               <div>
                 <div style={S.section}>CONTRACT TRACKER</div>
-                <div style={{fontSize:11,color:"#555",marginTop:4}}>Track renewal dates, performance requirements, and contract value.</div>
+                <div style={{fontSize:11,color:"#999",marginTop:4}}>Track renewal dates, performance requirements, and contract value.</div>
               </div>
               <button className="hov" onClick={()=>setShowAddContract(!showAddContract)} style={{...S.btn,background:"#8888cc"}}>{showAddContract?"Cancel":"+ Add Contract"}</button>
             </div>
@@ -176,8 +176,8 @@ export default function Contracts(p) {
             )}
             {contracts.length===0&&!showAddContract&&(
               <div style={{...S.card,textAlign:"center",padding:40}}>
-                <div style={{fontSize:13,color:"#555",marginBottom:8}}>No contracts tracked yet.</div>
-                <div style={{fontSize:11,color:"#444",lineHeight:1.7}}>
+                <div style={{fontSize:13,color:"#999",marginBottom:8}}>No contracts tracked yet.</div>
+                <div style={{fontSize:11,color:"#888",lineHeight:1.7}}>
                   {seg.id==="fedex"?"Your FedEx ISP agreement is your most valuable asset. Add it here to track renewal dates and performance requirements.":seg.id==="amazon"?"Your DSP operating agreement governs everything. Track its renewal date and compliance requirements here.":"Add your contracts to track renewal dates and protect your business."}
                 </div>
               </div>
@@ -192,18 +192,18 @@ export default function Contracts(p) {
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
                       <div>
                         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,color:"#e8e4d8"}}>{c.name}</div>
-                        <div style={{fontSize:10,color:"#555"}}>{c.company} {c.startDate?`· Started ${c.startDate}`:""}</div>
+                        <div style={{fontSize:10,color:"#999"}}>{c.company} {c.startDate?`· Started ${c.startDate}`:""}</div>
                       </div>
                       <div style={{display:"flex",gap:10,alignItems:"center"}}>
                         <span style={{fontSize:9,color:statusC,border:`1px solid ${statusC}33`,padding:"2px 8px",borderRadius:3,textTransform:"uppercase",letterSpacing:"0.1em"}}>{c.status.replace(/_/g," ")}</span>
                         <button onClick={()=>openEdit("contract",c)} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"3px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
-                        <button onClick={()=>setContracts(p=>p.filter(x=>x.id!==c.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                        <button onClick={()=>setContracts(p=>p.filter(x=>x.id!==c.id))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12}}>✕</button>
                       </div>
                     </div>
                     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:c.notes?12:0}}>
-                      <div style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>Annual Value</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e"}}>{c.value?fmt$(parseFloat(c.value)):"—"}</div></div>
-                      <div style={{background:"#0f0f0f",border:`1px solid ${col}22`,borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>Renewal Date</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{c.renewalDate?new Date(c.renewalDate).toLocaleDateString():"Not set"}</div>{d!==null&&<div style={{fontSize:9,color:col,marginTop:2}}>{statusLabel(d)}</div>}</div>
-                      <div style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>Monthly Value</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#8888cc"}}>{c.value?fmt$(parseFloat(c.value)/12):"—"}</div></div>
+                      <div style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>Annual Value</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#22c55e"}}>{c.value?fmt$(parseFloat(c.value)):"—"}</div></div>
+                      <div style={{background:"#0f0f0f",border:`1px solid ${col}22`,borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>Renewal Date</div><div style={{fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{c.renewalDate?new Date(c.renewalDate).toLocaleDateString():"Not set"}</div>{d!==null&&<div style={{fontSize:9,color:col,marginTop:2}}>{statusLabel(d)}</div>}</div>
+                      <div style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"9px 12px"}}><div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>Monthly Value</div><div style={{fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#8888cc"}}>{c.value?fmt$(parseFloat(c.value)/12):"—"}</div></div>
                     </div>
                     {c.notes&&<div style={{background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:5,padding:"10px 14px",fontSize:11,color:"#888",lineHeight:1.7}}>{c.notes}</div>}
                   </div>

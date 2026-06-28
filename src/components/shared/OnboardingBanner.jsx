@@ -6,7 +6,7 @@ export default function OnboardingBanner({onboardStep, setOnboardStep, onboardDi
       <div style={{position:"fixed",bottom:20,right:20,width:320,background:"#0a150a",border:"1px solid #22c55e44",borderRadius:10,padding:"20px 22px",zIndex:400,boxShadow:"0 8px 32px rgba(0,0,0,0.6)",animation:"fadeUp 0.3s ease"}}>
         <div style={{fontSize:24,marginBottom:8}}>🎉</div>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#22c55e",marginBottom:6}}>Setup Complete!</div>
-        <div style={{fontSize:11,color:"#666",lineHeight:1.7,marginBottom:16}}>ContractorOS is ready to run your operation. Your data saves automatically to the cloud.</div>
+        <div style={{fontSize:11,color:"#aaa",lineHeight:1.7,marginBottom:16}}>ContractorOS is ready to run your operation. Your data saves automatically to the cloud.</div>
         <button className="hov" onClick={()=>{setOnboardDismissed(true);localStorage.setItem("cos_onboard_done","1");}} style={{...S.btn,background:"#22c55e",width:"100%",fontSize:12}}>Let's Go →</button>
       </div>
     );
@@ -27,15 +27,15 @@ export default function OnboardingBanner({onboardStep, setOnboardStep, onboardDi
   return (
     <div style={{position:"fixed",bottom:20,right:20,width:320,background:"#141414",border:`1px solid ${accent}44`,borderRadius:10,padding:"20px 22px",zIndex:400,boxShadow:"0 8px 32px rgba(0,0,0,0.6)",animation:"fadeUp 0.3s ease"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-        <div style={{fontSize:9,color:"#555",textTransform:"uppercase",letterSpacing:"0.15em"}}>Getting Started — Step {onboardStep} of 5</div>
-        <button onClick={()=>{setOnboardDismissed(true);localStorage.setItem("cos_onboard_done","1");}} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:14,lineHeight:1}}>✕</button>
+        <div style={{fontSize:9,color:"#999",textTransform:"uppercase",letterSpacing:"0.15em"}}>Getting Started — Step {onboardStep} of 5</div>
+        <button onClick={()=>{setOnboardDismissed(true);localStorage.setItem("cos_onboard_done","1");}} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:14,lineHeight:1}}>✕</button>
       </div>
       <div style={{height:3,background:"#1e1e1e",borderRadius:2,marginBottom:16}}>
         <div style={{height:"100%",width:`${pct}%`,background:accent,borderRadius:2,transition:"width 0.4s ease"}}/>
       </div>
       <div style={{fontSize:24,marginBottom:8}}>{step.icon}</div>
       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#e8e4d8",marginBottom:6}}>{step.title}</div>
-      <div style={{fontSize:11,color:"#666",lineHeight:1.7,marginBottom:16}}>{step.desc}</div>
+      <div style={{fontSize:11,color:"#aaa",lineHeight:1.7,marginBottom:16}}>{step.desc}</div>
       <div style={{display:"flex",gap:8}}>
         <button className="hov" onClick={()=>{if(step.specialAction){step.specialAction();}else{onNav(step.screen);}setOnboardStep(s=>s+1);}} style={{...S.btn,fontSize:12,flex:1}}>{step.action} →</button>
         {onboardStep < 5 && <button onClick={()=>setOnboardStep(s=>s+1)} style={{...S.ghost,fontSize:10,padding:"10px 12px"}}>Skip</button>}

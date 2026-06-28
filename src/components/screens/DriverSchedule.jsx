@@ -110,7 +110,7 @@ export default function DriverSchedule(p) {
                     const underMin=dayAssign.length<minDrivers;
                     return <div key={di} style={{...S.card,border:underMin?`1px solid #ef444455`:"",minHeight:120}}>
                       <div style={{fontSize:11,fontWeight:700,color:underMin?"#ef4444":accent}}>{day.name}</div>
-                      <div style={{fontSize:9,color:"#555",marginBottom:6}}>{day.date.slice(5)}</div>
+                      <div style={{fontSize:9,color:"#999",marginBottom:6}}>{day.date.slice(5)}</div>
                       {dayAssign.map((a,ai)=>(
                         <div key={ai} style={{fontSize:10,color:"#e8e4d8",marginBottom:3,display:"flex",justifyContent:"space-between"}}>
                           <span>{a.driverName}</span>
@@ -139,7 +139,7 @@ export default function DriverSchedule(p) {
             })()}
             {scheduleTab==="availability"&&<div>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:12}}>Driver Availability</div>
-              {drivers.filter(d=>d.status==="active").length===0&&<div style={{color:"#555",fontSize:12}}>No active drivers.</div>}
+              {drivers.filter(d=>d.status==="active").length===0&&<div style={{color:"#999",fontSize:12}}>No active drivers.</div>}
               {drivers.filter(d=>d.status==="active").map(drv=>{
                 const avail=scheduleData?.availability?.[drv.id]||{};
                 return <div key={drv.id} style={{...S.card,marginBottom:8}}>
@@ -149,7 +149,7 @@ export default function DriverSchedule(p) {
                       const status=avail[di]||"Available";
                       const color=status==="Available"?"#22c55e":status==="Unavailable"?"#ef4444":status==="On Leave"?"#f59e0b":"#888";
                       return <div key={di} style={{textAlign:"center"}}>
-                        <div style={{fontSize:9,color:"#555",marginBottom:2}}>{day}</div>
+                        <div style={{fontSize:9,color:"#999",marginBottom:2}}>{day}</div>
                         <select value={status} onChange={e=>{
                           const newAvail={...(scheduleData?.availability||{})};
                           if(!newAvail[drv.id])newAvail[drv.id]={};

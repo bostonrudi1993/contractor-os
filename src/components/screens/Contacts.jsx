@@ -88,7 +88,7 @@ export default function Contacts(p) {
         <div style={{flex:1,overflowY:"auto",overflowX:"hidden",padding:24}}>
           <div style={{maxWidth:860,margin:"0 auto",overflowX:"hidden",animation:"fadeUp 0.3s ease"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-              <div><div style={S.section}>CONTACTS</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Clients, brokers, shippers, dispatchers, and vendors in one place.</div></div>
+              <div><div style={S.section}>CONTACTS</div><div style={{fontSize:11,color:"#999",marginTop:4}}>Clients, brokers, shippers, dispatchers, and vendors in one place.</div></div>
               <button className="hov" onClick={()=>setContactShowAdd(!contactShowAdd)} style={S.btn}>{contactShowAdd?"Cancel":"+ Add Contact"}</button>
             </div>
             {contactShowAdd&&(
@@ -114,20 +114,20 @@ export default function Contacts(p) {
                 ))}
               </div>
             </div>
-            {filtered.length===0&&!contactShowAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>{contacts.length===0?"No contacts yet. Add clients, brokers, and business contacts here.":"No contacts match your filter."}</div>}
+            {filtered.length===0&&!contactShowAdd&&<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>{contacts.length===0?"No contacts yet. Add clients, brokers, and business contacts here.":"No contacts match your filter."}</div>}
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
               {filtered.map(c=>(
                 <div key={c.id} style={{...S.card,borderTop:`3px solid ${TYPE_COLORS[c.type]||"#555"}`}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                    <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8"}}>{c.name}</div>{c.company&&<div style={{fontSize:10,color:"#555"}}>{c.company}</div>}</div>
-                    <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:8,color:TYPE_COLORS[c.type]||"#555",border:`1px solid ${TYPE_COLORS[c.type]||"#555"}44`,padding:"2px 6px",borderRadius:3,textTransform:"uppercase"}}>{c.type}</span><button onClick={()=>setContacts(p=>p.filter(x=>x.id!==c.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button></div>
+                    <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8"}}>{c.name}</div>{c.company&&<div style={{fontSize:10,color:"#999"}}>{c.company}</div>}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:8,color:TYPE_COLORS[c.type]||"#555",border:`1px solid ${TYPE_COLORS[c.type]||"#555"}44`,padding:"2px 6px",borderRadius:3,textTransform:"uppercase"}}>{c.type}</span><button onClick={()=>setContacts(p=>p.filter(x=>x.id!==c.id))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12}}>✕</button></div>
                   </div>
                   <div style={{display:"flex",flexDirection:"column",gap:4}}>
                     {c.phone&&<div style={{fontSize:11,color:"#888"}}>📞 <a href={`tel:${c.phone}`} style={{color:accent,textDecoration:"none"}}>{c.phone}</a></div>}
                     {c.email&&<div style={{fontSize:11,color:"#888"}}>✉ <a href={`mailto:${c.email}`} style={{color:accent,textDecoration:"none"}}>{c.email}</a></div>}
                     {c.address&&<div style={{fontSize:11,color:"#888"}}>📍 {c.address}</div>}
-                    {c.paySpeed&&<div style={{fontSize:10,color:"#555"}}>Pay: {c.paySpeed}d{c.rating?` · ${"★".repeat(parseInt(c.rating||0))}`:""}</div>}
-                    {c.notes&&<div style={{fontSize:10,color:"#444",marginTop:4,fontStyle:"italic",lineHeight:1.5}}>{c.notes}</div>}
+                    {c.paySpeed&&<div style={{fontSize:10,color:"#999"}}>Pay: {c.paySpeed}d{c.rating?` · ${"★".repeat(parseInt(c.rating||0))}`:""}</div>}
+                    {c.notes&&<div style={{fontSize:10,color:"#888",marginTop:4,fontStyle:"italic",lineHeight:1.5}}>{c.notes}</div>}
                   </div>
                 </div>
               ))}

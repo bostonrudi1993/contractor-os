@@ -91,7 +91,7 @@ export default function Documents(p) {
         <div style={{flex:1,overflowY:"auto",padding:24}}>
           <div style={{maxWidth:900,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-              <div><div style={S.section}>DOCUMENT CENTER</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Rate cons, BOLs, insurance certs, and all key documents.</div></div>
+              <div><div style={S.section}>DOCUMENT CENTER</div><div style={{fontSize:11,color:"#999",marginTop:4}}>Rate cons, BOLs, insurance certs, and all key documents.</div></div>
               <button className="hov" onClick={()=>setDocShowAdd(!docShowAdd)} style={S.btn}>{docShowAdd?"Cancel":"+ Add Document"}</button>
             </div>
             <div style={{background:"#0a0f1a",border:"1px solid #1a1a3a",borderRadius:8,padding:"12px 18px",marginBottom:20,display:"flex",alignItems:"center",gap:14}}>
@@ -133,7 +133,7 @@ export default function Documents(p) {
                         reader.readAsDataURL(file);
                       } catch{}
                     }} style={{...S.input,padding:"7px 14px"}}/>
-                    <div style={{fontSize:9,color:"#444",marginTop:4}}>💡 Images and PDFs are automatically scanned to fill in document details</div>
+                    <div style={{fontSize:9,color:"#888",marginTop:4}}>💡 Images and PDFs are automatically scanned to fill in document details</div>
                   </div>
                   <div style={{gridColumn:"1/-1"}}><label style={S.label}>Notes</label><input value={docForm.notes} onChange={e=>setDocForm(p=>({...p,notes:e.target.value}))} placeholder="Confirmation #, broker contact, expiry..." style={S.input}/></div>
                 </div>
@@ -144,7 +144,7 @@ export default function Documents(p) {
             <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
               {types.map(t=>(<button key={t} onClick={()=>setDocFilter(t)} style={{background:docFilter===t?accent+"22":"transparent",border:`1px solid ${docFilter===t?accent:"#2a2a2a"}`,color:docFilter===t?accent:"#555",padding:"4px 12px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>{t==="all"?`All (${documents.length})`:`${t} (${typeCount[t]||0})`}</button>))}
             </div>
-            {filtered.length===0&&!docShowAdd&&<div style={{...S.card,textAlign:"center",color:"#555",fontSize:12,padding:40}}>{docFilter==="all"?"No documents tracked yet.":`No ${docFilter} documents yet.`}</div>}
+            {filtered.length===0&&!docShowAdd&&<div style={{...S.card,textAlign:"center",color:"#999",fontSize:12,padding:40}}>{docFilter==="all"?"No documents tracked yet.":`No ${docFilter} documents yet.`}</div>}
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {filtered.map(doc=>(
                 <div key={doc.id} style={{...S.card,borderLeft:`3px solid ${TYPE_COLORS[doc.type]||"#555"}`}}>
@@ -171,13 +171,13 @@ export default function Documents(p) {
                           <div style={{fontSize:12,color:"#c8c4bc"}}>{doc.name}</div>
                           <span style={{fontSize:9,color:TYPE_COLORS[doc.type]||"#555",border:`1px solid ${TYPE_COLORS[doc.type]||"#555"}33`,padding:"1px 7px",borderRadius:3}}>{doc.type}</span>
                         </div>
-                        <div style={{fontSize:10,color:"#555"}}>{fmtDate(doc.date||doc.createdDate)}{doc.linkedTo&&` · ${doc.linkedTo}`}{doc.fileName&&` · ${doc.fileName}`}{doc.notes&&` · ${doc.notes}`}</div>
+                        <div style={{fontSize:10,color:"#999"}}>{fmtDate(doc.date||doc.createdDate)}{doc.linkedTo&&` · ${doc.linkedTo}`}{doc.fileName&&` · ${doc.fileName}`}{doc.notes&&` · ${doc.notes}`}</div>
                       </div>
                       <div style={{display:"flex",gap:8,flexShrink:0,alignItems:"center"}}>
                         {doc.fileData&&<a href={doc.fileData} download={doc.fileName||doc.name} style={{...S.btn,background:"#22c55e",fontSize:10,padding:"5px 12px",textDecoration:"none",display:"inline-block"}}>↓ Download</a>}
                         <div style={{fontSize:9,color:"#333",border:"1px solid #222",padding:"2px 8px",borderRadius:3}}>{doc.fileData?"📎 File":"📋 Ref"}</div>
                         <button onClick={()=>{setDocEditId(doc.id);setDocEditForm({name:doc.name,type:doc.type,date:doc.date||"",linkedTo:doc.linkedTo||"",fileName:doc.fileName||"",notes:doc.notes||""});}} style={{background:"transparent",border:`1px solid ${accent}44`,color:accent,cursor:"pointer",fontSize:10,padding:"4px 10px",borderRadius:3,fontFamily:"'DM Mono',monospace"}}>Edit</button>
-                        <button onClick={()=>setDocuments(p=>p.filter(x=>x.id!==doc.id))} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:12}}>✕</button>
+                        <button onClick={()=>setDocuments(p=>p.filter(x=>x.id!==doc.id))} style={{background:"transparent",border:"none",color:"#888",cursor:"pointer",fontSize:12}}>✕</button>
                       </div>
                     </div>
                   )}
