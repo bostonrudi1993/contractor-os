@@ -164,10 +164,10 @@ export default function Scorecard(p) {
               <input type="date" value={scorecardWeek} onChange={e=>setScorecardWeek(e.target.value)} style={{...S.input,maxWidth:180}}/>
             </div>
 
-            {/* ── D15: Amazon scorecard import ── */}
+            {/* ── Amazon scorecard import ── */}
             {isAmazon&&<div style={{...S.card,marginBottom:16}}>
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:8}}>Import Weekly Scorecard</div>
-              <div style={{fontSize:11,color:"#888",marginBottom:8}}>Upload a photo/screenshot of your Amazon scorecard to auto-fill metrics.</div>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#e8e4d8",marginBottom:4}}>Import Weekly Scorecard</div>
+              <div style={{fontSize:11,color:"#888",marginBottom:10}}>Upload a photo or PDF of your Amazon scorecard to auto-fill metrics.</div>
               <input type="file" accept="image/*,.pdf" onChange={async e=>{
                 const file=e.target.files?.[0];if(!file)return;
                 if(file.size>2*1024*1024){showValidation("File too large (max 2MB). Use a smaller screenshot.");e.target.value="";return;}
@@ -176,17 +176,21 @@ export default function Scorecard(p) {
                   const reader=new FileReader();
                   reader.onload=async ev=>{
                     const base64=ev.target.result.split(",")[1];
+                    const apiKey=import.meta.env.VITE_ANTHROPIC_API_KEY;
+                    if(!apiKey){setScorecardImportError("API key not configured. Add VITE_ANTHROPIC_API_KEY to Vercel.");setScorecardImporting(false);return;}
                     try{
-                      const resp=await fetch("/api/claude",{
+                      const resp=await fetch("https://api.anthropic.com/v1/messages",{
                         method:"POST",
-                        headers:{"Content-Type":"application/json"},
-                        body:JSON.stringify({prompt:"This is an Amazon DSP weekly scorecard. Extract metrics: DART, DCR, POD compliance, Contact Compliance, DNR rate, Customer Escalations, Mentor score, Seatbelt compliance. Return ONLY a JSON object with these keys: dart, dcr, pod, contactCompliance, attendanceRate. Numeric values only. No markdown.", base64Data:base64, mediaType:file.type, model:"claude-haiku-4-5", max_tokens:500})
+                        headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+                        body:JSON.stringify({model:"claude-haiku-4-5",max_tokens:500,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:file.type,data:base64}},{type:"text",text:"This is an Amazon DSP weekly scorecard. Extract ALL metrics: DART, DCR, POD compliance, Contact Compliance, DNR rate, Customer Escalations, Mentor score, Seatbelt compliance, Speeding, Harsh Braking. Return ONLY a JSON object with snake_case keys and numeric values. No markdown, no code blocks."}]}]})
                       });
                       const data=await resp.json();
                       const text=data.content?.[0]?.text||"{}";
-                      let parsed={};try{parsed=JSON.parse(text.replace(/```json|```/g,"").trim());}catch{setScorecardImportError("Could not parse.");setScorecardImporting(false);return;}
-                      setScorecardImportResult(parsed);setScorecardImporting(false);
-                      // Auto-apply
+                      let parsed={};
+                      try{parsed=JSON.parse(text.replace(/```json|```/g,"").trim());}
+                      catch{setScorecardImportError("Could not parse scorecard. Try a clearer image.");setScorecardImporting(false);return;}
+                      setScorecardImportResult(parsed);
+                      setScorecardImporting(false);
                       Object.entries(parsed).forEach(([k,v])=>updateMetric(k,String(v)));
                     }catch(err){setScorecardImportError("API error: "+err.message);setScorecardImporting(false);}
                   };
@@ -194,10 +198,15 @@ export default function Scorecard(p) {
                 }catch(err){setScorecardImportError(err.message);setScorecardImporting(false);}
                 e.target.value="";
               }} style={{...S.input,padding:"6px",marginBottom:8}}/>
-              {scorecardImporting&&<div style={{fontSize:11,color:accent}}>⏳ Analyzing scorecard...</div>}
-              {scorecardImportError&&<div style={{fontSize:11,color:"#ef4444"}}>{scorecardImportError}</div>}
-              {scorecardImportResult&&<div style={{...S.card,background:"#081a08",border:"1px solid #22c55e44",marginTop:8}}>
-                <div style={{fontSize:11,color:"#22c55e",marginBottom:6}}>✓ Imported {Object.keys(scorecardImportResult).length} metrics.</div>
+              {scorecardImporting&&<div style={{fontSize:11,color:accent,marginTop:4}}>⏳ Analyzing scorecard...</div>}
+              {scorecardImportError&&<div style={{fontSize:11,color:"#ef4444",marginTop:4}}>{scorecardImportError}</div>}
+              {scorecardImportResult&&<div style={{background:"#081a08",border:"1px solid #22c55e44",borderRadius:6,padding:"10px 14px",marginTop:8}}>
+                <div style={{fontSize:11,color:"#22c55e",marginBottom:6}}>✓ Imported {Object.keys(scorecardImportResult).length} metrics</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                  {Object.entries(scorecardImportResult).map(([k,v])=>(
+                    <div key={k} style={{fontSize:10,color:"#555",background:"#0f0f0f",border:"1px solid #1e1e1e",borderRadius:4,padding:"2px 8px"}}>{k}: <span style={{color:"#22c55e"}}>{v}</span></div>
+                  ))}
+                </div>
               </div>}
             </div>}
 
