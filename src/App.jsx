@@ -95,7 +95,7 @@ const SUB_PAGES = {
   fleet:[{id:"log",label:"Maintenance Log"},{id:"fuel",label:"Fuel Log"},{id:"odometer",label:"Odometer"},{id:"tires",label:"Tires"},{id:"fuelcard",label:"Fuel Card",segment:["otr"]},{id:"appearance",label:"Appearance Check",segment:["fedex"]},{id:"vaninspect",label:"Van Inspection",segment:["amazon"]}],
   drivers:[{id:"list",label:"All Drivers"},{id:"onboarding",label:"DOT Onboarding"},{id:"hos",label:"HOS Log"},{id:"incidents",label:"Incidents"},{id:"scorecards",label:"Scorecards"},{id:"coaching",label:"Coaching Log",segment:["fedex"]},{id:"callouts",label:"Callout Tracker",segment:["amazon"]},{id:"substitutes",label:"Substitutes",segment:["usps"]}],
   finance:[{id:"pl",label:"P&L Dashboard"},{id:"expenses",label:"Expenses"},{id:"revenue",label:"Revenue"},{id:"deadmiles",label:"Dead Miles",segment:["otr"]}],
-  compliance:[{id:"overview",label:"Overview"},{id:"trucks",label:"Trucks"},{id:"drivers",label:"Driver Docs"},{id:"filings",label:"Filings"}],
+  compliance:[{id:"overview",label:"Overview"},{id:"vehicles",label:"Trucks"},{id:"drivers_comp",label:"Driver Docs"},{id:"docs",label:"Doc Guide"}],
   routes:[{id:"list",label:"Route List"},{id:"analyze",label:"Analyze Route"},{id:"dnr",label:"DNR Cases",segment:["amazon"]},{id:"tripsheets",label:"Trip Sheets",segment:["usps"]}],
   contracts:[{id:"list",label:"Contracts"},{id:"bidtracker",label:"Bid Tracker",segment:["usps"]}],
   stopprofit:[{id:"entry",label:"Daily Entry"},{id:"trend",label:"Weekly Trend"}],
@@ -269,7 +269,7 @@ export default AppWithErrorBoundary;
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 function ContractorOS() {
-  const { organization } = useOrganization();
+  const { organization, membership } = useOrganization();
   const { user } = useUser();
   const { signOut } = useClerk();
   const db = makeDb(organization?.id);
@@ -692,14 +692,27 @@ function ContractorOS() {
     }
   };
 
-  // ── Roles ──
-  const canEdit = () => currentUser.role==="owner" || currentUser.role==="manager";
-  const isRoleOwner = () => currentUser.role==="owner";
-  const getDriverForUser = () => drivers.find(d=>d.id===currentUser.driverId);
-
   // ── Owner bypass (Clerk email) ──
   const OWNER_EMAILS = ["bostonrudi1993@gmail.com"];
   const isOwner = OWNER_EMAILS.includes(user?.emailAddresses?.[0]?.emailAddress || "");
+
+  // ── Clerk-derived role ──
+  const userRole = (() => {
+    if(!user || !organization) return "owner";
+    const email = user?.emailAddresses?.[0]?.emailAddress;
+    if(OWNER_EMAILS.includes(email)) return "owner";
+    const clerkRole = membership?.role;
+    if(clerkRole === "org:admin") return "owner";
+    const meta = membership?.publicMetadata?.role;
+    if(meta === "driver") return "driver";
+    return "manager";
+  })();
+
+  // ── Roles ──
+  const canEdit = () => userRole === "owner" || userRole === "manager";
+  const isRoleOwner = () => userRole === "owner";
+  const isDriverOnly = () => userRole === "driver";
+  const getDriverForUser = () => drivers.find(d=>d.id===currentUser.driverId);
 
   const switchUser = (user) => {
     if(!user.pin) { setCurrentUser(user); setSwitchingUser(false); return; }
@@ -836,6 +849,10 @@ function ContractorOS() {
     setSubScreen(subId);
     if(screenId === "finance") setFinanceSubTab(subId);
     if(screenId === "lender") setLenderTab(subId);
+    if(screenId === "fleet") setFleetSubTab(subId);
+    if(screenId === "drivers") setSubTab_drivers(subId);
+    if(screenId === "stopprofit") setStopProfitTab(subId);
+    if(screenId === "settlement") setSettlementTab(subId);
   };
 
   // ── Tier & Nav helpers ──
@@ -849,7 +866,8 @@ function ContractorOS() {
   const canAccessScreenForRole = (screenId) => {
     if(isOwner) return true;
     if(!canAccessScreen(screenId)) return false;
-    if(currentUser.role === "driver") return DRIVER_SCREENS.includes(screenId);
+    if(userRole === "driver") return DRIVER_SCREENS.includes(screenId);
+    if(userRole === "manager") return !["users","lender"].includes(screenId);
     return true;
   };
   const getScreenTier = (screenId) => {
@@ -1196,7 +1214,7 @@ function ContractorOS() {
     showAlertSetup, setShowAlertSetup, alertPhone, setAlertPhone, alertEmail, setAlertEmail,
     // handlers
     openEdit, saveEdit, closeModal, generatePDF, generateNotifications,
-    canEdit, isOwner, isRoleOwner, getDriverForUser, switchUser, switchingUser, setSwitchingUser, confirmPin, requestPushPermission,
+    canEdit, isOwner, isRoleOwner, isDriverOnly, userRole, getDriverForUser, switchUser, switchingUser, setSwitchingUser, confirmPin, requestPushPermission,
     confirmAlertSetup, sendTestNotif, notifPermission,
     analyzeLoad, parseLoad, analyzeRoute, askDot, lookupDOT, applyToSettings,
     importExcelPL, confirmExcelImport, showValidation, compressImage, handleNav,
@@ -1272,10 +1290,17 @@ function ContractorOS() {
         </div>
       )}
 
+      {/* Clerk role driver banner */}
+      {isDriverOnly()&&(
+        <div style={{background:"#0a0f1a",borderBottom:"1px solid #1a1a3a",color:"#6666aa",fontSize:10,padding:"8px 18px",letterSpacing:"0.08em",flexShrink:0}}>
+          🚛 Driver view — you can see your dispatch, HOS log, and pay stubs
+        </div>
+      )}
+
       <Nav navOpen={navOpen} setNavOpen={setNavOpen} seg={seg} screen={screen} accent={accent} urgentItems={urgentItems} onNav={handleNav}
         navExpanded={navExpanded} toggleNavExpand={toggleNavExpand} canAccessScreen={canAccessScreenForRole}
         SUB_PAGES={SUB_PAGES} currentTier={currentTier} TIERS={TIERS} subScreen={subScreen} setSubScreen={setSubScreen}
-        onSubNav={handleSubNav} currentUser={currentUser}
+        onSubNav={handleSubNav} currentUser={currentUser} userRole={userRole}
         onLockedClick={(id)=>{
           setUpgradeTargetScreen(id);
           setUpgradeEmail(user?.emailAddresses?.[0]?.emailAddress||"");

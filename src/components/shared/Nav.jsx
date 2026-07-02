@@ -6,7 +6,7 @@ export default function Nav({
   navOpen, setNavOpen, seg, screen, accent, urgentItems, onNav,
   navExpanded, toggleNavExpand, canAccessScreen, SUB_PAGES,
   currentTier, TIERS, subScreen, setSubScreen, onLockedClick,
-  onSubNav, currentUser,
+  onSubNav, currentUser, userRole,
 }) {
   return (
     <>
@@ -92,9 +92,9 @@ export default function Nav({
                 </div>
               )}
             </div>
-            {currentUser && currentUser.role !== "owner" && (
+            {userRole && (
               <div style={{fontSize:9,color:"#aaa",marginTop:4,letterSpacing:"0.08em"}}>
-                {currentUser.name} · <span style={{textTransform:"capitalize",color:currentUser.role==="manager"?"#8888cc":"#4ade80"}}>{currentUser.role}</span>
+                {userRole==="owner"?"👑 Owner":userRole==="manager"?"🏢 Manager":"🚛 Driver"}
               </div>
             )}
           </div>
