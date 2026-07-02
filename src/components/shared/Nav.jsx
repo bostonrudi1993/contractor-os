@@ -6,7 +6,7 @@ export default function Nav({
   navOpen, setNavOpen, seg, screen, accent, urgentItems, onNav,
   navExpanded, toggleNavExpand, canAccessScreen, SUB_PAGES,
   currentTier, TIERS, subScreen, setSubScreen, onLockedClick,
-  onSubNav, currentUser, userRole,
+  onSubNav, currentUser, userRole, signOut,
 }) {
   return (
     <>
@@ -96,6 +96,14 @@ export default function Nav({
               <div style={{fontSize:9,color:"#aaa",marginTop:4,letterSpacing:"0.08em"}}>
                 {userRole==="owner"?"👑 Owner":userRole==="manager"?"🏢 Manager":"🚛 Driver"}
               </div>
+            )}
+            {signOut && (
+              <button
+                onClick={()=>{setNavOpen(false);signOut();}}
+                style={{marginTop:10,width:"100%",background:"#1a0808",border:"1px solid #ef444455",color:"#ef4444",padding:"8px 0",borderRadius:4,fontSize:11,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em",fontWeight:700}}
+              >
+                ⎋ SIGN OUT
+              </button>
             )}
           </div>
         </div>

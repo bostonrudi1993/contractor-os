@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import React from "react";
 import { makeDb } from "./supabase.js";
 import {
@@ -507,6 +507,13 @@ function ContractorOS() {
   const [showCalloutAdd, setShowCalloutAdd] = useState(false);
   const [calloutFormMain, setCalloutFormMain] = useState({date:"",driverId:"",calloutTime:"",reason:"Sick",routeAffected:"",wasRescued:false,rescuedBy:"",overtimeCost:"",notes:""});
 
+  // ── Idle session timeout ──
+  const [idleWarning, setIdleWarning] = useState(false);
+  const [idleCountdown, setIdleCountdown] = useState(180);
+  const idleTimerRef = useRef(null);
+  const warnTimerRef = useRef(null);
+  const countdownRef = useRef(null);
+
   // ── Persist segment & settings locally ──
   useEffect(()=>{if(segment)stor.set(KEYS.segment,segment);},[segment]);
   useEffect(()=>{stor.set(KEYS.settings,settings);},[settings]);
@@ -525,21 +532,78 @@ function ContractorOS() {
     ]);
   },[dbLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Idle session timeout (2 hours, 3-min warning) ──
+  useEffect(()=>{
+    const IDLE_LIMIT = 2 * 60 * 60 * 1000; // 2 hours
+    const WARN_BEFORE = 3 * 60 * 1000;      // warn 3 min before
+    const resetIdle = () => {
+      if(idleWarning) return;
+      clearTimeout(idleTimerRef.current);
+      clearTimeout(warnTimerRef.current);
+      warnTimerRef.current = setTimeout(()=>{
+        setIdleCountdown(180);
+        setIdleWarning(true);
+        countdownRef.current = setInterval(()=>{
+          setIdleCountdown(c=>{
+            if(c<=1){
+              clearInterval(countdownRef.current);
+              signOut({redirectUrl:"/"});
+              return 0;
+            }
+            return c-1;
+          });
+        },1000);
+      }, IDLE_LIMIT - WARN_BEFORE);
+    };
+    const EVENTS = ["mousemove","mousedown","keydown","touchstart","scroll"];
+    EVENTS.forEach(e=>window.addEventListener(e,resetIdle,{passive:true}));
+    resetIdle();
+    return ()=>{
+      EVENTS.forEach(e=>window.removeEventListener(e,resetIdle));
+      clearTimeout(idleTimerRef.current);
+      clearTimeout(warnTimerRef.current);
+      clearInterval(countdownRef.current);
+    };
+  },[idleWarning]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Stripe success return ──
   useEffect(()=>{
     try {
       const params = new URLSearchParams(window.location.search);
       const upgradeSuccess = params.get("upgrade");
-      const newTier = params.get("tier");
-      if(upgradeSuccess==="success"&&newTier&&TIERS[newTier]){
+      const urlTier = params.get("tier");
+      // Also check localStorage backup (covers session-loss during checkout)
+      const pendingTier = localStorage.getItem("cos_pending_tier");
+      const newTier = (upgradeSuccess==="success" && urlTier && TIERS[urlTier]) ? urlTier
+                    : (pendingTier && TIERS[pendingTier]) ? pendingTier
+                    : null;
+      if(newTier){
+        localStorage.removeItem("cos_pending_tier");
         window.history.replaceState({},"","/app");
-        // Immediately apply the tier so user doesn't have to wait for webhook
-        setSettings(prev=>({...prev, subscriptionTier: newTier}));
+        // Apply tier immediately and persist to Supabase (don't wait for webhook)
+        setSettings(prev=>{
+          const updated = {...prev, subscriptionTier: newTier};
+          db.set(KEYS.settings, updated);
+          return updated;
+        });
         showValidation("✓ Upgraded to "+(TIERS[newTier]?.label||newTier)+"! Your new features are unlocked.");
       }
     } catch(err){
       console.error("Upgrade redirect error:",err);
     }
+  // eslint-disable-next-line
+  },[]);
+
+  // ── Load tier from Supabase on init (picks up webhook-updated tiers across devices) ──
+  useEffect(()=>{
+    const params = new URLSearchParams(window.location.search);
+    const isUpgradeRedirect = params.get("upgrade")==="success" || !!localStorage.getItem("cos_pending_tier");
+    if(isUpgradeRedirect) return; // Stripe success effect owns this path
+    db.get(KEYS.settings, null).then(saved=>{
+      if(saved?.subscriptionTier && TIERS[saved.subscriptionTier]){
+        setSettings(prev=>({...prev, subscriptionTier: saved.subscriptionTier}));
+      }
+    });
   // eslint-disable-next-line
   },[]);
 
@@ -1065,6 +1129,8 @@ function ContractorOS() {
         });
         const data = await response.json();
         if (data.url) {
+          // Store pending tier so upgrade applies even if Clerk session expires during checkout
+          localStorage.setItem("cos_pending_tier", targetTierKey);
           window.location.href = data.url;
         } else {
           throw new Error(data.error || "Failed to create checkout session");
@@ -1341,7 +1407,7 @@ function ContractorOS() {
       <Nav navOpen={navOpen} setNavOpen={setNavOpen} seg={seg} screen={screen} accent={accent} urgentItems={urgentItems} onNav={handleNav}
         navExpanded={navExpanded} toggleNavExpand={toggleNavExpand} canAccessScreen={canAccessScreenForRole}
         SUB_PAGES={SUB_PAGES} currentTier={currentTier} TIERS={TIERS} subScreen={subScreen} setSubScreen={setSubScreen}
-        onSubNav={handleSubNav} currentUser={currentUser} userRole={userRole}
+        onSubNav={handleSubNav} currentUser={currentUser} userRole={userRole} signOut={signOut}
         onLockedClick={(id)=>{
           setUpgradeTargetScreen(id);
           setUpgradeEmail(user?.emailAddresses?.[0]?.emailAddress||"");
@@ -1429,6 +1495,37 @@ function ContractorOS() {
       )}
 
       <UpgradeModal />
+
+      {/* Idle session timeout warning */}
+      {idleWarning&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:3000,padding:20}}>
+          <div style={{background:"#141414",border:"1px solid #ef444455",borderRadius:10,padding:"36px 32px",maxWidth:380,width:"100%",textAlign:"center"}}>
+            <div style={{fontSize:36,marginBottom:12}}>⏱</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#e8e4d8",marginBottom:6}}>Still there?</div>
+            <div style={{fontSize:12,color:"#999",marginBottom:20,lineHeight:1.5}}>You've been inactive for a while.<br/>You'll be signed out in:</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:52,fontWeight:900,color:"#ef4444",lineHeight:1,marginBottom:24}}>
+              {Math.floor(idleCountdown/60)}:{String(idleCountdown%60).padStart(2,"0")}
+            </div>
+            <button
+              onClick={()=>{
+                clearInterval(countdownRef.current);
+                clearTimeout(warnTimerRef.current);
+                setIdleWarning(false);
+                setIdleCountdown(180);
+              }}
+              style={{background:"#f59e0b",border:"none",color:"#0a0a0a",padding:"12px 32px",borderRadius:6,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",width:"100%",marginBottom:10}}
+            >
+              KEEP ME SIGNED IN
+            </button>
+            <button
+              onClick={()=>signOut({redirectUrl:"/"})}
+              style={{background:"transparent",border:"1px solid #333",color:"#888",padding:"8px 20px",borderRadius:6,fontSize:11,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.06em",width:"100%"}}
+            >
+              Sign out now
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* App Footer */}
       <div style={{flexShrink:0,borderTop:"2px solid #333",background:"#0d0d0d",padding:"16px 24px"}}>
