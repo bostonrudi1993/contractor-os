@@ -23,7 +23,7 @@ export default function TopBar({setNavOpen, seg, accent, screen, urgentItems, us
           <button onClick={onSwitchType} style={{background:"#1a0a00",border:"1px solid #f59e0b44",color:"#f59e0b",padding:"4px 10px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>👑 SWITCH TYPE</button>
         )}
         {signOut&&(
-          <button onClick={()=>signOut()} style={{background:"transparent",border:"1px solid #333",color:"#aaa",padding:"4px 10px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.06em"}} aria-label="Sign out">SIGN OUT</button>
+          <button onClick={()=>signOut()} style={{background:"#1a0808",border:"1px solid #ef444466",color:"#ef4444",padding:"5px 12px",borderRadius:4,fontSize:11,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.06em",fontWeight:700}} aria-label="Sign out">⎋ SIGN OUT</button>
         )}
       </div>
     </div>
