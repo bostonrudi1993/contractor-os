@@ -571,16 +571,39 @@ function ContractorOS() {
     try {
       const params = new URLSearchParams(window.location.search);
       const upgradeSuccess = params.get("upgrade");
-      const newTier = params.get("tier");
-      if(upgradeSuccess==="success"&&newTier&&TIERS[newTier]){
+      const urlTier = params.get("tier");
+      // Also check localStorage backup (covers session-loss during checkout)
+      const pendingTier = localStorage.getItem("cos_pending_tier");
+      const newTier = (upgradeSuccess==="success" && urlTier && TIERS[urlTier]) ? urlTier
+                    : (pendingTier && TIERS[pendingTier]) ? pendingTier
+                    : null;
+      if(newTier){
+        localStorage.removeItem("cos_pending_tier");
         window.history.replaceState({},"","/app");
-        // Immediately apply the tier so user doesn't have to wait for webhook
-        setSettings(prev=>({...prev, subscriptionTier: newTier}));
+        // Apply tier immediately and persist to Supabase (don't wait for webhook)
+        setSettings(prev=>{
+          const updated = {...prev, subscriptionTier: newTier};
+          db.set(KEYS.settings, updated);
+          return updated;
+        });
         showValidation("✓ Upgraded to "+(TIERS[newTier]?.label||newTier)+"! Your new features are unlocked.");
       }
     } catch(err){
       console.error("Upgrade redirect error:",err);
     }
+  // eslint-disable-next-line
+  },[]);
+
+  // ── Load tier from Supabase on init (picks up webhook-updated tiers across devices) ──
+  useEffect(()=>{
+    const params = new URLSearchParams(window.location.search);
+    const isUpgradeRedirect = params.get("upgrade")==="success" || !!localStorage.getItem("cos_pending_tier");
+    if(isUpgradeRedirect) return; // Stripe success effect owns this path
+    db.get(KEYS.settings, null).then(saved=>{
+      if(saved?.subscriptionTier && TIERS[saved.subscriptionTier]){
+        setSettings(prev=>({...prev, subscriptionTier: saved.subscriptionTier}));
+      }
+    });
   // eslint-disable-next-line
   },[]);
 
@@ -1106,6 +1129,8 @@ function ContractorOS() {
         });
         const data = await response.json();
         if (data.url) {
+          // Store pending tier so upgrade applies even if Clerk session expires during checkout
+          localStorage.setItem("cos_pending_tier", targetTierKey);
           window.location.href = data.url;
         } else {
           throw new Error(data.error || "Failed to create checkout session");
