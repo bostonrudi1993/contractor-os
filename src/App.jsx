@@ -633,26 +633,21 @@ function ContractorOS() {
   const S = seg ? mkStyles(seg.color) : mkStyles("#f59e0b");
   const accent = seg?.color || "#f59e0b";
 
-  // ── AI ──
+  // ── AI — throws on error so callers get the actual Anthropic error message ──
   const callAI = async (system, content, json=true) => {
-    try {
-      const r = await fetch("/api/claude", {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({system, prompt:content, max_tokens:1000}),
-      });
-      const d = await r.json();
-      if(!r.ok || d.error) {
-        const msg = d.error?.message || d.error || `API error ${r.status}`;
-        setAiError(msg);
-        return null;
-      }
-      const text = d.content?.[0]?.text||"";
-      if(!json) return text;
-      try { return JSON.parse(text.replace(/```json|```/g,"").trim()); } catch { return null; }
-    } catch(err) {
-      setAiError(err.message || "AI request failed. Check ANTHROPIC_API_KEY in Vercel.");
-      return null;
+    const r = await fetch("/api/claude", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({system, prompt:content, max_tokens:1000}),
+    });
+    const d = await r.json();
+    if(!r.ok || d.error) {
+      const msg = d.error?.message || (typeof d.error==="string"?d.error:null) || d.type || `API error ${r.status}`;
+      throw new Error(msg);
     }
+    const text = d.content?.[0]?.text||"";
+    if(!json) return text;
+    const trimmed = text.replace(/```json\n?|```/g,"").trim();
+    try { return JSON.parse(trimmed); } catch { return null; }
   };
 
   const analyzeLoad = async () => {
@@ -660,13 +655,17 @@ function ContractorOS() {
     setAiLoading(true); setAiResult(null); setAiError("");
     const miles=parseFloat(loadForm.miles)||0, dead=parseFloat(loadForm.deadheadMiles)||0;
     const fuelEst=((miles+dead)/settings.mpg)*settings.dieselPrice;
-    const result = await callAI(ANALYZE_PROMPT, `Origin:${loadForm.origin} Dest:${loadForm.destination} Miles:${miles} Dead:${dead} Rate:$${loadForm.offeredRate} Commodity:${loadForm.commodity||"?"} Broker:${loadForm.brokerName||"?"} MPG:${settings.mpg} Diesel:$${settings.dieselPrice} FuelEst:$${fuelEst.toFixed(2)} TruckCPM:$${settings.cpm}`);
-    if(result) {
-      setAiResult(result);
-      setLoads(p=>[{id:Date.now(),date:new Date().toLocaleDateString(),load:{...loadForm},result},...p].slice(0,100));
-      setAnalyzeStep("result");
-    } else if(!aiError) {
-      setAiError("Analysis failed — no response. Check ANTHROPIC_API_KEY is set in Vercel environment variables.");
+    try {
+      const result = await callAI(ANALYZE_PROMPT, `Origin:${loadForm.origin} Dest:${loadForm.destination} Miles:${miles} Dead:${dead} Rate:$${loadForm.offeredRate} Commodity:${loadForm.commodity||"?"} Broker:${loadForm.brokerName||"?"} MPG:${settings.mpg} Diesel:$${settings.dieselPrice} FuelEst:$${fuelEst.toFixed(2)} TruckCPM:$${settings.cpm}`);
+      if(result) {
+        setAiResult(result);
+        setLoads(p=>[{id:Date.now(),date:new Date().toLocaleDateString(),load:{...loadForm},result},...p].slice(0,100));
+        setAnalyzeStep("result");
+      } else {
+        setAiError("Analysis failed — AI returned an empty response. Try again.");
+      }
+    } catch(err) {
+      setAiError(err.message || "Analysis failed. Check ANTHROPIC_API_KEY is set in Vercel → Settings → Environment Variables.");
     }
     setAiLoading(false);
   };
@@ -674,18 +673,26 @@ function ContractorOS() {
   const parseLoad = async () => {
     if(!pasteText.trim()) return;
     setAiLoading(true); setAiError("");
-    const parsed = await callAI(PARSE_PROMPT, pasteText);
-    if(parsed) {
-      setLoadForm({origin:parsed.origin||"",destination:parsed.destination||"",miles:parsed.miles||"",offeredRate:parsed.offeredRate||"",deadheadMiles:parsed.deadheadMiles||"",commodity:parsed.commodity||"",pickupDate:parsed.pickupDate||"",brokerName:parsed.brokerName||""});
-      setAnalyzeStep("confirm");
+    try {
+      const parsed = await callAI(PARSE_PROMPT, pasteText);
+      if(parsed) {
+        setLoadForm({origin:parsed.origin||"",destination:parsed.destination||"",miles:parsed.miles||"",offeredRate:parsed.offeredRate||"",deadheadMiles:parsed.deadheadMiles||"",commodity:parsed.commodity||"",pickupDate:parsed.pickupDate||"",brokerName:parsed.brokerName||""});
+        setAnalyzeStep("confirm");
+      } else {
+        setAiError("Could not parse load details. Try pasting more complete load text.");
+      }
+    } catch(err) {
+      setAiError(err.message || "Parse failed. Check ANTHROPIC_API_KEY in Vercel.");
     }
     setAiLoading(false);
   };
 
   const analyzeRoute = async (route) => {
     setAiLoading(true);
-    const result = await callAI(ROUTE_AI_PROMPT, `Route:${route.name} Stops:${route.stops} Miles:${route.miles} ContractedRate:$${route.rate} FuelCost:$${((route.miles/settings.mpg)*settings.dieselPrice).toFixed(2)} TruckCPM:$${settings.cpm} DriverPay:$${route.driverPay||0} OtherCosts:$${route.otherCosts||0}`);
-    if(result) { setRoutes(p=>p.map(r=>r.id===route.id?{...r,analysis:result}:r)); }
+    try {
+      const result = await callAI(ROUTE_AI_PROMPT, `Route:${route.name} Stops:${route.stops} Miles:${route.miles} ContractedRate:$${route.rate} FuelCost:$${((route.miles/settings.mpg)*settings.dieselPrice).toFixed(2)} TruckCPM:$${settings.cpm} DriverPay:$${route.driverPay||0} OtherCosts:$${route.otherCosts||0}`);
+      if(result) { setRoutes(p=>p.map(r=>r.id===route.id?{...r,analysis:result}:r)); }
+    } catch(err) { /* route analysis is silent — no UI for errors */ }
     setAiLoading(false);
   };
 
