@@ -571,32 +571,51 @@ function ContractorOS() {
 
   // ── AI ──
   const callAI = async (system, content, json=true) => {
-    const r = await fetch("/api/claude", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({system, prompt:content, max_tokens:1000}),
-    });
-    const d = await r.json();
-    const text = d.content?.[0]?.text||"";
-    if(!json) return text;
-    try { return JSON.parse(text.replace(/```json|```/g,"").trim()); } catch { return null; }
+    try {
+      const r = await fetch("/api/claude", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({system, prompt:content, max_tokens:1000}),
+      });
+      const d = await r.json();
+      if(!r.ok || d.error) {
+        const msg = d.error?.message || d.error || `API error ${r.status}`;
+        setAiError(msg);
+        return null;
+      }
+      const text = d.content?.[0]?.text||"";
+      if(!json) return text;
+      try { return JSON.parse(text.replace(/```json|```/g,"").trim()); } catch { return null; }
+    } catch(err) {
+      setAiError(err.message || "AI request failed. Check ANTHROPIC_API_KEY in Vercel.");
+      return null;
+    }
   };
 
   const analyzeLoad = async () => {
     if(!loadForm.origin||!loadForm.destination||!loadForm.offeredRate) return;
-    setAiLoading(true); setAiResult(null);
+    setAiLoading(true); setAiResult(null); setAiError("");
     const miles=parseFloat(loadForm.miles)||0, dead=parseFloat(loadForm.deadheadMiles)||0;
     const fuelEst=((miles+dead)/settings.mpg)*settings.dieselPrice;
     const result = await callAI(ANALYZE_PROMPT, `Origin:${loadForm.origin} Dest:${loadForm.destination} Miles:${miles} Dead:${dead} Rate:$${loadForm.offeredRate} Commodity:${loadForm.commodity||"?"} Broker:${loadForm.brokerName||"?"} MPG:${settings.mpg} Diesel:$${settings.dieselPrice} FuelEst:$${fuelEst.toFixed(2)} TruckCPM:$${settings.cpm}`);
-    if(result) { setAiResult(result); setLoads(p=>[{id:Date.now(),date:new Date().toLocaleDateString(),load:{...loadForm},result},...p].slice(0,100)); }
-    setAnalyzeStep("result"); setAiLoading(false);
+    if(result) {
+      setAiResult(result);
+      setLoads(p=>[{id:Date.now(),date:new Date().toLocaleDateString(),load:{...loadForm},result},...p].slice(0,100));
+      setAnalyzeStep("result");
+    } else if(!aiError) {
+      setAiError("Analysis failed — no response. Check ANTHROPIC_API_KEY is set in Vercel environment variables.");
+    }
+    setAiLoading(false);
   };
 
   const parseLoad = async () => {
     if(!pasteText.trim()) return;
-    setAiLoading(true);
+    setAiLoading(true); setAiError("");
     const parsed = await callAI(PARSE_PROMPT, pasteText);
-    if(parsed) setLoadForm({origin:parsed.origin||"",destination:parsed.destination||"",miles:parsed.miles||"",offeredRate:parsed.offeredRate||"",deadheadMiles:parsed.deadheadMiles||"",commodity:parsed.commodity||"",pickupDate:parsed.pickupDate||"",brokerName:parsed.brokerName||""});
-    setAnalyzeStep("confirm"); setAiLoading(false);
+    if(parsed) {
+      setLoadForm({origin:parsed.origin||"",destination:parsed.destination||"",miles:parsed.miles||"",offeredRate:parsed.offeredRate||"",deadheadMiles:parsed.deadheadMiles||"",commodity:parsed.commodity||"",pickupDate:parsed.pickupDate||"",brokerName:parsed.brokerName||""});
+      setAnalyzeStep("confirm");
+    }
+    setAiLoading(false);
   };
 
   const analyzeRoute = async (route) => {

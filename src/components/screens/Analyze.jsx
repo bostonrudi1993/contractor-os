@@ -104,7 +104,7 @@ export default function Analyze(p) {
               </div>
             )}
 
-            {aiError&&!aiLoading&&analyzeStep!=="result"&&(<div style={{...S.card,background:"#1a0808",border:"1px solid #3a1010",color:"#f87171",fontSize:11,padding:16,marginBottom:12,animation:"fadeUp 0.3s ease"}}>⚠ {aiError}<br/><span style={{fontSize:9,color:"#7a4040"}}>Check your VITE_ANTHROPIC_API_KEY in Vercel, or try again.</span></div>)}
+            {aiError&&!aiLoading&&analyzeStep!=="result"&&(<div style={{...S.card,background:"#1a0808",border:"1px solid #3a1010",color:"#f87171",fontSize:11,padding:16,marginBottom:12,animation:"fadeUp 0.3s ease"}}>⚠ {aiError}<br/><span style={{fontSize:9,color:"#7a4040"}}>Check that ANTHROPIC_API_KEY is set in Vercel Environment Variables, or try again.</span></div>)}
             {analyzeStep==="confirm"&&!aiLoading&&(
               <div style={{animation:"fadeUp 0.3s ease"}}>
                 <div style={{...S.section,marginBottom:8}}>CONFIRM DETAILS</div>
@@ -120,7 +120,7 @@ export default function Analyze(p) {
               </div>
             )}
 
-            {analyzeStep!=="paste"&&!aiLoading&&!aiResult&&aiError&&(<div style={{...S.card,background:"#1a0808",border:"1px solid #3a1010",color:"#f87171",fontSize:12,padding:20,marginBottom:16,animation:"fadeUp 0.3s ease"}}>⚠ {aiError}<br/><span style={{fontSize:10,color:"#7a4040"}}>Check your API key in Vercel environment variables, or try again in a moment.</span></div>)}
+            {analyzeStep!=="paste"&&!aiLoading&&!aiResult&&aiError&&(<div style={{...S.card,background:"#1a0808",border:"1px solid #3a1010",color:"#f87171",fontSize:12,padding:20,marginBottom:16,animation:"fadeUp 0.3s ease"}}>⚠ {aiError}<br/><span style={{fontSize:10,color:"#7a4040"}}>Check that ANTHROPIC_API_KEY is set in Vercel Environment Variables, or try again in a moment.</span></div>)}
             {analyzeStep==="result"&&aiResult&&!aiLoading&&(()=>{
               const vBg={green:"#051a0a",yellow:"#1a1505",red:"#1a0505"};
               const vBd={green:"#0d3a1a",yellow:"#3a2a0a",red:"#3a0a0a"};
