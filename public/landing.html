@@ -142,148 +142,319 @@
 </section>
 
 <!-- ══ WHO IT'S FOR ════════════════════════════════════════════════ -->
+<style>
+  .segments { background: #0a0a0a; }
+  .segments .section-title { color: #e8e4d8; }
+  .segments .section-sub { color: #555; }
+  .seg-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 2px;
+    margin-top: 48px;
+    border: 1px solid #1e1e1e;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .seg-card {
+    background: #111;
+    padding: 28px 26px;
+    position: relative;
+    transition: background 0.2s;
+    cursor: default;
+  }
+  .seg-card:hover { background: #161616; }
+  .seg-accent-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .seg-icon {
+    font-size: 28px;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .seg-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 900;
+    color: #e8e4d8;
+    letter-spacing: 0.01em;
+    margin-bottom: 4px;
+    line-height: 1;
+  }
+  .seg-who {
+    font-size: 10px;
+    color: #444;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .seg-hook {
+    font-size: 13px;
+    color: #888;
+    line-height: 1.7;
+    margin-bottom: 18px;
+    min-height: 44px;
+  }
+  .seg-wins {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin-bottom: 20px;
+  }
+  .seg-win {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    font-size: 11px;
+    color: #666;
+    line-height: 1.5;
+  }
+  .seg-win-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 5px;
+  }
+  .seg-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding-top: 16px;
+    border-top: 1px solid #1e1e1e;
+  }
+  .seg-tool {
+    font-size: 9px;
+    color: #444;
+    border: 1px solid #2a2a2a;
+    padding: 3px 8px;
+    border-radius: 3px;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    font-family: 'DM Mono', monospace;
+  }
+  .seg-tool.highlight {
+    color: #f59e0b;
+    border-color: #f59e0b33;
+    background: #f59e0b08;
+  }
+</style>
+
 <section class="section segments" id="segments">
   <div class="section-inner">
     <div class="section-label">Built For Your Work</div>
-    <h2 class="section-title">EVERY TYPE OF<br/>CONTRACTOR</h2>
-    <p class="section-sub">ContractorOS adapts to how you operate. Each contractor type gets a custom set of tools and screens built for their workflow.</p>
-    <div class="segments-grid">
+    <h2 class="section-title">YOUR CONTRACTOR TYPE.<br/>YOUR PLATFORM.</h2>
+    <p class="section-sub">Log in and choose your contractor type. The entire app reconfigures — different dashboard, different tools, different metrics. You only see what matters to your operation.</p>
 
-      <div class="segment-card" style="border-top:3px solid #f59e0b">
-        <div class="segment-header">
-          <div class="segment-emoji">🚛</div>
-          <div>
-            <div class="segment-name">OTR / Owner Operator</div>
-            <div class="segment-tagline">Load board hauling with your own authority</div>
+    <div class="seg-grid">
+
+      <!-- OTR -->
+      <div class="seg-card">
+        <div class="seg-accent-bar" style="background:#f59e0b"></div>
+        <span class="seg-icon">🚛</span>
+        <div class="seg-name">OTR / Owner-Operator</div>
+        <div class="seg-who">Running under your own MC authority</div>
+        <div class="seg-hook">You live and die by the load. Know exactly which brokers are worth your time, which lanes make money, and what your dead miles are costing you — before you ever turn the key.</div>
+        <div class="seg-wins">
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#f59e0b"></div>
+            Load analyzer grades every rate on net RPM — not just gross
+          </div>
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#f59e0b"></div>
+            Dead miles tracker shows exactly what empty runs cost monthly
+          </div>
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#f59e0b"></div>
+            Broker scorecards track who pays fast, who lowballs, who ghosts
+          </div>
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#f59e0b"></div>
+            Fuel card reconciliation catches billing errors automatically
           </div>
         </div>
-        <div class="module-list">
-          <span class="module-tag">Dashboard</span>
-          <span class="module-tag">Analyze Load</span>
-          <span class="module-tag">Load Boards</span>
-          <span class="module-tag">Compliance</span>
-          <span class="module-tag">Brokers</span>
-          <span class="module-tag">Fleet</span>
-          <span class="module-tag">Finance</span>
-          <span class="module-tag">Payroll</span>
-          <span class="module-tag">Invoices</span>
-          <span class="module-tag">Dispatch</span>
-          <span class="module-tag">Contacts</span>
-          <span class="module-tag">Documents</span>
-          <span class="module-tag">Reports</span>
-          <span class="module-tag">Dead Miles</span>
-          <span class="module-tag">FMCSA Lookup</span>
-          <span class="module-tag">Lender Report</span>
+        <div class="seg-tools">
+          <span class="seg-tool highlight">Load Analyzer</span>
+          <span class="seg-tool highlight">Dead Miles</span>
+          <span class="seg-tool highlight">Broker Scorecards</span>
+          <span class="seg-tool highlight">Fuel Card Recon</span>
+          <span class="seg-tool">Compliance</span>
+          <span class="seg-tool">Fleet</span>
+          <span class="seg-tool">Finance</span>
+          <span class="seg-tool">IFTA</span>
+          <span class="seg-tool">FMCSA</span>
+          <span class="seg-tool">Lender Report</span>
         </div>
       </div>
 
-      <div class="segment-card" style="border-top:3px solid #6366f1">
-        <div class="segment-header">
-          <div class="segment-emoji">📦</div>
-          <div>
-            <div class="segment-name">FedEx Ground / HD</div>
-            <div class="segment-tagline">ISP route management &amp; compliance</div>
+      <!-- FedEx -->
+      <div class="seg-card">
+        <div class="seg-accent-bar" style="background:#6366f1"></div>
+        <span class="seg-icon">📦</span>
+        <div class="seg-name">FedEx Ground ISP</div>
+        <div class="seg-who">Independent Service Provider running routes</div>
+        <div class="seg-hook">FedEx is watching your numbers every week. You need to see them first — cost per stop, settlement accuracy, driver compliance, and contract performance — before they become a problem.</div>
+        <div class="seg-wins">
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#6366f1"></div>
+            Daily stop profit shows exactly what you made after every cost
+          </div>
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#6366f1"></div>
+            Settlement reconciliation catches every underpayment automatically
+          </div>
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#6366f1"></div>
+            Driver coaching log creates an audit trail FedEx respects
+          </div>
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#6366f1"></div>
+            Vehicle appearance tracker keeps your fleet inspection-ready
           </div>
         </div>
-        <div class="module-list">
-          <span class="module-tag">Dashboard</span>
-          <span class="module-tag">Routes</span>
-          <span class="module-tag">Compliance</span>
-          <span class="module-tag">Drivers</span>
-          <span class="module-tag">Dispatch</span>
-          <span class="module-tag">Fleet</span>
-          <span class="module-tag">Finance</span>
-          <span class="module-tag">Payroll</span>
-          <span class="module-tag">Invoices</span>
-          <span class="module-tag">Contracts</span>
-          <span class="module-tag">Stop Profit</span>
-          <span class="module-tag">Settlement</span>
-          <span class="module-tag">Schedule</span>
-          <span class="module-tag">Reports</span>
-          <span class="module-tag">FMCSA Lookup</span>
-          <span class="module-tag">Lender Report</span>
+        <div class="seg-tools">
+          <span class="seg-tool highlight">Stop Profit</span>
+          <span class="seg-tool highlight">Settlement</span>
+          <span class="seg-tool highlight">Coaching Log</span>
+          <span class="seg-tool highlight">Appearance Tracker</span>
+          <span class="seg-tool">Driver Schedule</span>
+          <span class="seg-tool">Compliance</span>
+          <span class="seg-tool">Payroll</span>
+          <span class="seg-tool">Dispatch</span>
+          <span class="seg-tool">FMCSA</span>
+          <span class="seg-tool">Lender Report</span>
         </div>
       </div>
 
-      <div class="segment-card" style="border-top:3px solid #f97316">
-        <div class="segment-header">
-          <div class="segment-emoji">📬</div>
-          <div>
-            <div class="segment-name">Amazon DSP</div>
-            <div class="segment-tagline">Delivery Service Partner operations</div>
+      <!-- Amazon -->
+      <div class="seg-card">
+        <div class="seg-accent-bar" style="background:#f97316"></div>
+        <span class="seg-icon">📬</span>
+        <div class="seg-name">Amazon DSP</div>
+        <div class="seg-who">Delivery Service Partner managing a fleet</div>
+        <div class="seg-hook">Your DART, DCR, and Mentor scores determine your future with Amazon. Upload your weekly scorecard and ContractorOS reads it for you — no manual entry, instant visibility on what's dragging your metrics.</div>
+        <div class="seg-wins">
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#f97316"></div>
+            AI scorecard import parses your PDF in seconds — DART, DCR, Mentor
+          </div>
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#f97316"></div>
+            Callout tracker shows which drivers are costing you the most
+          </div>
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#f97316"></div>
+            DNR case log documents every dispute with evidence attached
+          </div>
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#f97316"></div>
+            Daily van inspection status — red flag any uninspected vehicles
           </div>
         </div>
-        <div class="module-list">
-          <span class="module-tag">Dashboard</span>
-          <span class="module-tag">Routes</span>
-          <span class="module-tag">Compliance</span>
-          <span class="module-tag">Drivers</span>
-          <span class="module-tag">Dispatch</span>
-          <span class="module-tag">Fleet</span>
-          <span class="module-tag">Finance</span>
-          <span class="module-tag">Payroll</span>
-          <span class="module-tag">Contracts</span>
-          <span class="module-tag">Stop Profit</span>
-          <span class="module-tag">Settlement</span>
-          <span class="module-tag">Schedule</span>
-          <span class="module-tag">Scorecard</span>
-          <span class="module-tag">Reports</span>
-          <span class="module-tag">FMCSA Lookup</span>
-          <span class="module-tag">Lender Report</span>
+        <div class="seg-tools">
+          <span class="seg-tool highlight">Scorecard AI Import</span>
+          <span class="seg-tool highlight">Callout Tracker</span>
+          <span class="seg-tool highlight">DNR Case Log</span>
+          <span class="seg-tool highlight">Van Inspection</span>
+          <span class="seg-tool">Stop Profit</span>
+          <span class="seg-tool">Settlement</span>
+          <span class="seg-tool">Compliance</span>
+          <span class="seg-tool">Payroll</span>
+          <span class="seg-tool">FMCSA</span>
+          <span class="seg-tool">Lender Report</span>
         </div>
       </div>
 
-      <div class="segment-card" style="border-top:3px solid #22c55e">
-        <div class="segment-header">
-          <div class="segment-emoji">🏠</div>
-          <div>
-            <div class="segment-name">Last Mile (Lowe's / Home Depot)</div>
-            <div class="segment-tagline">Home delivery contractor management</div>
+      <!-- Last Mile -->
+      <div class="seg-card">
+        <div class="seg-accent-bar" style="background:#22c55e"></div>
+        <span class="seg-icon">🏠</span>
+        <div class="seg-name">Last Mile</div>
+        <div class="seg-who">Lowe's, Home Depot, and large-item delivery</div>
+        <div class="seg-hook">You get paid a daily guarantee plus per-stop bonuses plus a mile stipend. ContractorOS is the only tool that handles all three at once — and spreads your fuel cost across the days a tank actually lasts.</div>
+        <div class="seg-wins">
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#22c55e"></div>
+            Hybrid revenue model: guarantee + stops + mile stipend in one view
+          </div>
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#22c55e"></div>
+            Gas spread over tank range — no more fake losses on fill-up day
+          </div>
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#22c55e"></div>
+            Damage claim log protects you when Lowe's disputes a delivery
+          </div>
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#22c55e"></div>
+            White glove checklist proves compliance on every large-item drop
           </div>
         </div>
-        <div class="module-list">
-          <span class="module-tag">Dashboard</span>
-          <span class="module-tag">Routes</span>
-          <span class="module-tag">Compliance</span>
-          <span class="module-tag">Drivers</span>
-          <span class="module-tag">Dispatch</span>
-          <span class="module-tag">Fleet</span>
-          <span class="module-tag">Finance</span>
-          <span class="module-tag">Payroll</span>
-          <span class="module-tag">Contracts</span>
-          <span class="module-tag">Claims</span>
-          <span class="module-tag">Stop Profit</span>
-          <span class="module-tag">Reports</span>
-          <span class="module-tag">FMCSA Lookup</span>
-          <span class="module-tag">Lender Report</span>
+        <div class="seg-tools">
+          <span class="seg-tool highlight">Stop Profit</span>
+          <span class="seg-tool highlight">Damage Claims</span>
+          <span class="seg-tool highlight">White Glove Log</span>
+          <span class="seg-tool highlight">Daily Cost Snapshot</span>
+          <span class="seg-tool">Dispatch</span>
+          <span class="seg-tool">Compliance</span>
+          <span class="seg-tool">Payroll</span>
+          <span class="seg-tool">Fleet</span>
+          <span class="seg-tool">FMCSA</span>
+          <span class="seg-tool">Lender Report</span>
         </div>
       </div>
 
-      <div class="segment-card" style="border-top:3px solid #3b82f6">
-        <div class="segment-header">
-          <div class="segment-emoji">📮</div>
-          <div>
-            <div class="segment-name">USPS HCR Contractor</div>
-            <div class="segment-tagline">Highway Contract Route operations</div>
+      <!-- USPS -->
+      <div class="seg-card">
+        <div class="seg-accent-bar" style="background:#3b82f6"></div>
+        <span class="seg-icon">✉️</span>
+        <div class="seg-name">USPS HCR Contractor</div>
+        <div class="seg-who">Highway Contract Route mail carrier</div>
+        <div class="seg-hook">USPS runs on paperwork. Trip sheets, substitute driver approvals, contract bid history — all of it tracked and documented so when the postmaster comes knocking, you're ready.</div>
+        <div class="seg-wins">
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#3b82f6"></div>
+            Trip sheet builder generates USPS-ready documentation per run
+          </div>
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#3b82f6"></div>
+            Substitute driver approval log tracks every postmaster sign-off
+          </div>
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#3b82f6"></div>
+            HCR bid tracker compares estimated vs actual costs after award
+          </div>
+          <div class="seg-win">
+            <div class="seg-win-dot" style="background:#3b82f6"></div>
+            Contract renewal timeline — never get caught off guard again
           </div>
         </div>
-        <div class="module-list">
-          <span class="module-tag">Dashboard</span>
-          <span class="module-tag">Routes</span>
-          <span class="module-tag">Compliance</span>
-          <span class="module-tag">Drivers</span>
-          <span class="module-tag">Dispatch</span>
-          <span class="module-tag">Fleet</span>
-          <span class="module-tag">Finance</span>
-          <span class="module-tag">Payroll</span>
-          <span class="module-tag">Contracts</span>
-          <span class="module-tag">Reports</span>
-          <span class="module-tag">FMCSA Lookup</span>
-          <span class="module-tag">Lender Report</span>
+        <div class="seg-tools">
+          <span class="seg-tool highlight">Trip Sheets</span>
+          <span class="seg-tool highlight">Sub Driver Log</span>
+          <span class="seg-tool highlight">Bid Tracker</span>
+          <span class="seg-tool highlight">Contract Timeline</span>
+          <span class="seg-tool">Compliance</span>
+          <span class="seg-tool">Routes</span>
+          <span class="seg-tool">Payroll</span>
+          <span class="seg-tool">Fleet</span>
+          <span class="seg-tool">FMCSA</span>
+          <span class="seg-tool">Lender Report</span>
         </div>
       </div>
 
     </div>
+
+    <!-- Bottom callout -->
+    <div style="margin-top:32px;background:#111;border:1px solid #1e1e1e;border-radius:8px;padding:20px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:#e8e4d8;margin-bottom:4px">Not just one app. Five different platforms in one.</div>
+        <div style="font-size:11px;color:#444">When you log in you choose your contractor type. Everything reconfigures to match your operation.</div>
+      </div>
+      <a href="/app?view=signup" style="background:#f59e0b;color:#0a0a0a;padding:11px 24px;border-radius:5px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-decoration:none;white-space:nowrap;flex-shrink:0">Find My Contractor Type →</a>
+    </div>
+
   </div>
 </section>
 
