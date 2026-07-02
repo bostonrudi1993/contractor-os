@@ -807,8 +807,13 @@ function ContractorOS() {
               address: [c.phyStreet,c.phyCity,c.phyState,c.phyZipcode].filter(Boolean).join(", ")||null,
               phone: c.telephone||null, mcNum: c.mcNumber?`MC-${c.mcNumber}`:null,
               safetyRating: c.safetyRating||"Not Rated", powerUnits: c.totalPowerUnits?.toString()||null,
-              drivers: c.totalDrivers?.toString()||null, opStatus: c.statusCode==="A"?"Authorized":c.statusCode==="I"?"Inactive":c.statusCode||null,
+              drivers: c.totalDrivers?.toString()||null,
+              opStatus: c.statusCode==="A"?"Authorized":c.statusCode==="I"?"Inactive":c.statusCode||null,
+              usdotStatus: c.statusCode==="A"?"ACTIVE":c.statusCode==="I"?"INACTIVE":(c.statusCode||"ACTIVE"),
               entityType: c.carrierOperation?.carrierOperationDesc||null, dotNum: dot,
+              mcs150Date: c.mcs150Date||c.mcs150FormDate||null,
+              vehicleOosPercent: null, driverOosPercent: null,
+              totalCrashes: null, totalInspections: null,
             };
           }
         }
@@ -823,10 +828,27 @@ function ContractorOS() {
           const m = html.match(re);
           return m?m[1].replace(/&amp;/g,"&").replace(/&nbsp;/g," ").trim():null;
         };
+        const getNum = (label) => {
+          const re = new RegExp(`${label}[\\s\\S]{0,60}?<td[^>]*>\\s*([\\d.]+)`,"i");
+          const m = html.match(re);
+          return m?m[1]:null;
+        };
         const legalName=getVal("Legal Name");
         const opStatus=getVal("Operating Status")||getVal("Operating Authority Status");
         if(html.length>200&&(legalName||opStatus)){
-          result={legalName:legalName||"Unknown",dbaName:getVal("DBA Name"),address:getVal("Physical Address"),phone:getVal("Phone"),mcNum:getVal("Docket Number"),safetyRating:getVal("Safety Rating"),powerUnits:getVal("Power Units"),drivers:getVal("Drivers"),opStatus,entityType:getVal("Entity Type"),dotNum:dot};
+          result={
+            legalName:legalName||"Unknown", dbaName:getVal("DBA Name"),
+            address:getVal("Physical Address"), phone:getVal("Phone"),
+            mcNum:getVal("Docket Number"), safetyRating:getVal("Safety Rating"),
+            powerUnits:getVal("Power Units"), drivers:getVal("Drivers"),
+            opStatus, usdotStatus:getVal("USDOT Status")||"ACTIVE",
+            entityType:getVal("Entity Type"), dotNum:dot,
+            mcs150Date:getVal("MCS-150 Form Date"),
+            vehicleOosPercent:getNum("Vehicle Out of Service")||getNum("Veh OOS")||null,
+            driverOosPercent:getNum("Driver Out of Service")||getNum("Drv OOS")||null,
+            totalCrashes:getVal("Total Crashes")||getVal("Crashes")||null,
+            totalInspections:getVal("Total Inspections")||getVal("Inspections")||null,
+          };
         }
       }
       if(result){setFmcsaResult(result);}
