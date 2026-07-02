@@ -176,15 +176,14 @@ export default function Scorecard(p) {
                   const reader=new FileReader();
                   reader.onload=async ev=>{
                     const base64=ev.target.result.split(",")[1];
-                    const apiKey=import.meta.env.VITE_ANTHROPIC_API_KEY;
-                    if(!apiKey){setScorecardImportError("API key not configured. Add VITE_ANTHROPIC_API_KEY to Vercel.");setScorecardImporting(false);return;}
                     try{
-                      const resp=await fetch("https://api.anthropic.com/v1/messages",{
+                      const resp=await fetch("/api/claude",{
                         method:"POST",
-                        headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-                        body:JSON.stringify({model:"claude-haiku-4-5",max_tokens:500,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:file.type,data:base64}},{type:"text",text:"This is an Amazon DSP weekly scorecard. Extract ALL metrics: DART, DCR, POD compliance, Contact Compliance, DNR rate, Customer Escalations, Mentor score, Seatbelt compliance, Speeding, Harsh Braking. Return ONLY a JSON object with snake_case keys and numeric values. No markdown, no code blocks."}]}]})
+                        headers:{"Content-Type":"application/json"},
+                        body:JSON.stringify({model:"claude-haiku-4-5",max_tokens:500,base64Data:base64,mediaType:file.type,prompt:"This is an Amazon DSP weekly scorecard. Extract ALL metrics: DART, DCR, POD compliance, Contact Compliance, DNR rate, Customer Escalations, Mentor score, Seatbelt compliance, Speeding, Harsh Braking. Return ONLY a JSON object with snake_case keys and numeric values. No markdown, no code blocks."})
                       });
                       const data=await resp.json();
+                      if(!resp.ok||data.error){setScorecardImportError("API error: "+(data.error?.message||data.error||resp.status));setScorecardImporting(false);return;}
                       const text=data.content?.[0]?.text||"{}";
                       let parsed={};
                       try{parsed=JSON.parse(text.replace(/```json|```/g,"").trim());}
