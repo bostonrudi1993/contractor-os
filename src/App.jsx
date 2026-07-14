@@ -289,7 +289,7 @@ function ContractorOS() {
   const [prevScreen, setPrevScreen] = useState(null);
   const [navOpen, setNavOpen] = useState(false);
   const [settings, setSettings] = useState(()=>{
-    const defaults = {mpg:8,dieselPrice:3.85,cpm:0.18,homeBase:"",companyName:"",monthlyInsurance:"",weeklyTruckPayment:"",clientDailyRate:"",mileStipendRate:"",businessStartDate:"",businessLegalName:"",ownerName:"",ein:"",bankName:"",existingLoanBalance:"",existingLoanMonthlyPayment:"",monthlyDepreciation:"",monthlyLoanInterest:"",monthlyTaxEstimate:"",cashReserve:"",subscriptionTier:"fleet",devMode:false};
+    const defaults = {mpg:8,dieselPrice:3.85,cpm:0.18,homeBase:"",companyName:"",monthlyInsurance:"",weeklyTruckPayment:"",clientDailyRate:"",mileStipendRate:"",businessStartDate:"",businessLegalName:"",ownerName:"",ein:"",bankName:"",existingLoanBalance:"",existingLoanMonthlyPayment:"",monthlyDepreciation:"",monthlyLoanInterest:"",monthlyTaxEstimate:"",cashReserve:"",subscriptionTier:"fleet",devMode:false,ownerEmail:""};
     const saved = stor.get(KEYS.settings, null);
     return saved ? {...defaults, ...saved} : defaults;
   });
@@ -606,6 +606,20 @@ function ContractorOS() {
     });
   // eslint-disable-next-line
   },[]);
+
+  // ── Persist owner email to cos_settings in Supabase (for Python Autopilot agents) ──
+  useEffect(()=>{
+    if(!dbLoaded) return;
+    const email = user?.emailAddresses?.[0]?.emailAddress;
+    if(email && !settings.ownerEmail){
+      setSettings(prev=>{
+        const updated = {...prev, ownerEmail: email};
+        db.set(KEYS.settings, updated); // write directly to Supabase so agents can read it
+        return updated;
+      });
+    }
+  // eslint-disable-next-line
+  },[dbLoaded]);
 
   // ── Load & save cloud data via hooks ──
   useDataLoader(db, {
