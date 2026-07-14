@@ -12,6 +12,18 @@ npm run preview   # Preview production build locally
 
 No test suite is configured.
 
+## User's Local Project Path
+
+The user's local project on their Windows machine is at:
+```
+C:\Users\andre\Downloads\contractor-os-project\cos-project
+```
+
+To open a terminal there:
+```
+cd C:\Users\andre\Downloads\contractor-os-project\cos-project
+```
+
 ## Deployment Workflow
 
 All changes commit and push directly to `main`. Vercel auto-deploys from main.
@@ -20,6 +32,14 @@ Every session:
 1. Make code changes and commit directly to `main`
 2. Push to `main` with `git push origin main`
 3. Vercel auto-deploys within ~60 seconds
+
+When sending files to the user, always include the exact local path where each file goes,
+and remind them to run from their project root:
+```
+git add .
+git commit -m "update"
+git push origin main
+```
 
 Always end every coding session by:
 - Running `npm run build` to verify no build errors
