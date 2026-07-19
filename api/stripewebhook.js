@@ -1,18 +1,27 @@
-import Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
+// api/stripe-webhook.js
+// CommonJS — required for Vercel bodyParser:false config to work reliably
+
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const { createClient } = require("@supabase/supabase-js");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const PRICE_TO_TIER = Object.fromEntries(
-  [
-    [process.env.STRIPE_PRICE_SOLO, "solo"],
-    [process.env.STRIPE_PRICE_FLEET, "fleet"],
-    [process.env.STRIPE_PRICE_ENTERPRISE, "enterprise"],
-  ].filter(([k]) => k)
-);
+const PRICE_TO_TIER = {
+  [process.env.STRIPE_PRICE_SOLO]: "solo",
+  [process.env.STRIPE_PRICE_FLEET]: "fleet",
+  [process.env.STRIPE_PRICE_ENTERPRISE]: "enterprise",
+};
+
+const getRawBody = (req) =>
+  new Promise((resolve, reject) => {
+    let data = "";
+    req.on("data", (chunk) => (data += chunk));
+    req.on("end", () => resolve(data));
+    req.on("error", reject);
+  });
 
 async function updateOrgTier(orgId, tier) {
   const { data: existing } = await supabase
@@ -40,24 +49,17 @@ async function updateOrgTier(orgId, tier) {
     console.error("Supabase update error:", error);
     throw error;
   }
+
+  console.log(`✓ Updated org ${orgId} to tier: ${tier}`);
 }
 
-const getRawBody = (req) =>
-  new Promise((resolve, reject) => {
-    let data = "";
-    req.on("data", (chunk) => (data += chunk));
-    req.on("end", () => resolve(data));
-    req.on("error", reject);
-  });
-
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   const sig = req.headers["stripe-signature"];
   const rawBody = await getRawBody(req);
-  let event;
 
+  let event;
   try {
     event = stripe.webhooks.constructEvent(
       rawBody,
@@ -76,7 +78,8 @@ export default async function handler(req, res) {
         const { orgId, tierName } = session.metadata || {};
         if (orgId && tierName) {
           await updateOrgTier(orgId, tierName);
-          console.log(`✓ Upgraded org ${orgId} to ${tierName}`);
+        } else {
+          console.warn("checkout.session.completed missing orgId or tierName");
         }
         break;
       }
@@ -88,7 +91,8 @@ export default async function handler(req, res) {
         const tier = PRICE_TO_TIER[priceId];
         if (orgId && tier) {
           await updateOrgTier(orgId, tier);
-          console.log(`✓ Updated org ${orgId} to ${tier}`);
+        } else {
+          console.warn("subscription.updated — could not resolve tier from priceId:", priceId);
         }
         break;
       }
@@ -98,7 +102,6 @@ export default async function handler(req, res) {
         const orgId = sub.metadata?.orgId;
         if (orgId) {
           await updateOrgTier(orgId, "solo");
-          console.log(`✓ Downgraded org ${orgId} to solo`);
         }
         break;
       }
@@ -112,8 +115,10 @@ export default async function handler(req, res) {
     console.error("Webhook handler error:", err);
     return res.status(500).json({ error: err.message });
   }
-}
+};
 
-export const config = {
+// CRITICAL: must be CommonJS module.exports.config — not ES export const config
+// ES module export syntax is NOT reliably picked up by Vercel for bodyParser:false
+module.exports.config = {
   api: { bodyParser: false },
 };
