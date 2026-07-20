@@ -12,6 +12,11 @@ export default function Settings({seg, accent, S, settings, setSettings, segment
               <div key={f}><label style={S.label}>{lbl}</label><input value={settings[f]||""} onChange={e=>setSettings(p=>({...p,[f]:e.target.value}))} placeholder={ph} style={S.input}/></div>
             ))}
           </div>
+          <div style={{marginTop:12}}>
+            <label style={S.label}>Alert Email Address</label>
+            <input type="email" value={settings.alertEmail||""} onChange={e=>setSettings(p=>({...p,alertEmail:e.target.value}))} placeholder="you@company.com" style={S.input}/>
+            <div style={{fontSize:9,color:"#999",marginTop:4}}>Where Autopilot sends compliance and settlement alerts. This can be different from your login email.</div>
+          </div>
         </div>
         <div style={{...S.card,marginBottom:16}}>
           <div style={{fontSize:10,color:"#999",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:14}}>Vehicle Cost Settings</div>
