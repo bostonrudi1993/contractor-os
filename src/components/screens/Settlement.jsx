@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 // Settlement screen
 export default function Settlement(p) {
   const {
@@ -80,6 +82,31 @@ export default function Settlement(p) {
     urgentItems, SubNav, Stat, ExpiryBadge, Loader, fmt$, fmtDate, daysUntil,
     statusColor, statusLabel, gradeColor, MODAL_CONFIGS,
   } = p;
+
+  // Local state for tracking which settlement entry (if any) is being edited.
+  // null = adding a new entry. Otherwise holds the id of the entry being edited.
+  const [settlementEditId, setSettlementEditId] = useState(null);
+
+  const startEdit = (entry) => {
+    setSettlementForm({
+      weekEnding: entry.weekEnding || "",
+      stops: entry.stops || "",
+      ratePerStop: entry.ratePerStop || "",
+      stopBonuses: entry.stopBonuses || "",
+      fuelSurcharge: entry.fuelSurcharge || "",
+      amountDeposited: entry.amountDeposited || "",
+      depositDate: entry.depositDate || "",
+      notes: entry.notes || "",
+    });
+    setSettlementEditId(entry.id);
+    setSettlementTab("entry");
+  };
+
+  const cancelEdit = () => {
+    setSettlementEditId(null);
+    setSettlementForm({weekEnding:"",stops:"",ratePerStop:"",stopBonuses:"",fuelSurcharge:"",amountDeposited:"",depositDate:"",notes:""});
+  };
+
   return (
         <div style={{flex:1,overflowY:"auto",padding:24}}>
           <div style={{maxWidth:860,margin:"0 auto",animation:"fadeUp 0.3s ease"}}>
@@ -95,6 +122,12 @@ export default function Settlement(p) {
               const variance=actual-expectedTotal;
               return <div>
                 <div style={{...S.card,marginBottom:16}}>
+                  {settlementEditId&&(
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,padding:"8px 12px",background:"#1a1200",border:"1px solid #3a2500",borderRadius:6}}>
+                      <div style={{fontSize:11,color:"#f59e0b"}}>✏ Editing existing entry</div>
+                      <button className="hov" onClick={cancelEdit} style={{fontSize:10,color:"#999",background:"transparent",border:"1px solid #2a2a2a",padding:"4px 10px",borderRadius:4,cursor:"pointer"}}>Cancel</button>
+                    </div>
+                  )}
                   <input type="date" placeholder="Week Ending" value={settlementForm.weekEnding} onChange={e=>setSettlementForm(p=>({...p,weekEnding:e.target.value}))} style={{...S.input,marginBottom:8}}/>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
                     <input placeholder="Stops" type="number" value={settlementForm.stops} onChange={e=>setSettlementForm(p=>({...p,stops:e.target.value}))} style={S.input}/>
@@ -113,13 +146,21 @@ export default function Settlement(p) {
                     </div>
                   </div>}
                   <textarea placeholder="Notes" value={settlementForm.notes} onChange={e=>setSettlementForm(p=>({...p,notes:e.target.value}))} style={{...S.input,marginBottom:8,minHeight:60}}/>
-                  <button className="hov" onClick={()=>{
-                    if(!settlementForm.weekEnding)return;
-                    const exp=(parseFloat(settlementForm.stops||0)*parseFloat(settlementForm.ratePerStop||0))+parseFloat(settlementForm.stopBonuses||0)+parseFloat(settlementForm.fuelSurcharge||0);
-                    const act=parseFloat(settlementForm.amountDeposited||0);
-                    setSettlementLog(prev=>[{id:Date.now(),...settlementForm,expectedTotal:exp,variance:act-exp},...prev]);
-                    setSettlementForm({weekEnding:"",stops:"",ratePerStop:"",stopBonuses:"",fuelSurcharge:"",amountDeposited:"",depositDate:"",notes:""});
-                  }} style={S.btn}>Save Week</button>
+                  <div style={{display:"flex",gap:8}}>
+                    <button className="hov" onClick={()=>{
+                      if(!settlementForm.weekEnding)return;
+                      const exp=(parseFloat(settlementForm.stops||0)*parseFloat(settlementForm.ratePerStop||0))+parseFloat(settlementForm.stopBonuses||0)+parseFloat(settlementForm.fuelSurcharge||0);
+                      const act=parseFloat(settlementForm.amountDeposited||0);
+                      if(settlementEditId){
+                        setSettlementLog(prev=>prev.map(entry=>entry.id===settlementEditId?{id:settlementEditId,...settlementForm,expectedTotal:exp,variance:act-exp}:entry));
+                      }else{
+                        setSettlementLog(prev=>[{id:Date.now(),...settlementForm,expectedTotal:exp,variance:act-exp},...prev]);
+                      }
+                      setSettlementForm({weekEnding:"",stops:"",ratePerStop:"",stopBonuses:"",fuelSurcharge:"",amountDeposited:"",depositDate:"",notes:""});
+                      setSettlementEditId(null);
+                    }} style={S.btn}>{settlementEditId?"Update Entry":"Save Week"}</button>
+                    {settlementEditId&&<button className="hov" onClick={cancelEdit} style={{...S.btn,background:"#1e1e1e",color:"#999"}}>Cancel</button>}
+                  </div>
                 </div>
               </div>;
             })()}
@@ -132,7 +173,10 @@ export default function Settlement(p) {
                       <div style={{fontSize:13,color:"#e8e4d8"}}>Week ending {l.weekEnding}</div>
                       <div style={{fontSize:11,color:"#888"}}>Expected: ${parseFloat(l.expectedTotal||0).toFixed(2)} · Actual: ${parseFloat(l.amountDeposited||0).toFixed(2)}</div>
                     </div>
-                    <span style={{fontSize:13,fontWeight:700,color:parseFloat(l.variance||0)>=0?"#22c55e":"#ef4444"}}>{parseFloat(l.variance||0)>=0?"+":""}{parseFloat(l.variance||0).toFixed(2)}</span>
+                    <div style={{display:"flex",alignItems:"center",gap:12}}>
+                      <span style={{fontSize:13,fontWeight:700,color:parseFloat(l.variance||0)>=0?"#22c55e":"#ef4444"}}>{parseFloat(l.variance||0)>=0?"+":""}{parseFloat(l.variance||0).toFixed(2)}</span>
+                      <button className="hov" onClick={()=>startEdit(l)} style={{fontSize:10,color:"#999",background:"transparent",border:"1px solid #2a2a2a",padding:"5px 12px",borderRadius:4,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>Edit</button>
+                    </div>
                   </div>
                 </div>
               ))}
