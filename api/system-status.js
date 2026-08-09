@@ -170,6 +170,25 @@ async function checkResend() {
     }
   );
 
+  if (response.status === 401) {
+    // A 401 here usually means the key has
+    // "Sending access" only (recommended,
+    // more secure) rather than "Full access" —
+    // /domains requires Full access, but
+    // sending emails (all this app actually
+    // does) only needs Sending access. This is
+    // NOT the same as a broken/invalid key.
+    return {
+      service: "resend",
+      status: "restricted",
+      message:
+        "Key likely has Sending-access-only " +
+        "permissions (recommended) — this " +
+        "endpoint requires Full access, but " +
+        "sending emails still works fine.",
+    };
+  }
+
   if (!response.ok) {
     return {
       service: "resend",
