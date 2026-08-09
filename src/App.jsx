@@ -53,6 +53,7 @@ import Scorecard from "./components/screens/Scorecard.jsx";
 import FmcsaLookup from "./components/screens/FmcsaLookup.jsx";
 import Claims from "./components/screens/Claims.jsx";
 import LenderReport from "./components/screens/LenderReport.jsx";
+import Observability from "./components/screens/Observability.jsx";
 
 // ─── TIER CONFIG ──────────────────────────────────────────────────────────────
 const TIERS = {
@@ -1474,6 +1475,7 @@ function ContractorOS() {
         {screen==="fmcsa" && <FmcsaLookup {...screenProps}/>}
         {screen==="claims" && segment==="lastmile" && <Claims {...screenProps}/>}
         {screen==="lender" && <LenderReport {...screenProps}/>}
+        {screen==="observability" && isOwner && <Observability accent={accent} S={S} isOwner={isOwner}/>}
       </> : <UpgradePrompt screenId={screen}/>}
 
       {/* Bug Report Modal */}
@@ -1554,6 +1556,7 @@ function ContractorOS() {
           © 2025–{new Date().getFullYear()} <strong>ContractorOS LLC</strong>. All rights reserved. ContractorOS LLC is a proprietary fleet management platform. Unauthorized reproduction, distribution, modification, or use of this software, its design, code, or content — in whole or in part — is strictly prohibited without express written permission. Built for independent contractors and fleet operators.
         </div>
         <div style={{display:"flex",gap:20,alignItems:"center"}}>
+          {isOwner && <button onClick={()=>handleNav("observability")} style={{background:"transparent",border:"1px solid #444",color:"#ffffff",fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em",padding:"4px 12px",borderRadius:4}}>🩺 Observability</button>}
           <button onClick={()=>setShowBugReport(true)} style={{background:"transparent",border:"1px solid #444",color:"#ffffff",fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em",padding:"4px 12px",borderRadius:4}}>Report a Bug</button>
           <a href="mailto:bostonrudi1993@gmail.com" style={{color:"#ffffff",fontSize:10,textDecoration:"none",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em"}}>Contact Us</a>
           <div style={{marginLeft:"auto",fontSize:9,color:"#999"}}>contractoroshub.com</div>
