@@ -652,7 +652,7 @@ function ContractorOS() {
   const callAI = async (system, content, json=true) => {
     const r = await fetch("/api/claude", {
       method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({system, prompt:content, max_tokens:1000}),
+      body: JSON.stringify({system, prompt:content, max_tokens:1000, orgId: organization?.id}),
     });
     const d = await r.json();
     if(!r.ok || d.error) {
@@ -718,7 +718,7 @@ function ContractorOS() {
       const res = await fetch("/api/claude",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({prompt:`You are a DOT/FMCSA compliance expert for US commercial trucking. Answer this question clearly and practically for an owner-operator or fleet manager. Be specific, cite relevant regulations where applicable, and flag any time-sensitive deadlines. Question: ${dotQ}`, max_tokens:800})
+        body:JSON.stringify({prompt:`You are a DOT/FMCSA compliance expert for US commercial trucking. Answer this question clearly and practically for an owner-operator or fleet manager. Be specific, cite relevant regulations where applicable, and flag any time-sensitive deadlines. Question: ${dotQ}`, max_tokens:800, orgId: organization?.id})
       });
       if(!res.ok) { const err = await res.json(); throw new Error(err.error||`API error ${res.status}`); }
       const data = await res.json();
