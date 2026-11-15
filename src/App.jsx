@@ -178,14 +178,48 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+// ─── LOCAL CACHE SAFETY ───────────────────────────────────────────────────────
+// ContractorOS keeps some values in the browser's localStorage (settings, segment,
+// onboarding flags, etc). Without this, the next person to sign in on the same
+// browser inherits the previous person's cached company name, segment, and more.
+// Incognito windows start with empty localStorage, which is why they never showed it.
+const CACHE_OWNER_KEY = "cos_cache_owner";
+const isCosKey = (k) => k.startsWith("cos_") || Object.values(KEYS).includes(k);
+
+function clearLocalCache() {
+  try {
+    Object.keys(localStorage).filter(isCosKey).forEach(k => localStorage.removeItem(k));
+  } catch { /* localStorage unavailable — nothing to clear */ }
+}
+
+// Called right before the app mounts. If the cache on this browser was last used by
+// a DIFFERENT company, wipe it. (If there is no owner stamp yet, we just adopt the
+// existing cache so current users don't lose anything.)
+function ensureCacheBelongsTo(orgId) {
+  try {
+    const owner = localStorage.getItem(CACHE_OWNER_KEY);
+    if (owner && owner !== orgId) clearLocalCache();
+    localStorage.setItem(CACHE_OWNER_KEY, orgId);
+  } catch { /* ignore */ }
+}
+
 // ─── AUTH GATE ────────────────────────────────────────────────────────────────
 function AuthGate() {
   const { isLoaded: userLoaded, isSignedIn, user } = useUser();
   const { organization, isLoaded: orgLoaded } = useOrganization();
-  const { userMemberships, isLoaded: listLoaded } = useOrganizationList({ userMemberships: true });
+  const { userMemberships, isLoaded: listLoaded, setActive } = useOrganizationList({ userMemberships: true });
   const [authView, setAuthView] = useState(()=>{
     try { return new URLSearchParams(window.location.search).get("view")==="signup"?"signup":"signin"; } catch { return "signin"; }
   });
+
+  // If the user belongs to exactly one company but none is active yet, activate it
+  // automatically so they don't have to click anything.
+  useEffect(()=>{
+    if (isSignedIn && orgLoaded && listLoaded && !organization && userMemberships?.data?.length === 1 && setActive) {
+      setActive({ organization: userMemberships.data[0].organization.id });
+    }
+  // eslint-disable-next-line
+  },[isSignedIn, orgLoaded, listLoaded, organization, userMemberships?.data?.length]);
 
   if (!userLoaded) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#0a0a0a",flexDirection:"column",gap:16}}>
@@ -213,7 +247,18 @@ function AuthGate() {
     </div>
   );
 
-  if (orgLoaded && !organization) {
+  // Wait until Clerk has finished loading organization info BEFORE deciding anything.
+  // (Previously the app could render while this was still loading, which put it in
+  // "Personal / Device" mode with no org ID.)
+  if (!orgLoaded || !listLoaded) return (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#0a0a0a",flexDirection:"column",gap:16}}>
+      <div style={{width:48,height:48,border:"3px solid #1e1e1e",borderTop:"3px solid #f59e0b",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+
+  // A company (organization) is REQUIRED. No org = setup screen, never the app.
+  if (!organization) {
     const hasMemberships = listLoaded && userMemberships?.data?.length > 0;
     return (
       <div style={{minHeight:"100vh",background:"#0a0a0a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20}}>
@@ -256,7 +301,10 @@ function AuthGate() {
     );
   }
 
-  return <ContractorOS />;
+  // Org is guaranteed here. Clear any cache left behind by a different company, and
+  // key the app by org ID so switching companies fully resets all in-memory state.
+  ensureCacheBelongsTo(organization.id);
+  return <ContractorOS key={organization.id} />;
 }
 
 function AppWithErrorBoundary() {
@@ -272,7 +320,13 @@ export default AppWithErrorBoundary;
 function ContractorOS() {
   const { organization, membership } = useOrganization();
   const { user } = useUser();
-  const { signOut } = useClerk();
+  const { signOut: clerkSignOut } = useClerk();
+  // Clear this browser's cached company data on sign-out so the next person to sign in
+  // here never inherits it. Passed to Nav/TopBar/idle-timeout in place of Clerk's signOut.
+  const signOut = async (opts) => {
+    clearLocalCache();
+    try { await clerkSignOut(opts); } finally { clearLocalCache(); }
+  };
   const db = makeDb(organization?.id);
 
   // ── State (compliance & drivers MUST come before Day3/7 email effect) ──
@@ -358,6 +412,7 @@ function ContractorOS() {
   const [loadForm, setLoadForm] = useState({origin:"",destination:"",miles:"",offeredRate:"",deadheadMiles:"",commodity:"",pickupDate:"",brokerName:""});
   const [analyzeStep, setAnalyzeStep] = useState("paste");
   const [dbLoaded, setDbLoaded] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [payroll, setPayroll] = useState([]);
   const [fuelLog, setFuelLog] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -595,32 +650,68 @@ function ContractorOS() {
   // eslint-disable-next-line
   },[]);
 
-  // ── Load tier from Supabase on init (picks up webhook-updated tiers across devices) ──
+  // ── Load settings from Supabase on init, merged with this device's cached copy ──
+  // Supabase wins for any NON-empty value (so webhook-updated tiers always come through);
+  // an empty Supabase value never erases a non-empty local one.
   useEffect(()=>{
     const params = new URLSearchParams(window.location.search);
     const isUpgradeRedirect = params.get("upgrade")==="success" || !!localStorage.getItem("cos_pending_tier");
-    if(isUpgradeRedirect) return; // Stripe success effect owns this path
+    if(isUpgradeRedirect){ setSettingsLoaded(true); return; } // Stripe success effect owns the tier on this path
+    let cancelled = false;
     db.get(KEYS.settings, null).then(saved=>{
-      if(saved?.subscriptionTier && TIERS[saved.subscriptionTier]){
-        setSettings(prev=>({...prev, subscriptionTier: saved.subscriptionTier}));
+      if(cancelled) return;
+      if(saved && typeof saved === "object"){
+        setSettings(prev=>{
+          const merged = {...prev};
+          Object.entries(saved).forEach(([k,v])=>{
+            const isEmpty = v==="" || v===null || v===undefined;
+            if(!isEmpty || merged[k]===undefined) merged[k] = v;
+          });
+          if(saved.subscriptionTier && TIERS[saved.subscriptionTier]) merged.subscriptionTier = saved.subscriptionTier;
+          return merged;
+        });
       }
-    });
+      setSettingsLoaded(true);
+    }).catch(()=>{});
+    return ()=>{ cancelled = true; };
   // eslint-disable-next-line
   },[]);
 
-  // ── Persist owner email to cos_settings in Supabase (for Python Autopilot agents) ──
+  // ── Capture the signed-in user's email as ownerEmail (read by the Python Autopilot agents) ──
   useEffect(()=>{
-    if(!dbLoaded) return;
+    if(!dbLoaded || !settingsLoaded) return;
     const email = user?.emailAddresses?.[0]?.emailAddress;
     if(email && !settings.ownerEmail){
-      setSettings(prev=>{
-        const updated = {...prev, ownerEmail: email};
-        db.set(KEYS.settings, updated); // write directly to Supabase so agents can read it
-        return updated;
-      });
+      setSettings(prev=>({...prev, ownerEmail: email}));
     }
   // eslint-disable-next-line
-  },[dbLoaded]);
+  },[dbLoaded, settingsLoaded]);
+
+  // ── Save settings to Supabase (debounced) ──
+  // Settings used to live ONLY in this browser's localStorage, so edits like Company Name
+  // never reached Supabase or the Python agents. This saves them. The subscription tier is
+  // deliberately NOT taken from this device: Stripe/webhook own it, so we keep whatever is
+  // already in Supabase, and never invent a paid tier for an org that doesn't have one.
+  useEffect(()=>{
+    if(!dbLoaded || !settingsLoaded) return;
+    const t = setTimeout(async ()=>{
+      try {
+        const remote = await db.get(KEYS.settings, null);
+        const payload = {...settings};
+        if(remote?.subscriptionTier){
+          payload.subscriptionTier = remote.subscriptionTier;
+          if(remote.tierUpdatedAt) payload.tierUpdatedAt = remote.tierUpdatedAt;
+        } else {
+          delete payload.subscriptionTier;
+        }
+        await db.set(KEYS.settings, payload);
+      } catch(err){
+        console.error("Settings save failed:", err);
+      }
+    }, 1500);
+    return ()=>clearTimeout(t);
+  // eslint-disable-next-line
+  },[settings, dbLoaded, settingsLoaded]);
 
   // ── Load & save cloud data via hooks ──
   useDataLoader(db, {

@@ -54,15 +54,21 @@ export function makeDb(clerkOrgId) {
         if (error) throw error;
         if (data) return data.data_value;
 
-        // Migrate from localStorage on first cloud access
-        const local = localStorage.getItem(key);
-        if (local) {
-          const parsed = JSON.parse(local);
-          supabase.from("cos_data").upsert(
-            { user_id: scopeId, data_key: key, data_value: parsed },
-            { onConflict: "user_id,data_key" }
-          ).then(() => {});
-          return parsed;
+        // Migrate from localStorage on first cloud access — ONLY for the anonymous
+        // device scope (no company). For a real company (org) this is unsafe: it
+        // would copy whatever happens to be cached in this browser — possibly a
+        // DIFFERENT company's settings, email, and company name — into the new
+        // company's cloud rows. Companies start empty and fill in their own data.
+        if (!clerkOrgId) {
+          const local = localStorage.getItem(key);
+          if (local) {
+            const parsed = JSON.parse(local);
+            supabase.from("cos_data").upsert(
+              { user_id: scopeId, data_key: key, data_value: parsed },
+              { onConflict: "user_id,data_key" }
+            ).then(() => {});
+            return parsed;
+          }
         }
         return fallback;
       } catch (err) {
