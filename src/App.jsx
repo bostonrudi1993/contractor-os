@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import React from "react";
 import { makeDb } from "./supabase.js";
 import {
-  useUser, useOrganization, useOrganizationList, useClerk,
+  useUser, useAuth, useOrganization, useOrganizationList, useClerk,
   SignIn, SignUp, OrganizationProfile, CreateOrganization,
 } from "@clerk/clerk-react";
 
@@ -147,6 +147,101 @@ const LoaderComp = ({msg,accent}) => (
     <div style={{fontSize:11,color:"#999"}}>{msg||"Processing..."}</div>
   </div>
 );
+
+// ─── PLAN SCREENS ─────────────────────────────────────────────────────────────
+function PlanLoading({label}) {
+  return (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#0a0a0a",flexDirection:"column",gap:16}}>
+      <div style={{width:48,height:48,border:"3px solid #1e1e1e",borderTop:"3px solid #f59e0b",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,color:"#999",letterSpacing:"0.1em"}}>{label}</div>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+}
+
+function PlanError({message, retryLabel, onRetry, signOut}) {
+  return (
+    <div style={{minHeight:"100vh",background:"#0a0a0a",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{background:"#141414",border:"1px solid #2a2a2a",borderRadius:10,padding:"28px 32px",maxWidth:420,width:"100%",textAlign:"center"}}>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#e8e4d8",marginBottom:10}}>One moment</div>
+        <div style={{fontSize:12,color:"#999",lineHeight:1.8,marginBottom:20}}>{message}</div>
+        <button onClick={onRetry} style={{background:"#f59e0b",color:"#0a0a0a",border:"none",padding:"12px 24px",borderRadius:6,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,cursor:"pointer",letterSpacing:"0.05em",width:"100%",marginBottom:10}}>{retryLabel}</button>
+        <button onClick={()=>signOut()} style={{background:"transparent",border:"1px solid #2a2a2a",color:"#999",padding:"8px 20px",borderRadius:6,fontFamily:"'DM Mono',monospace",fontSize:11,cursor:"pointer",width:"100%"}}>Sign out</button>
+      </div>
+    </div>
+  );
+}
+
+// Shown when a company has no active or trialing plan and no free access.
+// New companies pick a plan and start the 14-day trial (card required up front).
+// A payment problem or a canceled plan means the app is locked until they pay.
+function PlanScreen({subscription, orgId, userEmail, authedFetch, signOut}) {
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  const status = subscription?.status || "none";
+  const paymentProblem = ["past_due","unpaid","paused"].includes(status) && !!subscription?.hasBillingAccount;
+  const returning = !!subscription?.hadSubscription;
+
+  const go = async (endpoint, body, busyKey) => {
+    setBusy(busyKey); setError("");
+    try {
+      const r = await authedFetch(endpoint, {method:"POST", body: JSON.stringify(body)});
+      const d = await r.json();
+      if(!r.ok || !d.url) throw new Error(d.error || "Something went wrong. Please try again.");
+      window.location.href = d.url;
+    } catch(e) {
+      setError(e.message || "Something went wrong. Please try again.");
+      setBusy("");
+    }
+  };
+
+  return (
+    <div style={{minHeight:"100vh",background:"#0a0a0a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{textAlign:"center",marginBottom:24,maxWidth:560}}>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:32,color:"#e8e4d8",letterSpacing:"0.05em"}}>
+          CONTRACTOR<span style={{color:"#f59e0b"}}>OS</span>
+        </div>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:800,color:"#e8e4d8",marginTop:16}}>
+          {paymentProblem ? "Payment needed" : returning ? "Choose a plan to reactivate" : "Choose your plan"}
+        </div>
+        <div style={{fontSize:12,color:"#999",marginTop:8,lineHeight:1.8,fontFamily:"'DM Mono',monospace"}}>
+          {paymentProblem
+            ? "Your account is locked because a payment failed or your trial ended unpaid. Your data is safe. Update your payment method to continue."
+            : returning
+              ? "Your previous plan has ended. Your data is saved and comes back as soon as you choose a plan."
+              : "Start your 14-day free trial. A card is required, and you won't be charged until the trial ends. Cancel anytime."}
+        </div>
+      </div>
+
+      {error && (
+        <div style={{background:"#1a0808",border:"1px solid #ef444433",borderRadius:6,padding:"10px 14px",marginBottom:16,fontSize:11,color:"#ef4444",lineHeight:1.5,maxWidth:560,width:"100%",textAlign:"center"}}>{error}</div>
+      )}
+
+      {paymentProblem ? (
+        <button onClick={()=>go("/api/billing-portal",{orgId},"portal")} disabled={!!busy}
+          style={{background:"#f59e0b",color:"#0a0a0a",border:"none",padding:"14px 32px",borderRadius:6,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:16,cursor:busy?"not-allowed":"pointer",letterSpacing:"0.05em",opacity:busy?0.7:1}}>
+          {busy==="portal" ? "Opening billing..." : "Update payment method →"}
+        </button>
+      ) : (
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12,maxWidth:760,width:"100%"}}>
+          {Object.entries(TIERS).map(([key,tier])=>(
+            <div key={key} style={{background:"#141414",border:`1px solid ${tier.color}44`,borderRadius:10,padding:"22px 20px",display:"flex",flexDirection:"column",gap:8}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#e8e4d8"}}>{tier.label}</div>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:30,fontWeight:900,color:tier.color,lineHeight:1}}>{tier.price}</div>
+              <div style={{fontSize:11,color:"#999",lineHeight:1.7,flex:1}}>{tier.desc}</div>
+              <button onClick={()=>go("/api/create-checkout-session",{tier:key,orgId,userEmail},key)} disabled={!!busy}
+                style={{background:tier.color,color:"#0a0a0a",border:"none",padding:"12px 16px",borderRadius:6,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:busy?"not-allowed":"pointer",letterSpacing:"0.05em",opacity:busy&&busy!==key?0.5:1}}>
+                {busy===key ? "Opening checkout..." : returning ? `Choose ${tier.label} →` : "Start 14-day free trial →"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button onClick={()=>signOut()} style={{marginTop:24,background:"transparent",border:"none",color:"#999",fontSize:11,cursor:"pointer",fontFamily:"'DM Mono',monospace"}}>Sign out</button>
+    </div>
+  );
+}
 
 // ─── ERROR BOUNDARY ───────────────────────────────────────────────────────────
 class ErrorBoundary extends React.Component {
@@ -321,6 +416,7 @@ function ContractorOS() {
   const { organization, membership } = useOrganization();
   const { user } = useUser();
   const { signOut: clerkSignOut } = useClerk();
+  const { getToken } = useAuth();
   // Clear this browser's cached company data on sign-out so the next person to sign in
   // here never inherits it. Passed to Nav/TopBar/idle-timeout in place of Clerk's signOut.
   const signOut = async (opts) => {
@@ -413,6 +509,10 @@ function ContractorOS() {
   const [analyzeStep, setAnalyzeStep] = useState("paste");
   const [dbLoaded, setDbLoaded] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [subscription, setSubscription] = useState(null); // null = not loaded yet
+  const [subError, setSubError] = useState("");
+  const [subChecking, setSubChecking] = useState(false);  // true right after returning from Stripe
+  const [subPending, setSubPending] = useState(false);    // payment made but not confirmed yet
   const [payroll, setPayroll] = useState([]);
   const [fuelLog, setFuelLog] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -622,41 +722,52 @@ function ContractorOS() {
     };
   },[idleWarning]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Stripe success return ──
-  useEffect(()=>{
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const upgradeSuccess = params.get("upgrade");
-      const urlTier = params.get("tier");
-      // Also check localStorage backup (covers session-loss during checkout)
-      const pendingTier = localStorage.getItem("cos_pending_tier");
-      const newTier = (upgradeSuccess==="success" && urlTier && TIERS[urlTier]) ? urlTier
-                    : (pendingTier && TIERS[pendingTier]) ? pendingTier
-                    : null;
-      if(newTier){
-        localStorage.removeItem("cos_pending_tier");
-        window.history.replaceState({},"","/app");
-        // Apply tier immediately and persist to Supabase (don't wait for webhook)
-        setSettings(prev=>{
-          const updated = {...prev, subscriptionTier: newTier};
-          db.set(KEYS.settings, updated);
-          return updated;
-        });
-        showValidation("✓ Upgraded to "+(TIERS[newTier]?.label||newTier)+"! Your new features are unlocked.");
+  // ── Plan / subscription ──
+  // The company's plan comes from the server (Stripe webhook → org_subscriptions table).
+  // It is NEVER taken from the web address or from this browser.
+  const authedFetch = async (url, options = {}) => {
+    const token = await getToken();
+    return fetch(url, {
+      ...options,
+      headers: {"Content-Type":"application/json", ...(options.headers||{}), Authorization:`Bearer ${token}`},
+    });
+  };
+
+  const loadSubscription = async (poll = false) => {
+    // After returning from Stripe the webhook may take a few seconds, so check again every 2s.
+    const attempts = poll ? 15 : 1;
+    for(let i=0;i<attempts;i++){
+      try {
+        const r = await authedFetch(`/api/subscription?orgId=${encodeURIComponent(organization.id)}`);
+        const d = await r.json();
+        if(!r.ok) throw new Error(d.error || `Error ${r.status}`);
+        setSubError("");
+        setSubscription(d);
+        if(!poll || d.hasAccess) return d;
+      } catch(e) {
+        setSubError(e.message || "Could not load your plan.");
+        if(!poll) return null;
       }
-    } catch(err){
-      console.error("Upgrade redirect error:",err);
+      await new Promise(resolve=>setTimeout(resolve,2000));
     }
+    return null;
+  };
+
+  useEffect(()=>{
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get("checkout");
+    if(checkout) window.history.replaceState({},"","/app");
+    const returning = checkout === "success";
+    if(returning) setSubChecking(true);
+    loadSubscription(returning).then(d=>{
+      if(returning && !(d && d.hasAccess)) setSubPending(true);
+    }).finally(()=>setSubChecking(false));
   // eslint-disable-next-line
   },[]);
 
   // ── Load settings from Supabase on init, merged with this device's cached copy ──
-  // Supabase wins for any NON-empty value (so webhook-updated tiers always come through);
-  // an empty Supabase value never erases a non-empty local one.
+  // Supabase wins for any NON-empty value; an empty Supabase value never erases a non-empty local one.
   useEffect(()=>{
-    const params = new URLSearchParams(window.location.search);
-    const isUpgradeRedirect = params.get("upgrade")==="success" || !!localStorage.getItem("cos_pending_tier");
-    if(isUpgradeRedirect){ setSettingsLoaded(true); return; } // Stripe success effect owns the tier on this path
     let cancelled = false;
     db.get(KEYS.settings, null).then(saved=>{
       if(cancelled) return;
@@ -672,10 +783,33 @@ function ContractorOS() {
         });
       }
       setSettingsLoaded(true);
-    }).catch(()=>{});
+    }).catch(()=>{ if(!cancelled) setSettingsLoaded(true); });
     return ()=>{ cancelled = true; };
   // eslint-disable-next-line
   },[]);
+
+  // ── Restore contractor type + onboarding status from the company's saved settings ──
+  // These used to live ONLY in this browser, so they were forgotten on every sign-out and
+  // on every new device. They are now saved in Supabase, per company (inside cos_settings).
+  useEffect(()=>{
+    if(!settingsLoaded) return;
+    if(!segment && settings.segment && SEGMENTS[settings.segment]) setSegment(settings.segment);
+    if(!onboardDismissed && settings.onboardingDone) setOnboardDismissed(true);
+  // eslint-disable-next-line
+  },[settingsLoaded]);
+
+  // Save them back into settings whenever they change (the settings save effect sends them on)
+  useEffect(()=>{
+    if(!settingsLoaded) return;
+    setSettings(prev=>{
+      const next = {...prev};
+      let changed = false;
+      if(segment && prev.segment !== segment){ next.segment = segment; changed = true; }
+      if(onboardDismissed && !prev.onboardingDone){ next.onboardingDone = true; changed = true; }
+      return changed ? next : prev;
+    });
+  // eslint-disable-next-line
+  },[segment, onboardDismissed, settingsLoaded]);
 
   // ── Capture the signed-in user's email as ownerEmail (read by the Python Autopilot agents) ──
   useEffect(()=>{
@@ -1074,8 +1208,9 @@ function ContractorOS() {
   };
 
   // ── Tier & Nav helpers ──
-  const currentTier = settings.subscriptionTier || "fleet";
-  const tierScreens = TIERS[currentTier]?.screens || TIERS.fleet.screens;
+  // The plan comes from the server (see "Plan / subscription" above), never from settings or the URL.
+  const currentTier = (subscription && subscription.tier && TIERS[subscription.tier]) ? subscription.tier : "solo";
+  const tierScreens = TIERS[currentTier]?.screens || TIERS.solo.screens;
   const canAccessScreen = (screenId) => {
     if(isOwner) return true;
     return tierScreens.includes(screenId);
@@ -1187,7 +1322,7 @@ function ContractorOS() {
   const lenderScore=(monthsOfData>=12?25:monthsOfData>=6?15:monthsOfData>=3?8:0)+(dscr>=1.25?25:dscr>=1.0?15:0)+(hasActiveContract?25:0)+((compliance.trucks||[]).length>0?25:0);
 
   // ── Loading screen ──
-  if(!dbLoaded) return (
+  if(!dbLoaded || !settingsLoaded) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#0a0a0a",flexDirection:"column",gap:16}}>
       <div style={{width:48,height:48,border:"3px solid #1e1e1e",borderTop:`3px solid ${segment?SEGMENTS[segment]?.color||"#f59e0b":"#f59e0b"}`,borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,color:"#999",letterSpacing:"0.1em"}}>LOADING YOUR DATA...</div>
@@ -1207,6 +1342,20 @@ function ContractorOS() {
     );
   }
 
+  // ── Plan gate: company → contractor type → plan → app ──
+  if(!subscription){
+    return subError
+      ? <PlanError message={`We couldn't check your plan (${subError}). Please try again.`} retryLabel="Try again" onRetry={()=>loadSubscription(false)} signOut={signOut}/>
+      : <PlanLoading label="CHECKING YOUR PLAN..."/>;
+  }
+  if(subChecking) return <PlanLoading label="FINISHING YOUR SIGN-UP..."/>;
+  if(!subscription.hasAccess && subPending){
+    return <PlanError message="Your payment went through but is still being confirmed. This usually takes under a minute." retryLabel="Check again" onRetry={async()=>{const d=await loadSubscription(false); if(d && d.hasAccess) setSubPending(false);}} signOut={signOut}/>;
+  }
+  if(!subscription.hasAccess){
+    return <PlanScreen subscription={subscription} orgId={organization.id} userEmail={user?.emailAddresses?.[0]?.emailAddress||""} authedFetch={authedFetch} signOut={signOut}/>;
+  }
+
   // ── Build shared props for all screens ──
   const SubNav = ({tabs,active,onSelect}) => <SubNavComp tabs={tabs} active={active} accent={accent} onSelect={onSelect}/>;
   const Stat = ({label,value,color,sub}) => <StatCard label={label} value={value} color={color||accent} sub={sub} card={S.card}/>;
@@ -1222,35 +1371,25 @@ function ContractorOS() {
     const handleSendRequest = async () => {
       setUpgradeError("");
       setUpgradeLoading(true);
-      const PRICE_IDS = {
-        solo: import.meta.env.VITE_STRIPE_PRICE_SOLO,
-        fleet: import.meta.env.VITE_STRIPE_PRICE_FLEET,
-        enterprise: import.meta.env.VITE_STRIPE_PRICE_ENTERPRISE,
-      };
-      const priceId = PRICE_IDS[targetTierKey];
-      if (!priceId) {
-        setUpgradeError("Checkout is not configured yet. Please contact support to upgrade.");
-        setUpgradeLoading(false);
-        return;
-      }
-      const orgId = organization?.id || db.scopeId;
       try {
-        const response = await fetch("/api/create-checkout-session", {
+        // Companies that already have a paid plan change it in Stripe's billing portal;
+        // everyone else starts a (server-verified) checkout.
+        const hasPaidPlan = subscription && !subscription.comped && ["trialing","active"].includes(subscription.status);
+        const response = await authedFetch(hasPaidPlan ? "/api/billing-portal" : "/api/create-checkout-session", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ priceId, orgId, userEmail: upgradeEmail, tierName: targetTierKey }),
+          body: JSON.stringify(hasPaidPlan
+            ? { orgId: organization.id }
+            : { tier: targetTierKey, orgId: organization.id, userEmail: upgradeEmail }),
         });
         const data = await response.json();
         if (data.url) {
-          // Store pending tier so upgrade applies even if Clerk session expires during checkout
-          localStorage.setItem("cos_pending_tier", targetTierKey);
           window.location.href = data.url;
         } else {
-          throw new Error(data.error || "Failed to create checkout session");
+          throw new Error(data.error || "Failed to start checkout");
         }
       } catch (err) {
         console.error("Checkout error:", err);
-        setUpgradeError("Unable to start checkout. Please try again or contact support.");
+        setUpgradeError(err.message || "Unable to start checkout. Please try again or contact support.");
         setUpgradeLoading(false);
       }
     };
